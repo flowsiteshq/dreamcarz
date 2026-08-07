@@ -14,6 +14,9 @@ import HowItWorks from "./pages/HowItWorks";
 import Agent from "./pages/Agent";
 import Login from "./pages/Login";
 import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
+import CookiePolicy from "./pages/CookiePolicy";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -28,6 +31,9 @@ function Router() {
       <Route path="/agent" component={Agent} />
       <Route path="/login" component={Login} />
       <Route path="/contact" component={Contact} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms" component={TermsConditions} />
+      <Route path="/cookie-policy" component={CookiePolicy} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

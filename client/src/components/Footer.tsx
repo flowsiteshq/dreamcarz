@@ -108,7 +108,12 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-4">
             {["Privacy Policy", "Terms & Conditions", "Cookie Policy"].map((item) => (
-              <a key={item} href="#" className="text-xs text-gray-500 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>{item}</a>
+              <a
+                key={item}
+                href={item === "Privacy Policy" ? "/privacy-policy" : item === "Terms & Conditions" ? "/terms" : "/cookie-policy"}
+                className="text-xs text-gray-500 hover:text-white transition-colors"
+                style={{ fontFamily: "var(--font-sans)" }}
+              >{item}</a>
             ))}
           </div>
         </div>
