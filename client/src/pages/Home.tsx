@@ -1,11 +1,13 @@
 /* DreamCarz Network — AI-First Homepage
- * Apple + Tesla + ChatGPT aesthetic
- * Centered AI prompt as primary interface
- * Minimal. Elegant. Premium.
+ * Matches reference: light gray bg, car bleeding right, inline prompt, stats bar with icons
  */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useLocation } from "wouter";
-import { ArrowUp, Sparkles, ChevronRight, Star } from "lucide-react";
+import { Link } from "wouter";
+import {
+  ArrowUp, Sparkles, ChevronRight, Star,
+  Car, Diamond, Crown, UserCircle, MapPin, HeadphonesIcon,
+  Users, Trophy, Shield
+} from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -24,80 +26,43 @@ const rotatingPrompts = [
   "Extend my rental.",
 ];
 
-const chips = [
-  { label: "Rent a Car", prompt: "I'd like to rent a car.", href: "/fleet" },
-  { label: "Buy a Car", prompt: "Help me buy my next vehicle.", href: "/fleet" },
-  { label: "Sell My Car", prompt: "I want to sell my car through DreamCarz.", href: "/host" },
-  { label: "Memberships", prompt: "Show me membership options.", href: "/membership" },
-  { label: "My Account", prompt: "Show my account and DCP balance.", href: "/dashboard" },
-  { label: "Locations", prompt: "Find a DreamCarz location near me.", href: "/contact" },
-  { label: "Reservations", prompt: "Show my active reservations.", href: "/dashboard" },
-  { label: "Support", prompt: "I need help with something.", href: "/contact" },
+const quickSuggestions = [
+  "Rent a Porsche this weekend",
+  "Upgrade my membership",
+  "Check my balance",
 ];
 
-// AI workflow responses
+const chips = [
+  { label: "Rent a Car", icon: Car, prompt: "I'd like to rent a car.", href: "/fleet" },
+  { label: "Buy a Car", icon: Diamond, prompt: "Help me buy my next vehicle.", href: "/fleet" },
+  { label: "Memberships", icon: Crown, prompt: "Show me membership options.", href: "/membership" },
+  { label: "My Account", icon: UserCircle, prompt: "Show my account and DCP balance.", href: "/dashboard" },
+  { label: "Locations", icon: MapPin, prompt: "Find a DreamCarz location near me.", href: "/contact" },
+  { label: "Support", icon: HeadphonesIcon, prompt: "I need help with something.", href: "/contact" },
+];
+
+const stats = [
+  { icon: Car, value: "600+", label: "Premium Vehicles" },
+  { icon: HeadphonesIcon, value: "24/7", label: "Concierge Support" },
+  { icon: Trophy, value: "4", label: "Membership Levels" },
+  { icon: Users, value: "1M+", label: "Happy Members" },
+];
+
 const aiResponses: Record<string, { title: string; body: string; cta: string; href: string }> = {
-  rent: {
-    title: "Let's find your perfect ride.",
-    body: "Browse our full fleet — from everyday value vehicles to exotic supercars. Every rental earns DCP Transportation Purchasing Power.",
-    cta: "Browse Fleet",
-    href: "/fleet",
-  },
-  buy: {
-    title: "Ready to own your dream car?",
-    body: "Our Lease-to-Own program lets you drive the vehicle while building equity. DCP points apply toward your purchase.",
-    cta: "Explore Lease-to-Own",
-    href: "/agent",
-  },
-  sell: {
-    title: "Turn your car into income.",
-    body: "Join our Host Program. You own the car — we bring the business. Earn program fees and DCP on every rental.",
-    cta: "Become a Host",
-    href: "/host",
-  },
-  membership: {
-    title: "Choose your membership tier.",
-    body: "Freedom, Plus, Pro, or Elite. Every tier earns DCP points that grow your transportation purchasing power over time.",
-    cta: "View Memberships",
-    href: "/membership",
-  },
-  balance: {
-    title: "Your DCP balance is waiting.",
-    body: "Sign in to view your current DCP balance, redemption power, member value ratio, and full account history.",
-    cta: "Go to Dashboard",
-    href: "/dashboard",
-  },
-  location: {
-    title: "We're in Lanham, MD.",
-    body: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Open Mon–Fri 9am–6pm, Saturday 9am–3pm. Call (301) 772-2500.",
-    cta: "Get Directions",
-    href: "/contact",
-  },
-  upgrade: {
-    title: "Upgrade your membership.",
-    body: "Moving to a higher tier increases your DCP earning rate, unlocks exclusive vehicles, and accelerates your path to Credit Free.",
-    cta: "Compare Tiers",
-    href: "/membership",
-  },
-  support: {
-    title: "We're here to help.",
-    body: "Reach our team at (301) 772-2500 or info@dreamcarz.com. Mon–Fri 9am–6pm, Saturday 9am–3pm.",
-    cta: "Contact Us",
-    href: "/contact",
-  },
-  default: {
-    title: "Let me help you with that.",
-    body: "Browse our fleet, explore membership tiers, or contact our team directly. DreamCarz is here to make your automotive experience effortless.",
-    cta: "Browse Fleet",
-    href: "/fleet",
-  },
+  rent: { title: "Let's find your perfect ride.", body: "Browse our full fleet — from everyday value vehicles to exotic supercars. Every rental earns DCP Transportation Purchasing Power.", cta: "Browse Fleet", href: "/fleet" },
+  buy: { title: "Ready to own your dream car?", body: "Our Lease-to-Own program lets you drive the vehicle while building equity. DCP points apply toward your purchase.", cta: "Explore Lease-to-Own", href: "/agent" },
+  membership: { title: "Choose your membership tier.", body: "Freedom, Plus, Pro, or Elite. Every tier earns DCP points that grow your transportation purchasing power over time.", cta: "View Memberships", href: "/membership" },
+  balance: { title: "Your DCP balance is waiting.", body: "Sign in to view your current DCP balance, redemption power, member value ratio, and full account history.", cta: "Go to Dashboard", href: "/dashboard" },
+  location: { title: "We're in Lanham, MD.", body: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Open Mon–Fri 9am–6pm, Saturday 9am–3pm. Call (301) 772-2500.", cta: "Get Directions", href: "/contact" },
+  upgrade: { title: "Upgrade your membership.", body: "Moving to a higher tier increases your DCP earning rate, unlocks exclusive vehicles, and accelerates your path to Credit Free.", cta: "Compare Tiers", href: "/membership" },
+  support: { title: "We're here to help.", body: "Reach our team at (301) 772-2500 or info@dreamcarz.com. Mon–Fri 9am–6pm, Saturday 9am–3pm.", cta: "Contact Us", href: "/contact" },
+  default: { title: "Let me help you with that.", body: "Browse our fleet, explore membership tiers, or contact our team directly. DreamCarz is here to make your automotive experience effortless.", cta: "Browse Fleet", href: "/fleet" },
 };
 
 function getAIResponse(input: string) {
   const q = input.toLowerCase();
   if (q.match(/rent|drive|book|reserve|weekend|tomorrow|lamborghini|ferrari|porsche|corvette|bmw|mercedes|exotic|suv|car for/)) return aiResponses.rent;
   if (q.match(/buy|purchase|own|finance|lease.to.own|next vehicle/)) return aiResponses.buy;
-  if (q.match(/sell|host|income|list my car/)) return aiResponses.sell;
   if (q.match(/membership|tier|freedom|plus|pro|elite|join|enroll/)) return aiResponses.membership;
   if (q.match(/balance|dcp|points|account|invoice|payment|history/)) return aiResponses.balance;
   if (q.match(/location|near|address|where|directions|find.*location/)) return aiResponses.location;
@@ -105,13 +70,6 @@ function getAIResponse(input: string) {
   if (q.match(/help|support|cancel|extend|issue|problem|question/)) return aiResponses.support;
   return aiResponses.default;
 }
-
-const stats = [
-  { value: "500+", label: "Vehicles" },
-  { value: "24/7", label: "Support" },
-  { value: "4", label: "Membership Tiers" },
-  { value: "MD", label: "Lanham, MD" },
-];
 
 const testimonials = [
   { text: "The DCP program is unlike anything I've seen. I've been a Pro member for 8 months and my transportation purchasing power has grown significantly.", name: "Marcus T.", tier: "Pro Member" },
@@ -126,11 +84,9 @@ export default function Home() {
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [focused, setFocused] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
 
-  // Rotate placeholder text
   useEffect(() => {
     if (focused || input) return;
     const interval = setInterval(() => {
@@ -146,7 +102,7 @@ export default function Home() {
     setTimeout(() => {
       setResponse(getAIResponse(input));
       setIsTyping(false);
-    }, 900);
+    }, 800);
   }, [input]);
 
   const handleChip = (chip: typeof chips[0]) => {
@@ -157,21 +113,24 @@ export default function Home() {
       setResponse(getAIResponse(chip.prompt));
       setIsTyping(false);
     }, 700);
-    inputRef.current?.focus();
+  };
+
+  const handleSuggestion = (text: string) => {
+    setInput(text);
+    setIsTyping(true);
+    setSubmitted(true);
+    setTimeout(() => {
+      setResponse(getAIResponse(text));
+      setIsTyping(false);
+    }, 700);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
   };
 
   const handleReset = () => {
-    setInput("");
-    setResponse(null);
-    setSubmitted(false);
-    setIsTyping(false);
+    setInput(""); setResponse(null); setSubmitted(false); setIsTyping(false);
     inputRef.current?.focus();
   };
 
@@ -179,166 +138,183 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <Navigation />
 
-      {/* ═══════════ HERO — AI PROMPT CENTER ═══════════ */}
-      <section className="min-h-screen flex flex-col items-center justify-center px-5 pt-16 pb-12 relative overflow-hidden">
-        {/* Subtle background gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(0,0,0,0.03),transparent)] pointer-events-none" />
+      {/* ═══════════ HERO ═══════════ */}
+      <section
+        className="relative min-h-screen overflow-hidden flex flex-col"
+        style={{ background: "linear-gradient(135deg, #f5f5f5 0%, #ebebeb 40%, #e8e8e8 100%)" }}
+      >
+        {/* Car image — bleeds right, absolute positioned */}
+        <div className="absolute right-0 top-0 bottom-0 w-[55%] lg:w-[52%] pointer-events-none select-none hidden md:block">
+          {/* Soft gradient fade on left edge of car */}
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#f0f0f0] to-transparent z-10" />
+          <img
+            src="/manus-storage/hero-car-hero2_31d626b3.png"
+            alt="DreamCarz luxury vehicle"
+            className="w-full h-full object-cover object-left"
+            style={{ objectPosition: "20% center" }}
+          />
+        </div>
 
-        <div className="w-full max-w-2xl mx-auto text-center">
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gray-200 text-[11px] font-medium text-gray-500 mb-8 tracking-wider uppercase" style={{ fontFamily: "var(--font-sans)" }}>
-            <Sparkles size={11} className="text-gray-400" />
-            AI Concierge
-          </div>
-
-          {/* Headline */}
-          <h1
-            className="text-[clamp(2.8rem,8vw,5rem)] font-bold text-black leading-[1.05] tracking-tight mb-5"
-            style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}
-          >
-            Drive Your Dream.
-          </h1>
-
-          {/* Subheadline */}
-          <p
-            className="text-[clamp(1rem,2.5vw,1.2rem)] text-gray-400 mb-10 leading-relaxed max-w-lg mx-auto"
-            style={{ fontFamily: "var(--font-sans)", fontWeight: 400 }}
-          >
-            Tell DreamCarz what you want to do.<br className="hidden sm:block" /> We'll handle the rest.
-          </p>
-
-          {/* AI Prompt Box */}
-          <div
-            className={`relative w-full rounded-2xl transition-all duration-300 ${
-              focused
-                ? "shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_8px_40px_rgba(0,0,0,0.10)]"
-                : "shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_4px_20px_rgba(0,0,0,0.06)]"
-            } bg-white`}
-          >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => { setInput(e.target.value); if (submitted) { setSubmitted(false); setResponse(null); } }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onKeyDown={handleKeyDown}
-              placeholder={rotatingPrompts[placeholderIdx]}
-              rows={1}
-              className="w-full resize-none bg-transparent px-5 pt-4 pb-14 text-[15px] text-black placeholder-gray-300 outline-none leading-relaxed rounded-2xl"
-              style={{ fontFamily: "var(--font-sans)", minHeight: "80px", maxHeight: "200px" }}
-            />
-            {/* Bottom bar */}
-            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3.5">
-              <span className="text-[11px] text-gray-300" style={{ fontFamily: "var(--font-sans)" }}>
-                Press Enter to send
+        {/* Content — left side */}
+        <div className="relative z-10 flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-6 lg:px-10 pt-24 pb-8">
+          <div className="max-w-[520px]">
+            {/* Eyebrow */}
+            <div className="flex items-center gap-2 mb-6">
+              <Sparkles size={12} className="text-gray-400" />
+              <span className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>
+                AI Powered Concierge
               </span>
-              <button
-                onClick={handleSubmit}
-                disabled={!input.trim()}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  input.trim()
-                    ? "bg-black text-white hover:bg-gray-800 active:scale-95"
-                    : "bg-gray-100 text-gray-300 cursor-not-allowed"
-                }`}
-              >
-                <ArrowUp size={15} />
-              </button>
             </div>
-          </div>
 
-          {/* Suggestion chips */}
-          <div className="flex flex-wrap justify-center gap-2 mt-5">
-            {chips.map((chip) => (
-              <button
-                key={chip.label}
-                onClick={() => handleChip(chip)}
-                className="px-3.5 py-1.5 rounded-full border border-gray-200 text-[12px] font-medium text-gray-500 hover:border-gray-400 hover:text-black transition-all duration-150 active:scale-[0.97] bg-white"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
+            {/* Headline */}
+            <h1
+              className="font-bold text-black leading-[1.0] mb-5"
+              style={{
+                fontFamily: "var(--font-display)",
+                letterSpacing: "-0.035em",
+                fontSize: "clamp(3.2rem, 7vw, 5.8rem)",
+              }}
+            >
+              Drive Your<br />Dream.
+            </h1>
 
-          {/* AI Response */}
-          {(isTyping || response) && (
-            <div className="mt-6 w-full">
-              {isTyping ? (
-                <div className="flex items-center justify-center gap-1.5 py-6">
-                  {[0, 1, 2].map(i => (
-                    <div
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce"
-                      style={{ animationDelay: `${i * 150}ms` }}
-                    />
-                  ))}
-                </div>
-              ) : response ? (
-                <div className="bg-gray-50 rounded-2xl p-5 text-left border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Sparkles size={13} className="text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-black mb-1" style={{ fontFamily: "var(--font-sans)" }}>
-                        {response.title}
-                      </p>
-                      <p className="text-sm text-gray-500 leading-relaxed mb-3" style={{ fontFamily: "var(--font-sans)" }}>
-                        {response.body}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={response.href}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-black text-white text-xs font-semibold rounded-full hover:bg-gray-900 transition-colors"
-                          style={{ fontFamily: "var(--font-sans)" }}
-                        >
-                          {response.cta} <ChevronRight size={12} />
-                        </Link>
-                        <button
-                          onClick={handleReset}
-                          className="text-xs text-gray-400 hover:text-black transition-colors"
-                          style={{ fontFamily: "var(--font-sans)" }}
-                        >
-                          Ask something else
-                        </button>
+            {/* Subheadline */}
+            <p className="text-[15px] text-gray-500 mb-7 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+              Tell <strong className="text-black font-semibold">DreamCarz</strong> what you want to do.<br />We'll handle the rest.
+            </p>
+
+            {/* Prompt box — single line, reference style */}
+            <div
+              className={`relative bg-white rounded-2xl transition-all duration-300 mb-3 ${
+                focused
+                  ? "shadow-[0_0_0_2px_rgba(0,0,0,0.12),0_8px_32px_rgba(0,0,0,0.12)]"
+                  : "shadow-[0_2px_20px_rgba(0,0,0,0.10)]"
+              }`}
+            >
+              <div className="flex items-center px-4 py-3.5 gap-3">
+                <Sparkles size={16} className="text-gray-300 flex-shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={e => { setInput(e.target.value); if (submitted) { setSubmitted(false); setResponse(null); } }}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={rotatingPrompts[placeholderIdx]}
+                  className="flex-1 bg-transparent text-[14px] text-black placeholder-gray-300 outline-none"
+                  style={{ fontFamily: "var(--font-sans)" }}
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={!input.trim()}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                    input.trim()
+                      ? "bg-black text-white hover:bg-gray-800 active:scale-95"
+                      : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                  }`}
+                >
+                  <ArrowUp size={15} />
+                </button>
+              </div>
+              {/* Quick suggestions inside box */}
+              <div className="flex items-center gap-2 px-4 pb-3 flex-wrap">
+                {quickSuggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleSuggestion(s)}
+                    className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[11px] text-gray-400 hover:text-black hover:border-gray-300 transition-all duration-150 active:scale-[0.97]"
+                    style={{ fontFamily: "var(--font-sans)" }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Response */}
+            {(isTyping || response) && (
+              <div className="mb-4">
+                {isTyping ? (
+                  <div className="flex items-center gap-1.5 py-3 px-4 bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                    ))}
+                  </div>
+                ) : response ? (
+                  <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.08)] border border-gray-100">
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={12} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-black mb-1" style={{ fontFamily: "var(--font-sans)" }}>{response.title}</p>
+                        <p className="text-[12px] text-gray-500 leading-relaxed mb-3" style={{ fontFamily: "var(--font-sans)" }}>{response.body}</p>
+                        <div className="flex items-center gap-3">
+                          <Link href={response.href} className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-black text-white text-[11px] font-semibold rounded-full hover:bg-gray-900 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                            {response.cta} <ChevronRight size={11} />
+                          </Link>
+                          <button onClick={handleReset} className="text-[11px] text-gray-400 hover:text-black transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                            Ask something else
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
+            )}
+
+            {/* Action chips */}
+            <div className="flex flex-wrap gap-2">
+              {chips.map((chip) => {
+                const Icon = chip.icon;
+                return (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleChip(chip)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)] text-[12px] font-medium text-gray-600 hover:text-black hover:shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-all duration-150 active:scale-[0.97]"
+                    style={{ fontFamily: "var(--font-sans)" }}
+                  >
+                    <Icon size={13} className="text-gray-400" />
+                    {chip.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Scroll hint */}
-        {!submitted && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce">
-            <div className="w-px h-8 bg-gradient-to-b from-transparent to-gray-300" />
-          </div>
-        )}
-      </section>
-
-      {/* ═══════════ STATS BAR ═══════════ */}
-      <section className="border-y border-gray-100 py-8">
-        <div className="max-w-4xl mx-auto px-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {stats.map((s, i) => (
-              <div key={i}>
-                <div className="text-2xl font-bold text-black mb-0.5" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>{s.value}</div>
-                <div className="text-xs text-gray-400 uppercase tracking-widest" style={{ fontFamily: "var(--font-sans)" }}>{s.label}</div>
-              </div>
-            ))}
+        {/* Stats bar — bottom of hero */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-10 pb-10">
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] px-6 py-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-gray-100">
+              {stats.map((s, i) => {
+                const Icon = s.icon;
+                return (
+                  <div key={i} className={`flex items-center gap-3 ${i > 0 ? "pl-4 md:pl-6" : ""}`}>
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                      <Icon size={18} className="text-gray-400" />
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>{s.value}</div>
+                      <div className="text-[11px] text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>{s.label}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ═══════════ FLEET PREVIEW ═══════════ */}
-      <section className="py-24 px-5">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-24 px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-end justify-between mb-12">
             <div>
               <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-2" style={{ fontFamily: "var(--font-sans)" }}>Our Fleet</p>
-              <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+              <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
                 Every vehicle earns<br />purchasing power.
               </h2>
             </div>
@@ -377,16 +353,16 @@ export default function Home() {
       </section>
 
       {/* ═══════════ DCP EXPLAINER ═══════════ */}
-      <section className="py-24 px-5 bg-black text-white">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-24 px-6 lg:px-10 bg-black text-white">
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <p className="text-[11px] uppercase tracking-[0.15em] text-gray-500 mb-3" style={{ fontFamily: "var(--font-sans)" }}>DCP Program</p>
-              <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-white leading-tight mb-5" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+              <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-white leading-tight mb-5" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
                 Your loyalty has<br />a dollar value.
               </h2>
               <p className="text-gray-400 leading-relaxed mb-8 text-[15px]" style={{ fontFamily: "var(--font-sans)" }}>
-                Every membership payment, vehicle transaction, and rental earns DCP — Dream Carz Points that grow into real transportation purchasing power. The longer you stay, the more powerful your membership becomes.
+                Every membership payment, vehicle transaction, and rental earns DCP — Dream Carz Points that grow into real transportation purchasing power.
               </p>
               <Link href="/calculator" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                 Calculate your value <ChevronRight size={14} />
@@ -411,10 +387,10 @@ export default function Home() {
       </section>
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section className="py-24 px-5">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-24 px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto">
           <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-3 text-center" style={{ fontFamily: "var(--font-sans)" }}>Member Stories</p>
-          <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-black text-center mb-14" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+          <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-black text-center mb-14" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
             Trusted by members.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -435,7 +411,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════ CTA ═══════════ */}
-      <section className="py-24 px-5 border-t border-gray-100">
+      <section className="py-24 px-6 lg:px-10 border-t border-gray-100">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-bold text-black mb-5 leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
             Ready to start?
