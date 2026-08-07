@@ -1,564 +1,432 @@
-/* DreamCarz Network — Homepage
- * Reference: Dream Drive Dribbble design (white/clean/minimal)
- * Sections: Nav, Hero (centered, white bg, car image), Brand logos, About split,
- *   Stats, Fleet cards, Luxury Meets Reliability (arc), Top Picks carousel,
- *   How It Works steps, Testimonials, FAQ, Footer
+/* DreamCarz Network — AI-First Homepage
+ * Apple + Tesla + ChatGPT aesthetic
+ * Centered AI prompt as primary interface
+ * Minimal. Elegant. Premium.
  */
-import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
-import {
-  ChevronRight, ChevronLeft, ChevronDown, Star, Users, Clock, Shield, Zap, Car,
-  MapPin, Calendar, Settings, CheckCircle2, ArrowRight
-} from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useLocation } from "wouter";
+import { ArrowUp, Sparkles, ChevronRight, Star } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
 
-const brandLogos = ["BMW", "Rolls-Royce", "GMC", "Mercedes", "NISSAN", "Porsche"];
-
-const fleetCars = [
-  {
-    name: "Honda Civic 2023",
-    category: "Value",
-    image: "/manus-storage/car-budget-1_ab248f67.png",
-    seats: 5, transmission: "Automatic",
-    price: 16000, badge: "Under $20K",
-  },
-  {
-    name: "Toyota Camry 2023",
-    category: "Value",
-    image: "/manus-storage/car-budget-2_9d827670.png",
-    seats: 5, transmission: "Automatic",
-    price: 18500, badge: "Popular",
-  },
-  {
-    name: "Hyundai Tucson 2023",
-    category: "Value",
-    image: "/manus-storage/car-budget-3_cf351661.png",
-    seats: 5, transmission: "Automatic",
-    price: 19500, badge: "SUV",
-  },
+const rotatingPrompts = [
+  "Ask DreamCarz anything...",
+  "Rent a Porsche this weekend.",
+  "Help me buy my next vehicle.",
+  "Upgrade my membership.",
+  "Find a location near me.",
+  "Show me luxury SUVs under $500/day.",
+  "Find an exotic car for my wedding.",
+  "Reserve a Corvette for tomorrow.",
+  "Check my account balance.",
+  "Extend my rental.",
 ];
 
-const topPicks = [
-  { name: "Nissan Altima 2023", image: "/manus-storage/car-budget-5_ff412710.png", category: "Value · $17,000" },
-  { name: "Kia Sportage 2023", image: "/manus-storage/car-budget-4_f1bd50cc.png", category: "Value SUV · $19,000" },
-  { name: "Ford Escape 2023", image: "/manus-storage/car-budget-7_1b4d2b9c.png", category: "Value SUV · $18,000" },
+const chips = [
+  { label: "Rent a Car", prompt: "I'd like to rent a car.", href: "/fleet" },
+  { label: "Buy a Car", prompt: "Help me buy my next vehicle.", href: "/fleet" },
+  { label: "Sell My Car", prompt: "I want to sell my car through DreamCarz.", href: "/host" },
+  { label: "Memberships", prompt: "Show me membership options.", href: "/membership" },
+  { label: "My Account", prompt: "Show my account and DCP balance.", href: "/dashboard" },
+  { label: "Locations", prompt: "Find a DreamCarz location near me.", href: "/contact" },
+  { label: "Reservations", prompt: "Show my active reservations.", href: "/dashboard" },
+  { label: "Support", prompt: "I need help with something.", href: "/contact" },
 ];
 
-const steps = [
-  { icon: <Car size={22} />, title: "Browse Cars", desc: "Select from our premium collection" },
-  { icon: <CheckCircle2 size={22} />, title: "Choose Ride", desc: "Pick the perfect car" },
-  { icon: <Calendar size={22} />, title: "Set Your Date", desc: "Pick location and date" },
-  { icon: <Settings size={22} />, title: "Add Preferences", desc: "Include extras you'd love" },
-  { icon: <Shield size={22} />, title: "Confirm Booking", desc: "Secure your ride" },
-  { icon: <MapPin size={22} />, title: "Pick Up & Drive", desc: "Collect your car and enjoy the road" },
+// AI workflow responses
+const aiResponses: Record<string, { title: string; body: string; cta: string; href: string }> = {
+  rent: {
+    title: "Let's find your perfect ride.",
+    body: "Browse our full fleet — from everyday value vehicles to exotic supercars. Every rental earns DCP Transportation Purchasing Power.",
+    cta: "Browse Fleet",
+    href: "/fleet",
+  },
+  buy: {
+    title: "Ready to own your dream car?",
+    body: "Our Lease-to-Own program lets you drive the vehicle while building equity. DCP points apply toward your purchase.",
+    cta: "Explore Lease-to-Own",
+    href: "/agent",
+  },
+  sell: {
+    title: "Turn your car into income.",
+    body: "Join our Host Program. You own the car — we bring the business. Earn program fees and DCP on every rental.",
+    cta: "Become a Host",
+    href: "/host",
+  },
+  membership: {
+    title: "Choose your membership tier.",
+    body: "Freedom, Plus, Pro, or Elite. Every tier earns DCP points that grow your transportation purchasing power over time.",
+    cta: "View Memberships",
+    href: "/membership",
+  },
+  balance: {
+    title: "Your DCP balance is waiting.",
+    body: "Sign in to view your current DCP balance, redemption power, member value ratio, and full account history.",
+    cta: "Go to Dashboard",
+    href: "/dashboard",
+  },
+  location: {
+    title: "We're in Lanham, MD.",
+    body: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Open Mon–Fri 9am–6pm, Saturday 9am–3pm. Call (301) 772-2500.",
+    cta: "Get Directions",
+    href: "/contact",
+  },
+  upgrade: {
+    title: "Upgrade your membership.",
+    body: "Moving to a higher tier increases your DCP earning rate, unlocks exclusive vehicles, and accelerates your path to Credit Free.",
+    cta: "Compare Tiers",
+    href: "/membership",
+  },
+  support: {
+    title: "We're here to help.",
+    body: "Reach our team at (301) 772-2500 or info@dreamcarz.com. Mon–Fri 9am–6pm, Saturday 9am–3pm.",
+    cta: "Contact Us",
+    href: "/contact",
+  },
+  default: {
+    title: "Let me help you with that.",
+    body: "Browse our fleet, explore membership tiers, or contact our team directly. DreamCarz is here to make your automotive experience effortless.",
+    cta: "Browse Fleet",
+    href: "/fleet",
+  },
+};
+
+function getAIResponse(input: string) {
+  const q = input.toLowerCase();
+  if (q.match(/rent|drive|book|reserve|weekend|tomorrow|lamborghini|ferrari|porsche|corvette|bmw|mercedes|exotic|suv|car for/)) return aiResponses.rent;
+  if (q.match(/buy|purchase|own|finance|lease.to.own|next vehicle/)) return aiResponses.buy;
+  if (q.match(/sell|host|income|list my car/)) return aiResponses.sell;
+  if (q.match(/membership|tier|freedom|plus|pro|elite|join|enroll/)) return aiResponses.membership;
+  if (q.match(/balance|dcp|points|account|invoice|payment|history/)) return aiResponses.balance;
+  if (q.match(/location|near|address|where|directions|find.*location/)) return aiResponses.location;
+  if (q.match(/upgrade|higher tier|elite|renew/)) return aiResponses.upgrade;
+  if (q.match(/help|support|cancel|extend|issue|problem|question/)) return aiResponses.support;
+  return aiResponses.default;
+}
+
+const stats = [
+  { value: "500+", label: "Vehicles" },
+  { value: "24/7", label: "Support" },
+  { value: "4", label: "Membership Tiers" },
+  { value: "MD", label: "Lanham, MD" },
 ];
 
 const testimonials = [
-  {
-    text: "The entire booking experience was seamless. I picked up a BMW X7 for a weekend trip, and it felt brand new. Everything from the cleanliness to the pickup process was perfectly organized. Definitely the best rental experience I've had.",
-    name: "Daniel Roberts",
-    location: "London",
-  },
-  {
-    text: "The entire booking experience was seamless. I picked up a BMW X7 for a weekend trip, and it felt brand new. Everything from the cleanliness to the pickup process was perfectly organized. Definitely the best rental experience I've had.",
-    name: "Daniel Roberts",
-    location: "London",
-  },
-  {
-    text: "The entire booking experience was seamless. I picked up a BMW X7 for a weekend trip, and it felt brand new. Everything from the cleanliness to the pickup process was perfectly organized. Definitely the best rental experience I've had.",
-    name: "Daniel Roberts",
-    location: "London",
-  },
+  { text: "The DCP program is unlike anything I've seen. I've been a Pro member for 8 months and my transportation purchasing power has grown significantly.", name: "Marcus T.", tier: "Pro Member" },
+  { text: "Renting through DreamCarz feels completely different. It's not just a rental — it's an investment in your future vehicle ownership.", name: "Priya S.", tier: "Elite Member" },
+  { text: "The fleet is incredible. I drove a Porsche 911 last weekend and the whole experience from booking to return was seamless.", name: "James R.", tier: "Plus Member" },
 ];
-
-const faqs = [
-  "How do I book a car?",
-  "Can the car be delivered to my location?",
-  "What is the minimum rental period?",
-  "Is insurance included in the rental price?",
-  "What documents do I need to rent a car?",
-  "Is there a security deposit required?",
-];
-
-function FAQItem({ question }: { question: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-gray-100">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-4 text-left"
-      >
-        <span className="text-sm font-medium text-gray-900" style={{ fontFamily: "var(--font-sans)" }}>{question}</span>
-        <ChevronDown size={16} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="pb-4">
-          <p className="text-sm text-gray-500 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
-            Our booking process is simple and fast. Browse our fleet, select your preferred vehicle, choose your dates and location, add any preferences, confirm your booking, and we'll have your car ready for pickup. You can also contact us for personalized assistance.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Home() {
-  useScrollReveal();
-  const [heroLoaded, setHeroLoaded] = useState(false);
-  const [carouselIdx, setCarouselIdx] = useState(0);
-  const [activeService, setActiveService] = useState("Expert");
+  const [input, setInput] = useState("");
+  const [response, setResponse] = useState<typeof aiResponses.default | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [focused, setFocused] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
 
+  // Rotate placeholder text
   useEffect(() => {
-    const t = setTimeout(() => setHeroLoaded(true), 80);
-    return () => clearTimeout(t);
-  }, []);
+    if (focused || input) return;
+    const interval = setInterval(() => {
+      setPlaceholderIdx(i => (i + 1) % rotatingPrompts.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [focused, input]);
 
-  const services = ["Expert", "Flexible", "Sanitised", "Booking", "Membership"];
+  const handleSubmit = useCallback(() => {
+    if (!input.trim()) return;
+    setIsTyping(true);
+    setSubmitted(true);
+    setTimeout(() => {
+      setResponse(getAIResponse(input));
+      setIsTyping(false);
+    }, 900);
+  }, [input]);
+
+  const handleChip = (chip: typeof chips[0]) => {
+    setInput(chip.prompt);
+    setIsTyping(true);
+    setSubmitted(true);
+    setTimeout(() => {
+      setResponse(getAIResponse(chip.prompt));
+      setIsTyping(false);
+    }, 700);
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleReset = () => {
+    setInput("");
+    setResponse(null);
+    setSubmitted(false);
+    setIsTyping(false);
+    inputRef.current?.focus();
+  };
 
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
 
-      {/* ═══════════════════════════════════════
-          HERO — centered, white bg, large car image
-      ═══════════════════════════════════════ */}
-      <section className="pt-[70px] bg-white overflow-hidden">
-        <div className="container pt-16 pb-0 text-center">
+      {/* ═══════════ HERO — AI PROMPT CENTER ═══════════ */}
+      <section className="min-h-screen flex flex-col items-center justify-center px-5 pt-16 pb-12 relative overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(0,0,0,0.03),transparent)] pointer-events-none" />
+
+        <div className="w-full max-w-2xl mx-auto text-center">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gray-200 text-[11px] font-medium text-gray-500 mb-8 tracking-wider uppercase" style={{ fontFamily: "var(--font-sans)" }}>
+            <Sparkles size={11} className="text-gray-400" />
+            AI Concierge
+          </div>
+
           {/* Headline */}
           <h1
-            className={`font-display text-5xl lg:text-7xl font-bold text-black leading-tight mb-4 transition-all duration-700 ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-            style={{ fontFamily: "var(--font-display)", transitionDelay: "100ms" }}
+            className="text-[clamp(2.8rem,8vw,5rem)] font-bold text-black leading-[1.05] tracking-tight mb-5"
+            style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}
           >
-            Drive Your Dream Car,<br />Anytime Anywhere
+            Drive Your Dream.
           </h1>
+
+          {/* Subheadline */}
           <p
-            className={`text-base text-gray-500 max-w-md mx-auto mb-8 leading-relaxed transition-all duration-700 ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-            style={{ fontFamily: "var(--font-sans)", transitionDelay: "250ms" }}
+            className="text-[clamp(1rem,2.5vw,1.2rem)] text-gray-400 mb-10 leading-relaxed max-w-lg mx-auto"
+            style={{ fontFamily: "var(--font-sans)", fontWeight: 400 }}
           >
-            DreamCarz offers curated luxury cars, quick booking, and seamless delivery for an unforgettable ride
+            Tell DreamCarz what you want to do.<br className="hidden sm:block" /> We'll handle the rest.
           </p>
+
+          {/* AI Prompt Box */}
           <div
-            className={`flex items-center justify-center gap-3 mb-10 transition-all duration-700 ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-            style={{ transitionDelay: "380ms" }}
+            className={`relative w-full rounded-2xl transition-all duration-300 ${
+              focused
+                ? "shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_8px_40px_rgba(0,0,0,0.10)]"
+                : "shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_4px_20px_rgba(0,0,0,0.06)]"
+            } bg-white`}
           >
-            <Link href="/membership" className="btn-primary">
-              Book Your Ride
-            </Link>
-            <Link href="/fleet" className="btn-outline">
-              Browse Our Fleet
-            </Link>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => { setInput(e.target.value); if (submitted) { setSubmitted(false); setResponse(null); } }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onKeyDown={handleKeyDown}
+              placeholder={rotatingPrompts[placeholderIdx]}
+              rows={1}
+              className="w-full resize-none bg-transparent px-5 pt-4 pb-14 text-[15px] text-black placeholder-gray-300 outline-none leading-relaxed rounded-2xl"
+              style={{ fontFamily: "var(--font-sans)", minHeight: "80px", maxHeight: "200px" }}
+            />
+            {/* Bottom bar */}
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3.5">
+              <span className="text-[11px] text-gray-300" style={{ fontFamily: "var(--font-sans)" }}>
+                Press Enter to send
+              </span>
+              <button
+                onClick={handleSubmit}
+                disabled={!input.trim()}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  input.trim()
+                    ? "bg-black text-white hover:bg-gray-800 active:scale-95"
+                    : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                }`}
+              >
+                <ArrowUp size={15} />
+              </button>
+            </div>
           </div>
+
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap justify-center gap-2 mt-5">
+            {chips.map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => handleChip(chip)}
+                className="px-3.5 py-1.5 rounded-full border border-gray-200 text-[12px] font-medium text-gray-500 hover:border-gray-400 hover:text-black transition-all duration-150 active:scale-[0.97] bg-white"
+                style={{ fontFamily: "var(--font-sans)" }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
+          {/* AI Response */}
+          {(isTyping || response) && (
+            <div className="mt-6 w-full">
+              {isTyping ? (
+                <div className="flex items-center justify-center gap-1.5 py-6">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce"
+                      style={{ animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
+                </div>
+              ) : response ? (
+                <div className="bg-gray-50 rounded-2xl p-5 text-left border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Sparkles size={13} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-black mb-1" style={{ fontFamily: "var(--font-sans)" }}>
+                        {response.title}
+                      </p>
+                      <p className="text-sm text-gray-500 leading-relaxed mb-3" style={{ fontFamily: "var(--font-sans)" }}>
+                        {response.body}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={response.href}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-black text-white text-xs font-semibold rounded-full hover:bg-gray-900 transition-colors"
+                          style={{ fontFamily: "var(--font-sans)" }}
+                        >
+                          {response.cta} <ChevronRight size={12} />
+                        </Link>
+                        <button
+                          onClick={handleReset}
+                          className="text-xs text-gray-400 hover:text-black transition-colors"
+                          style={{ fontFamily: "var(--font-sans)" }}
+                        >
+                          Ask something else
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
-        {/* Hero car image — large, centered */}
-        <div
-          className={`relative flex justify-center transition-all duration-1000 ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-          style={{ transitionDelay: "500ms" }}
-        >
-          {/* Subtle arc/circle behind car */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-gray-100 blur-3xl opacity-60"></div>
-          <img
-            src="/manus-storage/hero-white-car_2ce987bf.png"
-            alt="DreamCarz luxury vehicle"
-            className="relative w-full max-w-3xl object-contain"
-            style={{ maxHeight: "420px" }}
-          />
-        </div>
+        {/* Scroll hint */}
+        {!submitted && (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 animate-bounce">
+            <div className="w-px h-8 bg-gradient-to-b from-transparent to-gray-300" />
+          </div>
+        )}
       </section>
 
-      {/* ═══════════════════════════════════════
-          BRAND LOGOS
-      ═══════════════════════════════════════ */}
-      <section className="py-8 border-y border-gray-100 bg-white">
-        <div className="container">
-          <div className="flex items-center justify-between gap-6 overflow-x-auto">
-            {brandLogos.map((brand, i) => (
-              <div key={i} className="flex-shrink-0 text-gray-300 font-display font-bold text-lg tracking-wider" style={{ fontFamily: "var(--font-display)" }}>
-                {brand}
+      {/* ═══════════ STATS BAR ═══════════ */}
+      <section className="border-y border-gray-100 py-8">
+        <div className="max-w-4xl mx-auto px-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {stats.map((s, i) => (
+              <div key={i}>
+                <div className="text-2xl font-bold text-black mb-0.5" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>{s.value}</div>
+                <div className="text-xs text-gray-400 uppercase tracking-widest" style={{ fontFamily: "var(--font-sans)" }}>{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
-          ABOUT SPLIT — "Drive Luxury Live Freedom"
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="reveal">
-              <h2 className="font-display text-4xl lg:text-5xl font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                Drive Luxury Live<br />Freedom
+      {/* ═══════════ FLEET PREVIEW ═══════════ */}
+      <section className="py-24 px-5">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-end justify-between mb-12">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-2" style={{ fontFamily: "var(--font-sans)" }}>Our Fleet</p>
+              <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+                Every vehicle earns<br />purchasing power.
               </h2>
             </div>
-            <div className="reveal delay-100">
-              <p className="text-gray-500 leading-relaxed mb-8" style={{ fontFamily: "var(--font-sans)" }}>
-                Experience premium car rentals crafted for comfort, performance, and style. Whether it's a quick business trip or a long weekend getaway, our fleet is designed to elevate your journey. With DreamCarz membership, every mile you drive builds transportation purchasing power.
-              </p>
-              {/* Stats row */}
-              <div className="flex flex-wrap gap-4">
-                {[
-                  { value: "500+", label: "Luxury Cars" },
-                  { value: "24/7", label: "Road Assistance" },
-                  { value: "100%", label: "Security Guarantee" },
-                  { value: "60+", label: "Pickup Locations" },
-                  { value: "800+", label: "Satisfied Clients" },
-                ].map((stat, i) => (
-                  <div key={i} className="text-center">
-                    <div className="font-display text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>{stat.value}</div>
-                    <div className="text-xs text-gray-400 mt-0.5" style={{ fontFamily: "var(--font-sans)" }}>{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          FLEET CARDS — "Find Your Perfect Ride"
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-section">
-        <div className="container">
-          <div className="flex items-end justify-between mb-10">
-            <div className="reveal">
-              <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Find Your Perfect Ride</h2>
-              <p className="text-gray-500 mt-2 max-w-sm" style={{ fontFamily: "var(--font-sans)" }}>
-                Explore a handpicked collection of luxury and performance cars built for every journey.
-              </p>
-            </div>
-            <Link href="/fleet" className="btn-outline hidden md:inline-flex reveal delay-100">
-              View Full Fleet
+            <Link href="/fleet" className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-black transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+              View all <ChevronRight size={14} />
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {fleetCars.map((car, i) => (
-              <div key={i} className="vehicle-card reveal" style={{ transitionDelay: `${i * 80}ms` }}>
-                {/* Car image */}
-                <div className="bg-white p-6 flex items-center justify-center" style={{ minHeight: "200px" }}>
-                  <img src={car.image} alt={car.name} className="w-full object-contain" style={{ maxHeight: "160px" }} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { name: "Honda Civic 2023", price: "$16,000", cat: "Value", img: "/manus-storage/car-budget-1_ab248f67.png" },
+              { name: "Toyota Camry 2023", price: "$18,500", cat: "Value", img: "/manus-storage/car-budget-2_9d827670.png" },
+              { name: "Porsche 911 Carrera", price: "$45,000", cat: "Sports", img: "/manus-storage/car-card-1_8dfc0a4a.png" },
+            ].map((car, i) => (
+              <Link href="/fleet" key={i} className="group block rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300">
+                <div className="bg-gray-50 p-6 flex items-center justify-center" style={{ height: "180px" }}>
+                  <img src={car.img} alt={car.name} className="h-full w-full object-contain group-hover:scale-[1.03] transition-transform duration-500" />
                 </div>
-                {/* Info */}
-                <div className="p-5 border-t border-gray-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="tag">{car.category}</span>
-                  </div>
-                  <h3 className="font-display text-base font-bold text-black mb-3" style={{ fontFamily: "var(--font-display)" }}>{car.name}</h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-400 mb-4" style={{ fontFamily: "var(--font-sans)" }}>
-                    <span className="flex items-center gap-1"><Users size={12} /> {car.seats} Seats</span>
-                    <span className="flex items-center gap-1"><Settings size={12} /> {car.transmission}</span>
-                  </div>
+                <div className="p-4 border-t border-gray-100">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-display text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>${car.price}</span>
-                      <span className="text-xs text-gray-400 ml-1" style={{ fontFamily: "var(--font-sans)" }}>value</span>
+                      <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>{car.cat}</p>
+                      <p className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>{car.name}</p>
                     </div>
-                    <button className="btn-primary text-xs px-4 py-2">Book Now</button>
+                    <p className="text-sm font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>{car.price}</p>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          DCP MEMBERSHIP SECTION
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="reveal">
-              <div className="section-label mb-3">DreamCarz Points</div>
-              <h2 className="font-display text-4xl font-bold text-black leading-tight mb-5" style={{ fontFamily: "var(--font-display)" }}>
-                Every Drive Builds<br />Purchasing Power
-              </h2>
-              <p className="text-gray-500 leading-relaxed mb-6" style={{ fontFamily: "var(--font-sans)" }}>
-                100 DCP = $1 of Transportation Purchasing Power. Earn points on every membership payment, vehicle transaction, rental, and more. The longer you stay, the more powerful your DCP becomes.
-              </p>
-              <div className="space-y-3 mb-8">
-                {[
-                  "Earn DCP on every qualifying activity",
-                  "Tenure multipliers grow up to 1.50x after 5 years",
-                  "Use DCP toward vehicles, rentals, fees, and protection",
-                  "Elite members get +25% redemption enhancement",
-                ].map((point, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <CheckCircle2 size={16} className="text-black mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-gray-600" style={{ fontFamily: "var(--font-sans)" }}>{point}</span>
-                  </div>
-                ))}
-              </div>
-              <Link href="/how-it-works" className="btn-primary">
-                Learn More <ArrowRight size={16} />
-              </Link>
-            </div>
-            {/* DCP visual card */}
-            <div className="reveal delay-100">
-              <div className="bg-black rounded-2xl p-8 text-white">
-                <div className="section-label text-gray-400 mb-4">Six Stages to Freedom</div>
-                <div className="space-y-3">
-                  {[
-                    { stage: "01", name: "Hassle Free™", desc: "Easy vehicle access" },
-                    { stage: "02", name: "Credit Free™", desc: "No credit score required" },
-                    { stage: "03", name: "Worry Free™", desc: "DCP toward protection" },
-                    { stage: "04", name: "Fee Free™", desc: "DCP offsets fees" },
-                    { stage: "05", name: "Drive Free™", desc: "DCP toward rentals" },
-                    { stage: "06", name: "Be Free™", desc: "DCP toward ownership" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 py-2 border-b border-white/10 last:border-0">
-                      <span className="font-mono text-xs text-gray-500 w-6">{item.stage}</span>
-                      <span className="text-sm font-semibold text-white flex-1" style={{ fontFamily: "var(--font-sans)" }}>{item.name}</span>
-                      <span className="text-xs text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>{item.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          LUXURY MEETS RELIABILITY — arc section
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-section overflow-hidden">
-        <div className="container">
-          <div className="text-center mb-12 reveal">
-            <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Luxury Meets Reliability</h2>
-            <p className="text-gray-500 mt-3 max-w-md mx-auto" style={{ fontFamily: "var(--font-sans)" }}>
-              We combine the elegance of luxury vehicles with a seamless, reliable experience and style appreciation.
-            </p>
-          </div>
-
-          {/* Service tabs + arc visual */}
-          <div className="relative">
-            {/* Tab buttons */}
-            <div className="flex items-center justify-center gap-2 mb-10 flex-wrap reveal delay-100">
-              {services.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setActiveService(s)}
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${activeService === s ? "bg-black text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-400"}`}
-                  style={{ fontFamily: "var(--font-sans)" }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {/* Arc + car visual */}
-            <div className="relative flex items-center justify-center reveal delay-200" style={{ minHeight: "320px" }}>
-              {/* Arc SVG */}
-              <svg
-                viewBox="0 0 600 320"
-                className="absolute w-full max-w-2xl opacity-10"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M 50 310 A 250 250 0 0 1 550 310" stroke="black" strokeWidth="1" fill="none" />
-                <path d="M 100 310 A 200 200 0 0 1 500 310" stroke="black" strokeWidth="1" fill="none" />
-                <path d="M 150 310 A 150 150 0 0 1 450 310" stroke="black" strokeWidth="1" fill="none" />
-              </svg>
-
-              {/* Center content */}
-              <div className="relative text-center z-10">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full text-sm font-medium mb-4" style={{ fontFamily: "var(--font-sans)" }}>
-                  {activeService} Service
-                </div>
-                <img
-                  src="/manus-storage/car-card-1_8dfc0a4a.png"
-                  alt="Featured car"
-                  className="w-80 object-contain mx-auto"
-                />
-                <p className="text-sm text-gray-500 mt-2" style={{ fontFamily: "var(--font-sans)" }}>Professional guidance for your perfect ride</p>
-                <button className="btn-primary mt-4 text-sm">Learn More</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          TOP PICKS THIS WEEK — carousel
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="flex items-end justify-between mb-10">
-            <div className="reveal">
-              <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Top Picks This Week</h2>
-              <p className="text-gray-500 mt-2 max-w-sm" style={{ fontFamily: "var(--font-sans)" }}>
-                Explore our most rented vehicles handpicked for performance and elegance.
-              </p>
-            </div>
-            <Link href="/fleet" className="btn-outline hidden md:inline-flex reveal delay-100">
-              View All Cars
+          <div className="text-center mt-8">
+            <Link href="/fleet" className="inline-flex items-center gap-2 px-6 py-2.5 border border-gray-200 rounded-full text-sm font-medium text-black hover:border-gray-400 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+              Browse all vehicles <ChevronRight size={14} />
             </Link>
           </div>
+        </div>
+      </section>
 
-          {/* Carousel */}
-          <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 reveal delay-200">
-              {topPicks.map((car, i) => (
-                <div key={i} className={`vehicle-card ${i === 1 ? "ring-2 ring-black" : ""}`}>
-                  <div className="bg-gray-50 p-6 flex items-center justify-center" style={{ minHeight: "180px" }}>
-                    <img src={car.image} alt={car.name} className="w-full object-contain" style={{ maxHeight: "140px" }} />
-                  </div>
-                  <div className="p-4 border-t border-gray-100">
-                    <span className="tag mb-2 inline-flex">{car.category}</span>
-                    <h3 className="font-display text-base font-bold text-black mt-1" style={{ fontFamily: "var(--font-display)" }}>{car.name}</h3>
-                  </div>
+      {/* ═══════════ DCP EXPLAINER ═══════════ */}
+      <section className="py-24 px-5 bg-black text-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.15em] text-gray-500 mb-3" style={{ fontFamily: "var(--font-sans)" }}>DCP Program</p>
+              <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-white leading-tight mb-5" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+                Your loyalty has<br />a dollar value.
+              </h2>
+              <p className="text-gray-400 leading-relaxed mb-8 text-[15px]" style={{ fontFamily: "var(--font-sans)" }}>
+                Every membership payment, vehicle transaction, and rental earns DCP — Dream Carz Points that grow into real transportation purchasing power. The longer you stay, the more powerful your membership becomes.
+              </p>
+              <Link href="/calculator" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                Calculate your value <ChevronRight size={14} />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: "Year 1 Multiplier", value: "1.00x" },
+                { label: "Year 2 Multiplier", value: "1.10x" },
+                { label: "Year 3 Multiplier", value: "1.20x" },
+                { label: "Year 5+ Multiplier", value: "1.50x" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-3 border-b border-white/10">
+                  <span className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>{item.label}</span>
+                  <span className="font-mono text-lg font-bold text-white">{item.value}</span>
                 </div>
               ))}
-            </div>
-            {/* Carousel dots */}
-            <div className="flex items-center justify-center gap-2 mt-6">
-              {[0, 1].map((i) => (
-                <button
-                  key={i}
-                  onClick={() => setCarouselIdx(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${carouselIdx === i ? "bg-black w-6" : "bg-gray-300"}`}
-                />
-              ))}
+              <p className="text-[11px] text-gray-600 pt-2" style={{ fontFamily: "var(--font-sans)" }}>Illustrative multipliers. Subject to financial modeling and final approval.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
-          HOW IT WORKS — 6 steps
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-section">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="reveal">
-                <h2 className="font-display text-4xl font-bold text-black mb-3" style={{ fontFamily: "var(--font-display)" }}>Simple. Fast. Hassle-Free</h2>
-                <p className="text-gray-500 mb-8" style={{ fontFamily: "var(--font-sans)" }}>
-                  Experience a smooth rental process designed to get you on the road in minutes. From selecting your dream car to collecting your booking.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {steps.map((step, i) => (
-                  <div key={i} className="flex items-start gap-3 reveal" style={{ transitionDelay: `${i * 60}ms` }}>
-                    <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-black flex-shrink-0 shadow-sm">
-                      {step.icon}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>{step.title}</div>
-                      <div className="text-xs text-gray-400 mt-0.5" style={{ fontFamily: "var(--font-sans)" }}>{step.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-8 reveal delay-400">
-                <Link href="/how-it-works" className="btn-primary">Start Booking</Link>
-              </div>
-            </div>
-            {/* Right: booking car image */}
-            <div className="reveal delay-200">
-              <div className="rounded-2xl overflow-hidden bg-gray-100" style={{ minHeight: "360px" }}>
-                <img
-                  src="/manus-storage/booking-car_eba5ee3e.jpg"
-                  alt="Car pickup"
-                  className="w-full h-full object-cover"
-                  style={{ minHeight: "360px" }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          MEMBERSHIP TIERS
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="text-center mb-12 reveal">
-            <div className="section-label mb-3">DCP Membership</div>
-            <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Choose Your Level</h2>
-            <p className="text-gray-500 mt-3 max-w-md mx-auto" style={{ fontFamily: "var(--font-sans)" }}>
-              Every tier delivers real transportation value. A member who never recruits anyone should still see a compelling result.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {[
-              { name: "Freedom", price: "$39.95", enrollment: "$139", perks: ["DCP on all activity", "Credit Free eligible", "Roadside included", "$79/week program fee"], featured: false },
-              { name: "Plus", price: "$69.95", enrollment: "$199", perks: ["+5% redemption boost", "Reduced fees $69/wk", "Priority support", "Worry Free VSC"], featured: false },
-              { name: "Pro", price: "$99.95", enrollment: "$249", perks: ["+15% redemption boost", "$59/week program fee", "Fee Free eligible", "Drive Free eligible"], featured: true },
-              { name: "Elite", price: "$149.95", enrollment: "$299", perks: ["+25% redemption boost", "$49/week program fee", "Be Free eligible", "Founding Member access"], featured: false },
-            ].map((tier, i) => (
-              <div
-                key={i}
-                className={`rounded-2xl p-6 flex flex-col reveal ${tier.featured ? "bg-black text-white" : "bg-white border border-gray-200"}`}
-                style={{ transitionDelay: `${i * 80}ms` }}
-              >
-                {tier.featured && <div className="text-xs font-semibold text-gray-400 tracking-wider uppercase mb-3" style={{ fontFamily: "var(--font-sans)" }}>★ Most Popular</div>}
-                <div className={`text-xs font-semibold tracking-wider uppercase mb-2 ${tier.featured ? "text-gray-400" : "text-gray-400"}`} style={{ fontFamily: "var(--font-sans)" }}>{tier.name}</div>
-                <div className={`font-display text-3xl font-bold mb-1 ${tier.featured ? "text-white" : "text-black"}`} style={{ fontFamily: "var(--font-display)" }}>{tier.price}</div>
-                <div className={`text-xs mb-5 ${tier.featured ? "text-gray-400" : "text-gray-400"}`} style={{ fontFamily: "var(--font-sans)" }}>per month · Enrollment: {tier.enrollment}</div>
-                <ul className="space-y-2 flex-1 mb-6">
-                  {tier.perks.map((perk, j) => (
-                    <li key={j} className="flex items-center gap-2">
-                      <CheckCircle2 size={13} className={tier.featured ? "text-gray-400" : "text-black"} />
-                      <span className={`text-xs ${tier.featured ? "text-gray-300" : "text-gray-600"}`} style={{ fontFamily: "var(--font-sans)" }}>{perk}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/membership"
-                  className={`py-2.5 rounded-full text-sm font-semibold text-center transition-all ${tier.featured ? "bg-white text-black hover:bg-gray-100" : "bg-black text-white hover:bg-gray-900"}`}
-                  style={{ fontFamily: "var(--font-sans)" }}
-                >
-                  Join {tier.name}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
-          TESTIMONIALS
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-section">
-        <div className="container">
-          <div className="flex items-end justify-between mb-10">
-            <div className="reveal">
-              <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Trusted by Thousands</h2>
-              <p className="text-gray-500 mt-2 max-w-sm" style={{ fontFamily: "var(--font-sans)" }}>
-                Our members trust us for comfort, quality, and reliability every time they hit the road.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 reveal delay-100">
-              <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                <ChevronLeft size={16} />
-              </button>
-              <button className="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition-colors">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+      {/* ═══════════ TESTIMONIALS ═══════════ */}
+      <section className="py-24 px-5">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-3 text-center" style={{ fontFamily: "var(--font-sans)" }}>Member Stories</p>
+          <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-black text-center mb-14" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
+            Trusted by members.
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((t, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100 reveal" style={{ transitionDelay: `${i * 80}ms` }}>
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, j) => <Star key={j} size={14} className="text-black fill-black" />)}
+              <div key={i} className="p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-300">
+                <div className="flex gap-0.5 mb-4">
+                  {[...Array(5)].map((_, j) => <Star key={j} size={12} className="fill-black text-black" />)}
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed mb-5" style={{ fontFamily: "var(--font-sans)" }}>"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</div>
-                    <div className="text-xs text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>{t.location}</div>
-                  </div>
+                <div>
+                  <p className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</p>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wider mt-0.5" style={{ fontFamily: "var(--font-sans)" }}>{t.tier}</p>
                 </div>
               </div>
             ))}
@@ -566,21 +434,28 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
-          FAQ
-      ═══════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            <div className="reveal">
-              <h2 className="font-display text-4xl font-bold text-black mb-3" style={{ fontFamily: "var(--font-display)" }}>Got questions? We've got answers!</h2>
-              <p className="text-gray-500" style={{ fontFamily: "var(--font-sans)" }}>
-                Find answers to some of the most common questions about our luxury car rental service.
-              </p>
-            </div>
-            <div className="reveal delay-100">
-              {faqs.map((q, i) => <FAQItem key={i} question={q} />)}
-            </div>
+      {/* ═══════════ CTA ═══════════ */}
+      <section className="py-24 px-5 border-t border-gray-100">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-bold text-black mb-5 leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+            Ready to start?
+          </h2>
+          <p className="text-gray-400 mb-8 text-[15px] leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+            Join DreamCarz Network and turn every drive into an investment in your future vehicle ownership.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {isAuthenticated ? (
+              <Link href="/dashboard" className="px-7 py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                Go to Dashboard
+              </Link>
+            ) : (
+              <button onClick={() => startLogin()} className="px-7 py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.97]" style={{ fontFamily: "var(--font-sans)" }}>
+                Get Started
+              </button>
+            )}
+            <Link href="/membership" className="px-7 py-3 border border-gray-200 text-black text-sm font-semibold rounded-full hover:border-gray-400 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+              View Memberships
+            </Link>
           </div>
         </div>
       </section>
