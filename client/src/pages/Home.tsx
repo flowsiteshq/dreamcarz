@@ -141,17 +141,19 @@ export default function Home() {
       {/* ═══════════ HERO ═══════════ */}
       <section
         className="relative min-h-screen overflow-hidden flex flex-col"
-        style={{ background: "linear-gradient(135deg, #f5f5f5 0%, #ebebeb 40%, #e8e8e8 100%)" }}
+        style={{ background: "#f5f5f5" }}
       >
         {/* Car image — bleeds right, absolute positioned */}
-        <div className="absolute right-0 top-0 bottom-0 w-[55%] lg:w-[52%] pointer-events-none select-none hidden md:block">
-          {/* Soft gradient fade on left edge of car */}
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#f0f0f0] to-transparent z-10" />
+        <div className="absolute right-0 top-0 bottom-0 w-[55%] lg:w-[52%] pointer-events-none select-none hidden md:flex items-center justify-center overflow-hidden">
+          {/* Left fade to blend with background */}
+          <div className="absolute inset-y-0 left-0 w-48 bg-gradient-to-r from-[#f5f5f5] to-transparent z-10" />
+          {/* Bottom fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f5f5f5] to-transparent z-10" />
           <img
-            src="/manus-storage/hero-car-hero2_31d626b3.png"
+            src="/manus-storage/hero-car-white_b6931126.png"
             alt="DreamCarz luxury vehicle"
-            className="w-full h-full object-cover object-left"
-            style={{ objectPosition: "20% center" }}
+            className="w-full h-full object-contain"
+            style={{ objectPosition: "30% center", transform: "scale(1.05)" }}
           />
         </div>
 
