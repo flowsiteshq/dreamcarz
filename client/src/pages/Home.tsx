@@ -18,35 +18,32 @@ const brandLogos = ["BMW", "Rolls-Royce", "GMC", "Mercedes", "NISSAN", "Porsche"
 
 const fleetCars = [
   {
-    name: "Porsche 911 Carrera 2025",
-    category: "Sports Car",
-    image: "/manus-storage/car-card-1_8dfc0a4a.png",
-    seats: 2, doors: 2, bags: 1,
-    transmission: "Automatic",
-    price: 299,
+    name: "Honda Civic 2023",
+    category: "Value",
+    image: "/manus-storage/car-budget-1_ab248f67.png",
+    seats: 5, transmission: "Automatic",
+    price: 16000, badge: "Under $20K",
   },
   {
-    name: "Audi R8 V10 Performance",
-    category: "Sports Car",
-    image: "/manus-storage/car-card-2_d8411d99.png",
-    seats: 2, doors: 2, bags: 1,
-    transmission: "Automatic",
-    price: 349,
+    name: "Toyota Camry 2023",
+    category: "Value",
+    image: "/manus-storage/car-budget-2_9d827670.png",
+    seats: 5, transmission: "Automatic",
+    price: 18500, badge: "Popular",
   },
   {
-    name: "Ferrari Portofino M 2025",
-    category: "Sports Car",
-    image: "/manus-storage/car-card-3_23f3c0ab.png",
-    seats: 2, doors: 2, bags: 1,
-    transmission: "Automatic",
-    price: 399,
+    name: "Hyundai Tucson 2023",
+    category: "Value",
+    image: "/manus-storage/car-budget-3_cf351661.png",
+    seats: 5, transmission: "Automatic",
+    price: 19500, badge: "SUV",
   },
 ];
 
 const topPicks = [
-  { name: "Benz E-Class", image: "/manus-storage/car-card-4_6af95632.png", category: "Sedan" },
-  { name: "BMW i8 Coupe", image: "/manus-storage/car-card-5_bd8a563d.png", category: "Sports" },
-  { name: "Audi A6", image: "/manus-storage/car-card-6_4972fbf1.png", category: "Sedan" },
+  { name: "Nissan Altima 2023", image: "/manus-storage/car-budget-5_ff412710.png", category: "Value · $17,000" },
+  { name: "Kia Sportage 2023", image: "/manus-storage/car-budget-4_f1bd50cc.png", category: "Value SUV · $19,000" },
+  { name: "Ford Escape 2023", image: "/manus-storage/car-budget-7_1b4d2b9c.png", category: "Value SUV · $18,000" },
 ];
 
 const steps = [
@@ -253,13 +250,12 @@ export default function Home() {
                   <h3 className="font-display text-base font-bold text-black mb-3" style={{ fontFamily: "var(--font-display)" }}>{car.name}</h3>
                   <div className="flex items-center gap-4 text-xs text-gray-400 mb-4" style={{ fontFamily: "var(--font-sans)" }}>
                     <span className="flex items-center gap-1"><Users size={12} /> {car.seats} Seats</span>
-                    <span className="flex items-center gap-1"><Car size={12} /> {car.doors} Doors</span>
                     <span className="flex items-center gap-1"><Settings size={12} /> {car.transmission}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-display text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>${car.price}</span>
-                      <span className="text-xs text-gray-400 ml-1" style={{ fontFamily: "var(--font-sans)" }}>/day</span>
+                      <span className="text-xs text-gray-400 ml-1" style={{ fontFamily: "var(--font-sans)" }}>value</span>
                     </div>
                     <button className="btn-primary text-xs px-4 py-2">Book Now</button>
                   </div>
@@ -593,4 +589,3 @@ export default function Home() {
     </div>
   );
 }
-
