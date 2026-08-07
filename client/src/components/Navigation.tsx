@@ -1,19 +1,18 @@
-/* DreamCarz Network — Navigation Component
- * Midnight Prestige design: transparent → dark blur on scroll, gold accents
- * Logo: diamond mark + DREAMCARZ wordmark
+/* DreamCarz Network — Navigation (Dream Drive style)
+ * White background, minimal links, black pill CTA button
+ * Matches reference: Dream Drive nav with logo left, links center, contact right
  */
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/membership", label: "Membership" },
-  { href: "/fleet", label: "Fleet" },
-  { href: "/host", label: "Host Program" },
-  { href: "/agent", label: "Agents" },
-  { href: "/calculator", label: "Calculator" },
+  { href: "/how-it-works", label: "About Us" },
+  { href: "/fleet", label: "Our Fleet" },
+  { href: "/membership", label: "Car Brands" },
+  { href: "/host", label: "Our Services" },
+  { href: "/agent", label: "Lease To Own" },
 ];
 
 export default function Navigation() {
@@ -22,74 +21,36 @@ export default function Navigation() {
   const [location] = useLocation();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location]);
+  useEffect(() => { setMobileOpen(false); }, [location]);
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[oklch(0.085_0.005_280/0.92)] backdrop-blur-xl border-b border-[oklch(0.72_0.12_75/0.1)]"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-sm" : ""}`}
     >
       <div className="container">
-        <div className="flex items-center justify-between h-16 lg:h-20">
+        <div className="flex items-center justify-between h-16 lg:h-[70px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-9 h-9 flex-shrink-0">
-              <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                <path
-                  d="M18 2L32 9V20C32 27.2 25.8 33.2 18 35C10.2 33.2 4 27.2 4 20V9L18 2Z"
-                  fill="oklch(0.72 0.12 75)"
-                  fillOpacity="0.15"
-                  stroke="oklch(0.72 0.12 75)"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M13 12H19C22.3 12 25 14.7 25 18C25 21.3 22.3 24 19 24H13V12Z"
-                  fill="oklch(0.72 0.12 75)"
-                />
-                <path
-                  d="M10 22L26 14"
-                  stroke="oklch(0.085 0.005 280)"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <div className="flex flex-col leading-none">
-              <span
-                style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.12em" }}
-                className="text-sm font-700 text-[oklch(0.72_0.12_75)] uppercase tracking-widest"
-              >
-                DREAMCARZ
-              </span>
-              <span
-                style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.08em" }}
-                className="text-[9px] font-400 text-[oklch(0.52_0.01_75)] uppercase tracking-widest"
-              >
-                NETWORK
-              </span>
-            </div>
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+            <span className="font-display text-xl font-bold text-black tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+              Dream<span className="text-black">Carz</span>
+            </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav — centered */}
           <nav className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-2 text-sm font-medium transition-colors duration-150 rounded-sm ${
+                className={`px-3.5 py-2 text-sm transition-colors duration-150 rounded-full ${
                   location === link.href
-                    ? "text-[oklch(0.72_0.12_75)]"
-                    : "text-[oklch(0.65_0.008_75)] hover:text-[oklch(0.94_0.008_75)]"
+                    ? "text-black font-semibold"
+                    : "text-gray-500 hover:text-black font-medium"
                 }`}
                 style={{ fontFamily: "var(--font-sans)" }}
               >
@@ -98,28 +59,23 @@ export default function Navigation() {
             ))}
           </nav>
 
-          {/* CTA */}
+          {/* Right: search + CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-[oklch(0.65_0.008_75)] hover:text-[oklch(0.94_0.008_75)] transition-colors px-3 py-2"
-              style={{ fontFamily: "var(--font-sans)" }}
-            >
-              Sign In
-            </Link>
+            <button className="p-2 text-gray-400 hover:text-black transition-colors" aria-label="Search">
+              <Search size={18} />
+            </button>
             <Link
               href="/membership"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[oklch(0.72_0.12_75)] text-[oklch(0.085_0.005_280)] text-sm font-600 rounded-sm hover:bg-[oklch(0.82_0.14_78)] transition-all duration-150 active:scale-[0.97]"
-              style={{ fontFamily: "var(--font-sans)", letterSpacing: "0.04em" }}
+              className="btn-primary text-sm"
             >
-              Join Now
+              Contact Us
             </Link>
           </div>
 
           {/* Mobile toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden p-2 text-[oklch(0.72_0.12_75)]"
+            className="lg:hidden p-2 text-black"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
@@ -129,36 +85,25 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="lg:hidden bg-[oklch(0.085_0.005_280/0.97)] backdrop-blur-xl border-t border-[oklch(0.72_0.12_75/0.1)]">
+        <div className="lg:hidden bg-white border-t border-gray-100">
           <div className="container py-4 flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-4 py-3 text-sm font-medium rounded-sm transition-colors ${
+                className={`px-4 py-3 text-sm rounded-lg transition-colors ${
                   location === link.href
-                    ? "text-[oklch(0.72_0.12_75)] bg-[oklch(0.72_0.12_75/0.08)]"
-                    : "text-[oklch(0.65_0.008_75)] hover:text-[oklch(0.94_0.008_75)]"
+                    ? "text-black font-semibold bg-gray-50"
+                    : "text-gray-500 hover:text-black hover:bg-gray-50 font-medium"
                 }`}
                 style={{ fontFamily: "var(--font-sans)" }}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-[oklch(0.72_0.12_75/0.1)] flex flex-col gap-2">
-              <Link
-                href="/dashboard"
-                className="px-4 py-3 text-sm font-medium text-[oklch(0.65_0.008_75)] hover:text-[oklch(0.94_0.008_75)] transition-colors"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/membership"
-                className="mx-4 py-3 bg-[oklch(0.72_0.12_75)] text-[oklch(0.085_0.005_280)] text-sm font-600 rounded-sm text-center hover:bg-[oklch(0.82_0.14_78)] transition-colors"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                Join Now
+            <div className="pt-3 border-t border-gray-100">
+              <Link href="/membership" className="btn-primary w-full justify-center text-sm">
+                Contact Us
               </Link>
             </div>
           </div>

@@ -1,48 +1,46 @@
-/* DreamCarz Network — Footer Component
- * Midnight Prestige: dark surface, gold accents, editorial layout
+/* DreamCarz Network — Footer (Dream Drive style)
+ * Dark footer with logo, links, newsletter signup
  */
 import { Link } from "wouter";
+import { Instagram, Twitter, Facebook, ArrowRight } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-[oklch(0.07_0.004_280)] border-t border-[oklch(0.72_0.12_75/0.12)]">
+    <footer className="bg-black text-white">
       <div className="container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-5">
-              <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-9 h-9">
-                <path d="M18 2L32 9V20C32 27.2 25.8 33.2 18 35C10.2 33.2 4 27.2 4 20V9L18 2Z" fill="oklch(0.72 0.12 75)" fillOpacity="0.15" stroke="oklch(0.72 0.12 75)" strokeWidth="1.5"/>
-                <path d="M13 12H19C22.3 12 25 14.7 25 18C25 21.3 22.3 24 19 24H13V12Z" fill="oklch(0.72 0.12 75)"/>
-                <path d="M10 22L26 14" stroke="oklch(0.07 0.004 280)" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <div>
-                <div className="text-sm font-semibold text-[oklch(0.72_0.12_75)] tracking-widest uppercase" style={{ fontFamily: "var(--font-sans)" }}>DREAMCARZ</div>
-                <div className="text-[9px] text-[oklch(0.52_0.01_75)] tracking-widest uppercase" style={{ fontFamily: "var(--font-sans)" }}>NETWORK</div>
-              </div>
+          <div className="lg:col-span-1">
+            <div className="font-display text-2xl font-bold text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
+              DreamCarz
             </div>
-            <p className="text-sm text-[oklch(0.52_0.01_75)] leading-relaxed max-w-xs" style={{ fontFamily: "var(--font-sans)" }}>
-              The only automotive ecosystem where loyalty literally pays. The longer you stay, the more valuable your transportation relationship becomes.
+            <p className="text-sm text-gray-400 leading-relaxed mb-6" style={{ fontFamily: "var(--font-sans)" }}>
+              Your trusted partner for premium automotive membership. The longer you stay, the more valuable your transportation relationship becomes.
             </p>
-            <div className="mt-6 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[oklch(0.72_0.12_75)] animate-pulse-gold"></div>
-              <span className="text-xs text-[oklch(0.52_0.01_75)]" style={{ fontFamily: "var(--font-sans)" }}>Founding Member enrollment open</span>
+            <div className="flex items-center gap-3">
+              {[<Facebook size={16} />, <Twitter size={16} />, <Instagram size={16} />].map((icon, i) => (
+                <a key={i} href="#" className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/50 transition-colors">
+                  {icon}
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Programs */}
+          {/* Quick Links */}
           <div>
-            <h4 className="overline mb-4">Programs</h4>
-            <ul className="space-y-2.5">
+            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Quick Links</h4>
+            <ul className="space-y-3">
               {[
-                { href: "/membership", label: "Membership Tiers" },
-                { href: "/how-it-works", label: "How DCP Works" },
-                { href: "/fleet", label: "Vehicle Fleet" },
+                { href: "/", label: "Home" },
+                { href: "/how-it-works", label: "About Us" },
+                { href: "/fleet", label: "Our Fleet" },
+                { href: "/membership", label: "Membership" },
                 { href: "/host", label: "Host Program" },
                 { href: "/agent", label: "Agent Opportunity" },
+                { href: "/calculator", label: "Value Calculator" },
               ].map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="text-sm text-[oklch(0.52_0.01_75)] hover:text-[oklch(0.72_0.12_75)] transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                  <Link href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                     {item.label}
                   </Link>
                 </li>
@@ -50,49 +48,43 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Tools */}
+          {/* Contact */}
           <div>
-            <h4 className="overline mb-4">Tools</h4>
-            <ul className="space-y-2.5">
-              {[
-                { href: "/calculator", label: "Value Calculator" },
-                { href: "/dashboard", label: "Member Dashboard" },
-                { href: "/calculator", label: "Credit Calculator" },
-                { href: "/fleet", label: "Browse Fleet" },
-              ].map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} className="text-sm text-[oklch(0.52_0.01_75)] hover:text-[oklch(0.72_0.12_75)] transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Contact</h4>
+            <ul className="space-y-3">
+              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>123 Dream Street, Suite 100</li>
+              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>+1 (800) 555-0175</li>
+              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>info@dreamcarz.com</li>
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Newsletter */}
           <div>
-            <h4 className="overline mb-4">Company</h4>
-            <ul className="space-y-2.5">
-              {["About", "Terms of Service", "Privacy Policy", "Contact"].map((item) => (
-                <li key={item}>
-                  <a href="#" className="text-sm text-[oklch(0.52_0.01_75)] hover:text-[oklch(0.72_0.12_75)] transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Enter Your Email Address</h4>
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                placeholder="Email address"
+                className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-white/50 transition-colors"
+                style={{ fontFamily: "var(--font-sans)" }}
+              />
+              <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black hover:bg-gray-100 transition-colors flex-shrink-0">
+                <ArrowRight size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-3" style={{ fontFamily: "var(--font-sans)" }}>Subscribe to our newsletter for updates.</p>
           </div>
         </div>
 
-        <div className="gold-rule mt-12 mb-6"></div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[oklch(0.38_0.006_75)]" style={{ fontFamily: "var(--font-sans)" }}>
-            © {new Date().getFullYear()} DreamCarz Network. All rights reserved. DCP is not cash and has no cash value.
+        <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-gray-500" style={{ fontFamily: "var(--font-sans)" }}>
+            © {new Date().getFullYear()} DreamCarz Network. All rights reserved.
           </p>
-          <p className="text-xs text-[oklch(0.38_0.006_75)]" style={{ fontFamily: "var(--font-sans)" }}>
-            Transportation Purchasing Power subject to program rules and financial validation.
-          </p>
+          <div className="flex items-center gap-4">
+            {["Privacy Policy", "Terms & Conditions", "Cookie Policy"].map((item) => (
+              <a key={item} href="#" className="text-xs text-gray-500 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>{item}</a>
+            ))}
+          </div>
         </div>
       </div>
     </footer>
