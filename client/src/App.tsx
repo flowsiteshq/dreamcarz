@@ -25,6 +25,7 @@ import Rewards from "./pages/dashboard/Rewards";
 import LocationsPage from "./pages/dashboard/LocationsPage";
 import Support from "./pages/dashboard/Support";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import ReportIssue from "./pages/dashboard/ReportIssue";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/dashboard/locations" component={LocationsPage} />
       <Route path="/dashboard/support" component={Support} />
       <Route path="/dashboard/settings" component={SettingsPage} />
+      <Route path="/dashboard/report" component={ReportIssue} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
