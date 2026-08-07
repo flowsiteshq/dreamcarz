@@ -16,14 +16,14 @@ import { startLogin } from "@/const";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/fleet", label: "My Vehicles", icon: Car },
-  { href: "/fleet", label: "Reservations", icon: CalendarDays },
-  { href: "/membership", label: "Membership", icon: Star },
-  { href: "/calculator", label: "Payments", icon: CreditCard },
-  { href: "/calculator", label: "Rewards", icon: Gift },
-  { href: "/contact", label: "Locations", icon: MapPin },
-  { href: "/contact", label: "Support", icon: Headphones },
-  { href: "/contact", label: "Settings", icon: Settings },
+  { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
+  { href: "/dashboard/reservations", label: "Reservations", icon: CalendarDays },
+  { href: "/dashboard/membership", label: "Membership", icon: Star },
+  { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
+  { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
+  { href: "/dashboard/locations", label: "Locations", icon: MapPin },
+  { href: "/dashboard/support", label: "Support", icon: Headphones },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 const aiPrompts = [
