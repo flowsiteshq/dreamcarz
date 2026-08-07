@@ -11,8 +11,17 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <div className="font-display text-2xl font-bold text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
-              DreamCarz
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src="/manus-storage/logo-light-mark-crop_649262e4.png"
+                alt="DreamCarz DC Mark"
+                className="h-9 w-auto object-contain"
+              />
+              <img
+                src="/manus-storage/logo-light-wordmark-crop_9e0a8d00.png"
+                alt="DREAMCARZ"
+                className="h-4 w-auto object-contain"
+              />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-6" style={{ fontFamily: "var(--font-sans)" }}>
               Your trusted partner for premium automotive membership. The longer you stay, the more valuable your transportation relationship becomes.

@@ -40,9 +40,16 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16 lg:h-[70px]">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <span className="font-display text-xl font-bold text-black tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-              Dream<span className="text-black">Carz</span>
-            </span>
+            <img
+              src="/manus-storage/logo-dark-mark-crop_f052e278.png"
+              alt="DreamCarz DC Mark"
+              className="h-8 w-auto object-contain"
+            />
+            <img
+              src="/manus-storage/logo-dark-wordmark-crop_bb978492.png"
+              alt="DREAMCARZ"
+              className="h-4 w-auto object-contain hidden sm:block"
+            />
           </Link>
 
           {/* Desktop nav — centered */}
