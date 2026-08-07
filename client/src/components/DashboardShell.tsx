@@ -107,7 +107,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
               <p className="text-[11px] font-bold text-white">$3,420</p>
             </div>
             <p className="text-[10px] text-gray-500">At 1.2x multiplier</p>
-            <Link href="/dashboard" className="mt-2 text-[10px] text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+            <Link href="/dashboard/rewards" className="mt-2 text-[10px] text-gray-400 hover:text-white transition-colors flex items-center gap-1">
               View activity <ChevronRight size={10} />
             </Link>
           </div>

@@ -53,7 +53,7 @@ export default function Reservations() {
             <h2 className="text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>Reservations</h2>
             <p className="text-sm text-gray-400 mt-0.5">Manage your active, upcoming, and past reservations</p>
           </div>
-          <Link href="/fleet" className="flex items-center gap-2 px-4 py-2 bg-black text-white text-[12px] font-semibold rounded-full hover:bg-gray-900 transition-colors">
+          <Link href="/dashboard/vehicles" className="flex items-center gap-2 px-4 py-2 bg-black text-white text-[12px] font-semibold rounded-full hover:bg-gray-900 transition-colors">
             <Plus size={14} /> New Reservation
           </Link>
         </div>
@@ -109,4 +109,3 @@ export default function Reservations() {
     </DashboardShell>
   );
 }
-

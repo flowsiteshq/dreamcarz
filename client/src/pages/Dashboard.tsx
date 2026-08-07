@@ -37,10 +37,10 @@ const aiPrompts = [
 
 const aiResponses: Record<string, { title: string; body: string; href: string }> = {
   rent: { title: "Let's find your next ride.", body: "Browse available vehicles and reserve your next luxury experience.", href: "/fleet" },
-  upgrade: { title: "Upgrade your membership.", body: "Moving to Elite increases your DCP earning rate and unlocks exclusive vehicles.", href: "/membership" },
-  balance: { title: "Your DCP balance.", body: "You have 285,000 DCP — worth $2,850 in transportation purchasing power at your current 1.2x multiplier.", href: "/calculator" },
-  extend: { title: "Extend your rental.", body: "Contact our concierge at (301) 772-2500 to extend your current Porsche 911 rental.", href: "/contact" },
-  default: { title: "I can help with that.", body: "Browse our fleet, manage your membership, or contact our concierge team for personalized assistance.", href: "/fleet" },
+  upgrade: { title: "Upgrade your membership.", body: "Moving to Elite increases your DCP earning rate and unlocks exclusive vehicles.", href: "/dashboard/membership" },
+  balance: { title: "Your DCP balance.", body: "You have 285,000 DCP — worth $2,850 in transportation purchasing power at your current 1.2x multiplier.", href: "/dashboard/rewards" },
+  extend: { title: "Extend your rental.", body: "Contact our concierge at (301) 772-2500 to extend your current Porsche 911 rental.", href: "/dashboard/support" },
+  default: { title: "I can help with that.", body: "Browse our fleet, manage your membership, or contact our concierge team for personalized assistance.", href: "/dashboard/vehicles" },
 };
 
 function getDashAIResponse(input: string) {
@@ -382,8 +382,8 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   {[
                     { icon: Car, label: "Browse the Fleet", href: "/fleet" },
-                    { icon: Calculator, label: "Calculate Your Value", href: "/calculator" },
-                    { icon: Star, label: "Upgrade Membership", href: "/membership" },
+                    { icon: Calculator, label: "Calculate Your Value", href: "/dashboard/rewards" },
+                    { icon: Star, label: "Upgrade Membership", href: "/dashboard/membership" },
                     { icon: UserPlus, label: "Refer a Friend", href: "/contact" },
                   ].map((a, i) => {
                     const Icon = a.icon;

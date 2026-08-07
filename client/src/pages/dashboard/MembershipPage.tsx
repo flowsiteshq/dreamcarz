@@ -70,9 +70,10 @@ export default function MembershipPage() {
                   {isCurrent ? (
                     <button className="w-full py-2 border border-gray-200 text-black text-[11px] font-medium rounded-full cursor-default">Current Plan</button>
                   ) : (
-                    <Link href="/membership" className="block w-full py-2 text-white text-[11px] font-semibold rounded-full text-center hover:opacity-90 transition-opacity" style={{ background: tier.color }}>
+                    <button className="w-full py-2 text-white text-[11px] font-semibold rounded-full text-center hover:opacity-90 transition-opacity" style={{ background: tier.color }}
+                      onClick={() => alert(`To switch to ${tier.name}, please contact our concierge at (301) 772-2500 or visit our office at 10001 Derekwood Ln, Suite 204, Lanham, MD 20706.`)}>
                       {tier.name === "Elite" ? "Upgrade to Elite" : `Switch to ${tier.name}`}
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>
