@@ -184,17 +184,28 @@ export default function Dashboard() {
 
       {/* ═══════════ MAIN CONTENT ═══════════ */}
       <div className="flex-1 lg:ml-[210px] flex flex-col min-h-screen">
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-5 lg:px-8 h-[68px] flex items-center gap-4">
+        {/* Membership tier color strip */}
+        <div className="sticky top-0 z-20">
+          <div
+            className="h-1.5 w-full"
+            style={{ background: "linear-gradient(90deg, #B8860B 0%, #D4A017 35%, #C9A84C 65%, #B8860B 100%)" }}
+          />
+          <header className="bg-white border-b border-gray-100 px-5 lg:px-8 flex items-center gap-4" style={{ minHeight: "68px", paddingTop: "env(safe-area-inset-top, 0px)" }}>
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-black">
             <Menu size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>
-                Welcome back, {firstName}
-              </h1>
-              <span className="px-2.5 py-0.5 bg-black text-white text-[10px] font-bold rounded-full uppercase tracking-wider">Pro Member</span>
-              <span className="text-[12px] text-gray-400 hidden sm:block">· Member since 2026</span>
+            <h1 className="text-xl font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>
+              Welcome back, {firstName}
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span
+                className="px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider"
+                style={{ background: "linear-gradient(90deg, #B8860B, #D4A017)", color: "#fff" }}
+              >
+                Pro Member
+              </span>
+              <span className="text-[11px] text-gray-400">· Member since 2026</span>
             </div>
           </div>
           <div className={`hidden md:flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2.5 w-72 transition-all duration-200 relative ${aiFocused ? "shadow-[0_0_0_2px_rgba(0,0,0,0.1)] bg-white" : ""}`}>
@@ -237,6 +248,7 @@ export default function Dashboard() {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </button>
         </header>
+        </div>
 
         <main className="flex-1 p-5 lg:p-8 space-y-6">
           {/* Current vehicle + upgrade — FIRST, hero of the dashboard */}
