@@ -5,6 +5,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Search } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -19,6 +21,7 @@ export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -64,12 +67,22 @@ export default function Navigation() {
             <button className="p-2 text-gray-400 hover:text-black transition-colors" aria-label="Search">
               <Search size={18} />
             </button>
-            <Link
-              href="/membership"
-              className="btn-primary text-sm"
-            >
-              Contact Us
-            </Link>
+            {loading ? (
+              <div className="w-24 h-9 rounded-full bg-gray-100 animate-pulse"></div>
+            ) : isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard" className="btn-outline text-sm px-4 py-2">
+                  Dashboard
+                </Link>
+                <button onClick={() => logout()} className="text-sm text-gray-500 hover:text-black transition-colors font-medium" style={{ fontFamily: "var(--font-sans)" }}>
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => startLogin()} className="btn-primary text-sm">
+                Sign In
+              </button>
+            )}
           </div>
 
           {/* Mobile toggle */}
@@ -101,11 +114,18 @@ export default function Navigation() {
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-gray-100">
-              <Link href="/membership" className="btn-primary w-full justify-center text-sm">
-                Contact Us
-              </Link>
-            </div>
+          <div className="pt-3 border-t border-gray-100">
+              {isAuthenticated ? (
+                <div className="flex flex-col gap-2">
+                  <Link href="/dashboard" className="btn-outline w-full justify-center text-sm">Dashboard</Link>
+                  <button onClick={() => logout()} className="text-sm text-gray-500 text-center py-2" style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
+                </div>
+              ) : (
+                <button onClick={() => startLogin()} className="btn-primary w-full justify-center text-sm">
+                  Sign In
+                </button>
+              )}
+          </div>
           </div>
         </div>
       )}

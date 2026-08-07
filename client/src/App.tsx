@@ -12,8 +12,9 @@ import Dashboard from "./pages/Dashboard";
 import HostProgram from "./pages/HostProgram";
 import HowItWorks from "./pages/HowItWorks";
 import Agent from "./pages/Agent";
-
+import Login from "./pages/Login";
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/host" component={HostProgram} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route path="/agent" component={Agent} />
+      <Route path="/login" component={Login} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -33,7 +35,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />
