@@ -239,15 +239,7 @@ export default function Dashboard() {
         </header>
 
         <main className="flex-1 p-5 lg:p-8 space-y-6">
-          {/* Stats row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={<TrendingUp size={18} />} label="DCP Earned" value="425,000" sub="Lifetime total" />
-            <StatCard icon={<Zap size={18} />} label="Current DCP" value="285,000" sub="Available balance" />
-            <StatCard icon={<Car size={18} />} label="Transportation Power" value="$3,420" sub="At 1.2x multiplier" />
-            <StatCard icon={<Shield size={18} />} label="Actual Savings" value="$3,840" sub="Realized to date" accent />
-          </div>
-
-          {/* Current vehicle + upgrade */}
+          {/* Current vehicle + upgrade — FIRST, hero of the dashboard */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             <div className="lg:col-span-3 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(135deg, #1a1a1a 0%, #000 100%)", minHeight: "280px" }}>
               <div className="absolute inset-0 opacity-50">
@@ -315,6 +307,14 @@ export default function Dashboard() {
                 <button className="flex-1 py-2 border border-gray-200 text-black text-[12px] font-medium rounded-full hover:border-gray-400 transition-colors">View Details</button>
               </div>
             </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={<TrendingUp size={18} />} label="DCP Earned" value="425,000" sub="Lifetime total" />
+            <StatCard icon={<Zap size={18} />} label="Current DCP" value="285,000" sub="Available balance" />
+            <StatCard icon={<Car size={18} />} label="Transportation Power" value="$3,420" sub="At 1.2x multiplier" />
+            <StatCard icon={<Shield size={18} />} label="Actual Savings" value="$3,840" sub="Realized to date" accent />
           </div>
 
           {/* DCP Journey + Upcoming */}
