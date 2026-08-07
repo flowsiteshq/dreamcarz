@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/membership", label: "Car Brands" },
   { href: "/host", label: "Our Services" },
   { href: "/agent", label: "Lease To Own" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function Navigation() {

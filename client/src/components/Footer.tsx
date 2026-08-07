@@ -2,7 +2,7 @@
  * Dark footer with logo, links, newsletter signup
  */
 import { Link } from "wouter";
-import { Instagram, Twitter, Facebook, ArrowRight } from "lucide-react";
+import { Instagram, Twitter, Facebook, ArrowRight, MapPin, Phone, Clock } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -52,9 +52,26 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Contact</h4>
             <ul className="space-y-3">
-              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>123 Dream Street, Suite 100</li>
-              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>+1 (800) 555-0175</li>
-              <li className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>info@dreamcarz.com</li>
+              <li className="flex items-start gap-2.5">
+                <MapPin size={14} className="text-gray-500 flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-gray-400 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+                  10001 Derekwood Ln, Suite 204<br />Lanham, MD 20706
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Phone size={14} className="text-gray-500 flex-shrink-0" />
+                <a href="tel:+13017722500" className="text-sm text-gray-400 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                  (301) 772-2500
+                </a>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <Clock size={14} className="text-gray-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-gray-400 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+                  Mon – Fri: 9:00 am – 6:00 pm<br />
+                  Saturday: 9:00 am – 3:00 pm<br />
+                  Sunday: Closed
+                </div>
+              </li>
             </ul>
           </div>
 
