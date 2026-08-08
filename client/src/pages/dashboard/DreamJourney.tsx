@@ -6,6 +6,7 @@
  */
 import { useState, useRef } from "react";
 import { Link } from "wouter";
+import DashboardShell from "@/components/DashboardShell";
 import {
   Search, ChevronRight, ChevronLeft, Trophy, Star, Zap, Target, TrendingUp,
   CheckCircle2, Lock, Award, Flame, Shield, Crown, Sparkles, ArrowRight,
@@ -81,27 +82,8 @@ export default function DreamJourney() {
   const totalXP = earnedBadges.reduce((s, b) => s + b.xp, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Dream Journey</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">Pro Member</span>
-              <span className="text-[12px] text-gray-400">· Member since 2026</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 w-72">
-              <Sparkles size={14} className="text-gray-400" />
-              <span className="text-[13px] text-gray-400">Ask DreamCarz anything...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <DashboardShell title="Dream Journey">
+      <div className="space-y-6">
 
         {/* ── Stats row ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -410,6 +392,6 @@ export default function DreamJourney() {
         </div>
 
       </div>
-    </div>
+    </DashboardShell>
   );
 }
