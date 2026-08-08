@@ -1,8 +1,9 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { Users, Settings, Fuel, ChevronRight } from "lucide-react";
+import { Users, Settings, Fuel, Eye } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 
 const vehicles = [
   // ── Under $20,000 — Value Tier ──────────────────────────────────────────
@@ -113,6 +114,7 @@ type Tier = "freedom" | "plus" | "pro" | "elite";
 
 export default function Fleet() {
   useScrollReveal();
+  const [, navigate] = useLocation();
   const [cat, setCat] = useState("All");
   const [tier, setTier] = useState<Tier>("pro");
   const filtered = cat === "All" ? vehicles : vehicles.filter(v => v.category === cat);
@@ -268,6 +270,13 @@ export default function Fleet() {
                     style={{ fontFamily: "var(--font-sans)" }}
                   >
                     {v.available ? "Book Now" : "Join Waitlist"}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/vehicle?id=${v.id}`)}
+                    className="w-full mt-2 py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-black transition-all flex items-center justify-center gap-2"
+                    style={{ fontFamily: "var(--font-sans)" }}
+                  >
+                    <Eye size={13} /> View Full Details
                   </button>
                 </div>
               </div>
