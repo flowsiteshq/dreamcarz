@@ -1,4 +1,5 @@
 /* Shared shell layout for all dashboard sidebar pages */
+import AIConcierge from "@/components/AIConcierge";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -172,6 +173,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
         <main className="flex-1 p-5 lg:p-8">
           {children}
         </main>
+        <AIConcierge />
       </div>
     </div>
   );
