@@ -27,6 +27,7 @@ import Support from "./pages/dashboard/Support";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import ReportIssue from "./pages/dashboard/ReportIssue";
 import FAQ from "./pages/FAQ";
+import DreamJourney from "./pages/dashboard/DreamJourney";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/terms" component={TermsConditions} />
       <Route path="/cookie-policy" component={CookiePolicy} />
       <Route path="/faq" component={FAQ} />
+      <Route path="/dashboard/dream-journey" component={DreamJourney} />
       <Route path="/dashboard/vehicles" component={MyVehicles} />
       <Route path="/dashboard/reservations" component={Reservations} />
       <Route path="/dashboard/membership" component={MembershipPage} />
