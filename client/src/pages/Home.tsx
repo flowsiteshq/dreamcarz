@@ -160,13 +160,6 @@ export default function Home() {
         {/* Content — left side */}
         <div className="relative z-10 flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full px-6 lg:px-10 pt-24 pb-8">
           <div className="max-w-[520px]">
-            {/* Eyebrow */}
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles size={12} className="text-gray-400" />
-              <span className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>
-                AI Powered Concierge
-              </span>
-            </div>
 
             {/* Headline */}
             <h1
