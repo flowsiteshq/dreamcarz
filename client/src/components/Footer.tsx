@@ -46,8 +46,10 @@ export default function Footer() {
                 { href: "/membership", label: "Membership" },
                 { href: "/host", label: "Host Program" },
                 { href: "/agent", label: "Agent Opportunity" },
-                { href: "/calculator", label: "Value Calculator" },
-              ].map((item) => (
+              { href: "/calculator", label: "Value Calculator" },
+              { href: "/faq", label: "FAQ" },
+              { href: "/contact", label: "Contact Us" },
+            ].map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                     {item.label}
@@ -107,10 +109,10 @@ export default function Footer() {
             © {new Date().getFullYear()} DreamCarz Network. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
-            {["Privacy Policy", "Terms & Conditions", "Cookie Policy"].map((item) => (
+            {["Privacy Policy", "Terms & Conditions", "Cookie Policy", "FAQ"].map((item) => (
               <a
                 key={item}
-                href={item === "Privacy Policy" ? "/privacy-policy" : item === "Terms & Conditions" ? "/terms" : "/cookie-policy"}
+                href={item === "Privacy Policy" ? "/privacy-policy" : item === "Terms & Conditions" ? "/terms" : item === "FAQ" ? "/faq" : "/cookie-policy"}
                 className="text-xs text-gray-500 hover:text-white transition-colors"
                 style={{ fontFamily: "var(--font-sans)" }}
               >{item}</a>
