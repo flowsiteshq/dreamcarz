@@ -15,7 +15,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 
 const sidebarLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
   { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
   { href: "/dashboard/reservations", label: "Reservations", icon: CalendarDays },
   { href: "/dashboard/membership", label: "Membership", icon: Star },

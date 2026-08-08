@@ -61,7 +61,7 @@ export default function Navigation() {
             ) : isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 bg-black text-white text-[13px] font-semibold rounded-full hover:bg-gray-900 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
-                  <User size={14} /> Dashboard
+                  <User size={14} /> My Account
                 </Link>
                 <button onClick={() => logout()} className="px-4 py-2 text-[13px] text-gray-500 hover:text-black transition-colors font-medium" style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
               </div>
@@ -91,7 +91,7 @@ export default function Navigation() {
             <div className="pt-3 border-t border-gray-100 mt-1">
               {isAuthenticated ? (
                 <div className="flex flex-col gap-2">
-                  <Link href="/dashboard" className="w-full text-center py-2.5 text-sm font-semibold text-white bg-black rounded-full" style={{ fontFamily: "var(--font-sans)" }}>Dashboard</Link>
+                  <Link href="/dashboard" className="w-full text-center py-2.5 text-sm font-semibold text-white bg-black rounded-full" style={{ fontFamily: "var(--font-sans)" }}>My Account</Link>
                   <button onClick={() => logout()} className="text-sm text-gray-400 text-center py-2" style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
                 </div>
               ) : (
