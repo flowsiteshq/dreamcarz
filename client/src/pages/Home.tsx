@@ -39,6 +39,7 @@ const chips = [
   { label: "My Account", icon: UserCircle, prompt: "Show my account and DCP balance.", href: "/dashboard" },
   { label: "Locations", icon: MapPin, prompt: "Find a DreamCarz location near me.", href: "/contact" },
   { label: "Support", icon: HeadphonesIcon, prompt: "I need help with something.", href: "/contact" },
+  { label: "Refer a Friend", icon: Users, prompt: "How do I join the Drive Network and refer friends?", href: "/opportunity" },
 ];
 
 const stats = [
@@ -56,6 +57,7 @@ const aiResponses: Record<string, { title: string; body: string; cta: string; hr
   location: { title: "We're in Lanham, MD.", body: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Open Mon–Fri 9am–6pm, Saturday 9am–3pm. Call (301) 772-2500.", cta: "Get Directions", href: "/contact" },
   upgrade: { title: "Upgrade your membership.", body: "Moving to a higher tier increases your DCP earning rate, unlocks exclusive vehicles, and accelerates your path to Credit Free.", cta: "Compare Tiers", href: "/membership" },
   support: { title: "We're here to help.", body: "Reach our team at (301) 772-2500 or info@dreamcarz.com. Mon–Fri 9am–6pm, Saturday 9am–3pm.", cta: "Contact Us", href: "/contact" },
+  referral: { title: "Turn your membership into income.", body: "The Drive Network pays you 5 ways: referral bonuses ($50–$150/enrollment), residual commissions (up to 5 levels deep), DCP matching, rank bonuses (up to $10,000), and a Dream Ambassador revenue pool.", cta: "View the Opportunity", href: "/opportunity" },
   default: { title: "Let me help you with that.", body: "Browse our fleet, explore membership tiers, or contact our team directly. DreamCarz is here to make your automotive experience effortless.", cta: "Browse Fleet", href: "/fleet" },
 };
 
@@ -68,6 +70,7 @@ function getAIResponse(input: string) {
   if (q.match(/location|near|address|where|directions|find.*location/)) return aiResponses.location;
   if (q.match(/upgrade|higher tier|elite|renew/)) return aiResponses.upgrade;
   if (q.match(/help|support|cancel|extend|issue|problem|question/)) return aiResponses.support;
+  if (q.match(/refer|friend|network|mlm|income|earn|commission|passive|drive network|opportunity/)) return aiResponses.referral;
   return aiResponses.default;
 }
 

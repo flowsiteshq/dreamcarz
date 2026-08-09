@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 const ranks = [
   { id: 1, title: "Associate", icon: "🚗", color: "#6b7280", bgColor: "bg-gray-100", textColor: "text-gray-700" },
@@ -51,12 +52,32 @@ export default function DriveNetwork() {
   const [activeTab, setActiveTab] = useState<"overview" | "downline" | "earnings" | "tools">("overview");
   const [copied, setCopied] = useState(false);
 
-  const referralLink = "https://dreamcarz-xrgtgznf.manus.space/?ref=VH2026";
-  const totalEarned = earningsHistory.reduce((s, m) => s + m.total, 0);
+  // Live data from database
+  const { data: stats, isLoading: statsLoading } = trpc.driveNetwork.getStats.useQuery();
+  const { data: downline } = trpc.driveNetwork.getDownline.useQuery();
+  const { data: liveCommissions } = trpc.driveNetwork.getCommissions.useQuery();
+
+  // Use live data where available, fall back to demo data
+  const liveReferralCode = stats?.referralCode;
+  const referralLink = liveReferralCode
+    ? `https://dreamcarz-xrgtgznf.manus.space/?ref=${liveReferralCode}`
+    : "https://dreamcarz-xrgtgznf.manus.space/?ref=LOADING";
+  const liveTeamSize = stats?.teamSize ?? downlineMembers.length;
+  const liveTotalEarned = stats?.totalEarned ? (stats.totalEarned / 100) : earningsHistory.reduce((s, m) => s + m.total, 0);
+  const liveThisMonth = stats?.thisMonthTotal ? (stats.thisMonthTotal / 100) : earningsHistory[earningsHistory.length - 1].total;
+  const liveDirectRefs = stats?.directReferrals ?? 3;
+  const liveRank = stats?.rank ?? "driver";
+  const rankIndex = ranks.findIndex(r => r.title.toLowerCase().replace(" ", "_") === liveRank) ?? 1;
+  const currentRankLive = ranks[Math.max(0, rankIndex)] ?? ranks[1];
+  const nextRankLive = ranks[Math.min(5, rankIndex + 1)] ?? ranks[2];
+
+  const totalEarned = liveTotalEarned;
   const thisMonth = earningsHistory[earningsHistory.length - 1];
+  // Always use demo downline data for display (live data shows counts only)
   const level1 = downlineMembers.filter(m => m.level === 1);
   const level2 = downlineMembers.filter(m => m.level === 2);
   const level3 = downlineMembers.filter(m => m.level === 3);
+  const liveLevel1Count = downline ? downline.filter(m => m.level === 1).length : level1.length;
 
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -74,12 +95,12 @@ export default function DriveNetwork() {
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #C9A84C 0%, transparent 60%)" }} />
           <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
-              <div className="text-[11px] text-white/40 uppercase tracking-wider mb-1">YOUR RANK</div>
+            <div className="text-[11px] text-white/40 uppercase tracking-wider mb-1">YOUR RANK</div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">{currentRank.icon}</span>
-                <span className="text-[22px] font-bold">{currentRank.title}</span>
+                <span className="text-2xl">{currentRankLive.icon}</span>
+                <span className="text-[22px] font-bold">{statsLoading ? "Loading..." : currentRankLive.title}</span>
               </div>
-              <div className="text-[12px] text-white/50">Rank {currentRank.id} of 6 · Next: {nextRank.title}</div>
+              <div className="text-[12px] text-white/50">Rank {currentRankLive.id} of 6 · Next: {nextRankLive.title}</div>
               {/* Progress to next rank */}
               <div className="mt-3">
                 <div className="flex items-center justify-between text-[11px] text-white/40 mb-1">
@@ -93,19 +114,19 @@ export default function DriveNetwork() {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:w-56">
               <div className="bg-white/10 rounded-2xl p-3 text-center">
-                <div className="text-[18px] font-bold">{downlineMembers.length}</div>
+                <div className="text-[18px] font-bold">{liveTeamSize}</div>
                 <div className="text-[10px] text-white/40">Team Size</div>
               </div>
               <div className="bg-white/10 rounded-2xl p-3 text-center">
-                <div className="text-[18px] font-bold">${thisMonth.total}</div>
+                <div className="text-[18px] font-bold">${liveThisMonth}</div>
                 <div className="text-[10px] text-white/40">This Month</div>
               </div>
               <div className="bg-white/10 rounded-2xl p-3 text-center">
-                <div className="text-[18px] font-bold">${totalEarned.toLocaleString()}</div>
+                <div className="text-[18px] font-bold">${liveTotalEarned.toLocaleString()}</div>
                 <div className="text-[10px] text-white/40">Total Earned</div>
               </div>
               <div className="bg-white/10 rounded-2xl p-3 text-center">
-                <div className="text-[18px] font-bold">3</div>
+                <div className="text-[18px] font-bold">{liveDirectRefs}</div>
                 <div className="text-[10px] text-white/40">Direct Refs</div>
               </div>
             </div>

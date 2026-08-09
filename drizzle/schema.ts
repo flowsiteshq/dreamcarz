@@ -25,4 +25,40 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// ── Drive Network Referral Tracking ──────────────────────────────────────────
+
+export const referralProfiles = mysqlTable("referral_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
+  rank: mysqlEnum("rank", ["associate", "driver", "road_captain", "fleet_director", "elite_executive", "dream_ambassador"]).default("associate").notNull(),
+  totalEarned: int("totalEarned").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),
+  referredId: int("referredId").notNull().unique(),
+  level: int("level").default(1).notNull(),
+  status: mysqlEnum("status", ["pending", "active", "inactive"]).default("pending").notNull(),
+  bonusPaid: int("bonusPaid").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const commissions = mysqlTable("commissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  referralBonus: int("referralBonus").default(0).notNull(),
+  residualIncome: int("residualIncome").default(0).notNull(),
+  dcpMatching: int("dcpMatching").default(0).notNull(),
+  rankBonus: int("rankBonus").default(0).notNull(),
+  total: int("total").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ReferralProfile = typeof referralProfiles.$inferSelect;
+export type Referral = typeof referrals.$inferSelect;
+export type Commission = typeof commissions.$inferSelect;
