@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle,
   TrendingUp, Zap, Shield, Bell, LogOut, Clock,
-  Navigation, Gauge, Trophy, BookOpen, Phone, Compass,
+  Navigation, Gauge, Trophy, BookOpen, Phone, Compass, Network,
   UserPlus, Calculator, Menu
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -23,6 +23,7 @@ const sidebarLinks = [
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/report", label: "Report an Issue", icon: AlertTriangle },
   { href: "/dashboard/dream-journey", label: "Dream Journey", icon: Trophy },
+  { href: "/dashboard/drive-network", label: "Drive Network", icon: Network },
   { href: "/dashboard/locations", label: "Locations", icon: MapPin },
   { href: "/dashboard/support", label: "Support", icon: Headphones },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

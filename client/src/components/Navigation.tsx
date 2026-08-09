@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/membership", label: "Membership" },
   { href: "/contact", label: "Locations" },
   { href: "/how-it-works", label: "About" },
+  { href: "/opportunity", label: "Opportunity" },
 ];
 
 export default function Navigation() {

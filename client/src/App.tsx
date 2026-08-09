@@ -29,6 +29,8 @@ import ReportIssue from "./pages/dashboard/ReportIssue";
 import FAQ from "./pages/FAQ";
 import VehicleDetail from "./pages/VehicleDetail";
 import DreamJourney from "./pages/dashboard/DreamJourney";
+import Opportunity from "./pages/Opportunity";
+import DriveNetwork from "./pages/dashboard/DriveNetwork";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -58,6 +60,8 @@ function Router() {
       <Route path="/dashboard/support" component={Support} />
       <Route path="/dashboard/settings" component={SettingsPage} />
       <Route path="/dashboard/report" component={ReportIssue} />
+      <Route path="/opportunity" component={Opportunity} />
+      <Route path="/dashboard/drive-network" component={DriveNetwork} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

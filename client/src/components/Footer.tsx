@@ -46,6 +46,7 @@ export default function Footer() {
                 { href: "/membership", label: "Membership" },
                 { href: "/host", label: "Host Program" },
                 { href: "/agent", label: "Agent Opportunity" },
+                { href: "/opportunity", label: "Drive Network" },
               { href: "/calculator", label: "Value Calculator" },
               { href: "/faq", label: "FAQ" },
               { href: "/contact", label: "Contact Us" },
