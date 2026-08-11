@@ -11,3 +11,5 @@
 - [x] Connect the DreamCarz project to the user-provided GitHub repository and push the current code.
 - [x] Audit and correct image asset handling so standard builds include all required DreamCarz imagery.
 - [x] Push the corrected DreamCarz image bundle to the GitHub main branch.
+- [x] Fix Railway production image paths so vehicle cards and DreamCarz logo assets render reliably after deployment.
+- [x] Push the Railway image-serving fix to the GitHub main branch.
