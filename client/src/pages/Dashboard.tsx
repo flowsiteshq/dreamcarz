@@ -9,15 +9,17 @@ import {
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle,
   TrendingUp, Zap, Shield, Bell, LogOut, Clock,
   Navigation, Gauge, Trophy, BookOpen, Phone, Compass, Network,
-  UserPlus, Calculator, Menu
+  UserPlus, Calculator, Menu, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
   { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
   { href: "/dashboard/reservations", label: "Reservations", icon: CalendarDays },
+  { href: "/dashboard/rental-setup", label: "Rental Setup", icon: ClipboardCheck },
   { href: "/dashboard/membership", label: "Membership", icon: Star },
   { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
@@ -72,6 +74,7 @@ function StatCard({ icon, label, value, sub, accent }: { icon: React.ReactNode; 
 
 export default function Dashboard() {
   const { user, isAuthenticated, loading, logout } = useAuth();
+  const rentalApplicationQuery = trpc.rentalOnboarding.getApplication.useQuery(undefined, { enabled: isAuthenticated });
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
@@ -323,6 +326,20 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {!rentalApplicationQuery.isLoading && !["under_review", "approved"].includes(rentalApplicationQuery.data?.application?.status || "not_started") && (
+            <Link href="/dashboard/rental-setup" className="group flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between rounded-2xl border border-[#efdfaa] bg-[#fffbef] px-5 py-4 hover:border-[#d6b554] transition-colors">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-black text-white flex items-center justify-center"><ClipboardCheck size={18} /></div>
+                <div>
+                  <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#a7770c]">Rental access</p>
+                  <p className="mt-0.5 text-sm font-bold text-black">Complete your secure rental setup</p>
+                  <p className="mt-1 text-[12px] leading-5 text-gray-500">Verify your profile once to make every future reservation faster.</p>
+                </div>
+              </div>
+              <span className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full bg-black px-4 py-2.5 text-[12px] font-semibold text-white group-hover:bg-gray-800">Start setup <ChevronRight size={14} /></span>
+            </Link>
+          )}
 
           {/* Stats row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

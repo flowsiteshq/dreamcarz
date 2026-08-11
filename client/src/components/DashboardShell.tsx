@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle,
-  Bell, LogOut, Menu, TrendingUp, Trophy, Network
+  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
@@ -14,6 +14,7 @@ const sidebarLinks = [
   { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
   { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
   { href: "/dashboard/reservations", label: "Reservations", icon: CalendarDays },
+  { href: "/dashboard/rental-setup", label: "Rental Setup", icon: ClipboardCheck },
   { href: "/dashboard/membership", label: "Membership", icon: Star },
   { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
