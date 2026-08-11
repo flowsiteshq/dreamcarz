@@ -5,7 +5,6 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { startLogin } from "@/const";
 import {
   DollarSign, Users, TrendingUp, Star, Award, Zap,
   ChevronRight, Check, Car, Crown, Shield, Target
@@ -120,7 +119,7 @@ export default function Opportunity() {
             </p>
             <div className="flex flex-wrap gap-4 reveal delay-300">
               <button
-                onClick={() => startLogin()}
+                onClick={() => window.location.assign("/login")}
                 className="px-8 py-4 rounded-full font-bold text-black text-sm"
                 style={{ background: "#C9A84C", fontFamily: "var(--font-sans)" }}
               >
@@ -297,7 +296,7 @@ export default function Opportunity() {
             Join DreamCarz today and your Drive Network business activates automatically. No extra fees. No separate application.
           </p>
           <button
-            onClick={() => startLogin()}
+            onClick={() => window.location.assign("/login")}
             className="px-10 py-4 rounded-full font-bold text-black text-sm reveal delay-200"
             style={{ background: "#C9A84C", fontFamily: "var(--font-sans)" }}
           >

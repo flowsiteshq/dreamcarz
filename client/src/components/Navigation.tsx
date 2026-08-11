@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, User } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
 
 const navLinks = [
   { href: "/fleet", label: "Fleet" },
@@ -67,9 +66,9 @@ export default function Navigation() {
                 <button onClick={() => logout()} className="px-4 py-2 text-[13px] text-gray-500 hover:text-black transition-colors font-medium" style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
               </div>
             ) : (
-              <button onClick={() => startLogin()} className="flex items-center gap-2 px-5 py-2 bg-black text-white text-[13px] font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.97]" style={{ fontFamily: "var(--font-sans)" }}>
+              <Link href="/login" className="flex items-center gap-2 px-5 py-2 bg-black text-white text-[13px] font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.97]" style={{ fontFamily: "var(--font-sans)" }}>
                 <User size={14} /> Sign In
-              </button>
+              </Link>
             )}
           </div>
 
@@ -96,9 +95,9 @@ export default function Navigation() {
                   <button onClick={() => logout()} className="text-sm text-gray-400 text-center py-2" style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
                 </div>
               ) : (
-                <button onClick={() => startLogin()} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-black rounded-full" style={{ fontFamily: "var(--font-sans)" }}>
+                <Link href="/login" className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-black rounded-full" style={{ fontFamily: "var(--font-sans)" }}>
                   <User size={14} /> Sign In
-                </button>
+                </Link>
               )}
             </div>
           </div>

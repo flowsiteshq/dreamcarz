@@ -12,7 +12,6 @@ import {
   UserPlus, Calculator, Menu, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 
 const sidebarLinks = [
@@ -116,7 +115,7 @@ export default function Dashboard() {
           </div>
           <h2 className="text-2xl font-bold text-black mb-2" style={{ fontFamily: "var(--font-display)" }}>Member Dashboard</h2>
           <p className="text-sm text-gray-500 mb-6" style={{ fontFamily: "var(--font-sans)" }}>Sign in to access your DreamCarz member dashboard, DCP balance, and vehicle management.</p>
-          <button onClick={() => startLogin()} className="w-full py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+          <button onClick={() => window.location.assign("/login")} className="w-full py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
             Sign In to Dashboard
           </button>
           <Link href="/" className="block mt-3 text-sm text-gray-400 hover:text-black transition-colors" style={{ fontFamily: "var(--font-sans)" }}>← Back to Home</Link>

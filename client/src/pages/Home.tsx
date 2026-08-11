@@ -11,7 +11,6 @@ import {
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
 
 const rotatingPrompts = [
   "Ask DreamCarz anything...",
@@ -423,7 +422,7 @@ export default function Home() {
                 Go to Dashboard
               </Link>
             ) : (
-              <button onClick={() => startLogin()} className="px-7 py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.97]" style={{ fontFamily: "var(--font-sans)" }}>
+              <button onClick={() => window.location.assign("/login")} className="px-7 py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.97]" style={{ fontFamily: "var(--font-sans)" }}>
                 Get Started
               </button>
             )}

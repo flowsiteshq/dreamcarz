@@ -8,7 +8,6 @@ import {
   Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
@@ -66,7 +65,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
           </div>
           <h2 className="text-2xl font-bold text-black mb-2" style={{ fontFamily: "var(--font-display)" }}>Member Dashboard</h2>
           <p className="text-sm text-gray-500 mb-6" style={{ fontFamily: "var(--font-sans)" }}>Sign in to access your DreamCarz member dashboard.</p>
-          <button onClick={() => startLogin()} className="w-full py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors">Sign In</button>
+          <Link href="/login" className="block w-full py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-gray-900 transition-colors">Sign In</Link>
           <Link href="/" className="block mt-3 text-sm text-gray-400 hover:text-black transition-colors">← Back to Home</Link>
         </div>
       </div>

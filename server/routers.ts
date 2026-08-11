@@ -1,8 +1,9 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, DIRECT_SESSION_COOKIE, DIRECT_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
+import { createDirectSession, loginDirectAccount, registerDirectAccount, revokeDirectSession } from "./directAuth";
 import {
   referralProfiles,
   referrals,
@@ -14,14 +15,54 @@ import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { storagePut } from "./storage";
+import { TRPCError } from "@trpc/server";
+import { parse } from "cookie";
 
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    register: publicProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(2).max(120),
+          email: z.string().trim().email().max(320),
+          password: z.string().min(10).max(128),
+          acceptedTerms: z.literal(true),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const user = await registerDirectAccount(input);
+        if (!user) {
+          throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists. Please sign in instead." });
+        }
+        const session = await createDirectSession(user.id);
+        ctx.res.cookie(DIRECT_SESSION_COOKIE, session.token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: DIRECT_SESSION_MAX_AGE_MS,
+        });
+        return user;
+      }),
+    login: publicProcedure
+      .input(z.object({ email: z.string().trim().email().max(320), password: z.string().min(1).max(128) }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await loginDirectAccount(input.email, input.password);
+        if (!user) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect email or password." });
+        }
+        const session = await createDirectSession(user.id);
+        ctx.res.cookie(DIRECT_SESSION_COOKIE, session.token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: DIRECT_SESSION_MAX_AGE_MS,
+        });
+        return user;
+      }),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
+      const cookies = parse(ctx.req.headers.cookie ?? "");
+      await revokeDirectSession(cookies[DIRECT_SESSION_COOKIE]);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      ctx.res.clearCookie(DIRECT_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
   }),
