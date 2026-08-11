@@ -9,3 +9,5 @@
 - [x] Add Vitest coverage for onboarding validation and state transitions.
 - [x] Verify desktop and mobile onboarding flows, then publish the completed feature.
 - [x] Connect the DreamCarz project to the user-provided GitHub repository and push the current code.
+- [x] Audit and correct image asset handling so standard builds include all required DreamCarz imagery.
+- [x] Push the corrected DreamCarz image bundle to the GitHub main branch.
