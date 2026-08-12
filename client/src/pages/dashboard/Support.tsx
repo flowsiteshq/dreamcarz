@@ -5,9 +5,9 @@ import { Link } from "wouter";
 
 const faqs = [
   { q: "How do I extend my current rental?", a: "Call us at (301) 772-2500 or use the 'Extend Rental' button on your dashboard. Extensions are subject to vehicle availability." },
-  { q: "How do I earn DCP points?", a: "You earn DCP on every membership payment, vehicle transaction, and rental activity. Pro members earn at a 1.2x multiplier." },
+  { q: "How do I earn DCP points?", a: "You may earn DCP through qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful referrals, and anniversary activity." },
   { q: "What is Transportation Power?", a: "Transportation Power is your DCP balance multiplied by your tier multiplier — it represents the real-dollar value you can apply toward vehicle purchases or rentals." },
-  { q: "How does Credit Free work?", a: "Elite members who accumulate sufficient DCP can apply their Transportation Power toward a vehicle purchase, potentially reducing or eliminating financing needs." },
+  { q: "How does Credit Free work?", a: "Credit Free starts day 1 for qualifying members and may provide access without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors." },
   { q: "Can I swap my vehicle mid-rental?", a: "Pro and Elite members can request a vehicle swap. Contact our concierge team to check availability and process the swap." },
 ];
 
@@ -20,7 +20,7 @@ export default function Support() {
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>Support</h2>
-          <p className="text-sm text-gray-400 mt-0.5">We're here to help — 24/7 concierge for Pro & Elite members</p>
+          <p className="text-sm text-gray-400 mt-0.5">We're here to help with vehicles, DCP, service, membership, and your freedom journey.</p>
         </div>
 
         {/* Contact options */}
@@ -86,4 +86,3 @@ export default function Support() {
     </DashboardShell>
   );
 }
-

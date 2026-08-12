@@ -2,12 +2,12 @@ import DashboardShell from "@/components/DashboardShell";
 import { Gift, Zap, TrendingUp, Star, ChevronRight } from "lucide-react";
 
 const rewards = [
-  { title: "Free Weekend Rental", desc: "Redeem 50,000 DCP for a complimentary weekend in any vehicle up to $40K value.", cost: "50,000 DCP", available: true },
-  { title: "Membership Month Free", desc: "Redeem 100,000 DCP for one free month at your current membership tier.", cost: "100,000 DCP", available: true },
-  { title: "Vehicle Upgrade Credit", desc: "Apply 75,000 DCP toward upgrading to the next membership tier for 3 months.", cost: "75,000 DCP", available: true },
-  { title: "VIP Concierge Day", desc: "Dedicated concierge service for a full day — vehicle delivery, pickup, and personal assistance.", cost: "30,000 DCP", available: true },
-  { title: "Credit Free Down Payment", desc: "Apply accumulated DCP toward a Credit Free vehicle purchase down payment.", cost: "200,000 DCP", available: false },
-  { title: "Elite Trial Month", desc: "Experience Elite membership for 30 days, including all exclusive vehicles and perks.", cost: "150,000 DCP", available: false },
+  { title: "Free Rental Days", desc: "Use eligible DCP toward qualifying free rental days.", cost: "Eligible DCP", available: true },
+  { title: "Lease & Interest Credits", desc: "Apply eligible DCP toward qualifying lease and interest credits.", cost: "Eligible DCP", available: true },
+  { title: "Down Payment Assistance", desc: "Use eligible DCP toward qualifying down-payment assistance.", cost: "Eligible DCP", available: true },
+  { title: "Vehicle Purchase Credits", desc: "Apply eligible DCP toward qualifying vehicle-purchase credits.", cost: "Eligible DCP", available: true },
+  { title: "Service & Maintenance Savings", desc: "Use eligible DCP toward qualifying service and maintenance savings.", cost: "Eligible DCP", available: false },
+  { title: "Exclusive Member Perks", desc: "Discover additional eligible member perks as your Dream Carz journey grows.", cost: "Eligible DCP", available: false },
 ];
 
 export default function Rewards() {
@@ -67,4 +67,3 @@ export default function Rewards() {
     </DashboardShell>
   );
 }
-

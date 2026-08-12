@@ -5,10 +5,10 @@ import { DollarSign, Users, TrendingUp, Car, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 
 const benefits = [
-  { icon:<DollarSign size={22}/>, title:"Earn Transaction Proceeds", desc:"Receive income from every rental booking on your listed vehicles." },
-  { icon:<TrendingUp size={22}/>, title:"Earn DCP Points", desc:"Host activity earns DCP, which builds your transportation purchasing power for fleet expansion." },
-  { icon:<Car size={22}/>, title:"Credit Free Fleet Growth", desc:"Use accumulated DCP to qualify for Credit Free access to additional vehicles." },
-  { icon:<Users size={22}/>, title:"Dream Carz Member Network", desc:"Instantly tap into the Dream Carz member base as your customer pool." },
+  { icon:<DollarSign size={22}/>, title:"List Your Vehicle", desc:"Place your car on the Dream Carz platform and earn from qualifying transactions." },
+  { icon:<Users size={22}/>, title:"Members Become Customers", desc:"Connect with an established Dream Carz member base designed to become your customer pool." },
+  { icon:<TrendingUp size={22}/>, title:"High Transaction Payout", desc:"Earn per qualifying transaction while building a long-term vehicle-income strategy." },
+  { icon:<Car size={22}/>, title:"Grow Your Fleet", desc:"Use qualifying Credit Free approval pathways to support responsible fleet growth and long-term wealth building." },
 ];
 
 export default function HostProgram() {
@@ -20,7 +20,7 @@ export default function HostProgram() {
         <div className="container">
           <div className="section-label mb-3 reveal">Host Program</div>
           <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>You Own the Car.<br />We Bring the Business.</h1>
-          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>List your vehicle on the Dream Carz platform and earn income while building transportation purchasing power for fleet growth.</p>
+          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Own. List. Earn. List your vehicle, turn Dream Carz members into customers, and build a long-term vehicle-income strategy.</p>
           <Link href="/membership" className="btn-primary reveal delay-300">Become a Host <ChevronRight size={16} /></Link>
         </div>
       </section>

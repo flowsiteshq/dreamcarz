@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import {
-  ArrowUp, Sparkles, ChevronRight, Star,
+  ArrowUp, Sparkles, ChevronRight,
   Car, Diamond, Crown, UserCircle, MapPin, HeadphonesIcon,
   Users, Trophy, Shield
 } from "lucide-react";
@@ -42,21 +42,21 @@ const chips = [
 ];
 
 const stats = [
-  { icon: Car, value: "600+", label: "Premium Vehicles" },
-  { icon: HeadphonesIcon, value: "24/7", label: "Concierge Support" },
-  { icon: Trophy, value: "4", label: "Membership Levels" },
-  { icon: Users, value: "1M+", label: "Happy Members" },
+  { icon: Car, value: "$39.95", label: "Freedom Membership" },
+  { icon: Trophy, value: "6", label: "Freedom Stages" },
+  { icon: Sparkles, value: "DCP", label: "Earn & Redeem" },
+  { icon: Users, value: "4", label: "Ways to Build" },
 ];
 
 const aiResponses: Record<string, { title: string; body: string; cta: string; href: string }> = {
   rent: { title: "Let's find your perfect ride.", body: "Browse our full fleet — from everyday value vehicles to exotic supercars. Every rental earns DCP Transportation Purchasing Power.", cta: "Browse Fleet", href: "/fleet" },
   buy: { title: "Ready to own your dream car?", body: "Our Lease-to-Own program lets you drive the vehicle while building equity. DCP points apply toward your purchase.", cta: "Explore Lease-to-Own", href: "/agent" },
-  membership: { title: "Choose your membership tier.", body: "Freedom, Plus, Pro, or Elite. Every tier earns DCP points that grow your transportation purchasing power over time.", cta: "View Memberships", href: "/membership" },
+  membership: { title: "Choose your freedom path.", body: "Freedom starts at $39.95 per month and can be cancelled anytime. Qualifying membership activity earns DCP and opens a progression of benefits over time.", cta: "View Memberships", href: "/membership" },
   balance: { title: "Your DCP balance is waiting.", body: "Sign in to view your current DCP balance, redemption power, member value ratio, and full account history.", cta: "Go to Dashboard", href: "/dashboard" },
   location: { title: "We're in Lanham, MD.", body: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Open Mon–Fri 9am–6pm, Saturday 9am–3pm. Call (301) 772-2500.", cta: "Get Directions", href: "/contact" },
   upgrade: { title: "Upgrade your membership.", body: "Moving to a higher tier increases your DCP earning rate, unlocks exclusive vehicles, and accelerates your path to Credit Free.", cta: "Compare Tiers", href: "/membership" },
   support: { title: "We're here to help.", body: "Reach our team at (301) 772-2500 or info@dreamcarz.com. Mon–Fri 9am–6pm, Saturday 9am–3pm.", cta: "Contact Us", href: "/contact" },
-  referral: { title: "Turn your membership into income.", body: "The Drive Network pays you 5 ways: referral bonuses ($50–$150/enrollment), residual commissions (up to 5 levels deep), DCP matching, rank bonuses (up to $10,000), and a Dream Ambassador revenue pool.", cta: "View the Opportunity", href: "/opportunity" },
+  referral: { title: "Build with Dream Carz.", body: "Explore Associate, Host, Agent, and Freedom Member paths. Qualifying builders may access advance commissions, monthly residuals, leadership overrides, and performance bonuses.", cta: "View the Opportunity", href: "/opportunity" },
   default: { title: "Let me help you with that.", body: "Browse our fleet, explore membership tiers, or contact our team directly. DreamCarz is here to make your automotive experience effortless.", cta: "Browse Fleet", href: "/fleet" },
 };
 
@@ -73,10 +73,10 @@ function getAIResponse(input: string) {
   return aiResponses.default;
 }
 
-const testimonials = [
-  { text: "The DCP program is unlike anything I've seen. I've been a Pro member for 8 months and my transportation purchasing power has grown significantly.", name: "Marcus T.", tier: "Pro Member" },
-  { text: "Renting through DreamCarz feels completely different. It's not just a rental — it's an investment in your future vehicle ownership.", name: "Priya S.", tier: "Elite Member" },
-  { text: "The fleet is incredible. I drove a Porsche 911 last weekend and the whole experience from booking to return was seamless.", name: "James R.", tier: "Plus Member" },
+const memberReasons = [
+  { title: "Save", text: "Access member-only pricing and qualifying savings across rentals, purchases, and services." },
+  { title: "Earn", text: "Earn DCP on qualifying membership payments, rentals, RTO/LTO activity, purchases, referrals, and anniversaries." },
+  { title: "Build", text: "Follow a path from Hassle Free access to qualifying ownership-focused benefits over time." },
 ];
 
 export default function Home() {
@@ -177,7 +177,7 @@ export default function Home() {
 
             {/* Subheadline */}
             <p className="text-[15px] text-gray-500 mb-7 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
-              Tell <strong className="text-black font-semibold">DreamCarz</strong> what you want to do.<br />We'll handle the rest.
+              <strong className="text-black font-semibold">One membership. Many freedoms.</strong><br />Save, earn, and build freedom through vehicles, rewards, and relationships.
             </p>
 
             {/* Prompt box — single line, reference style */}
@@ -312,7 +312,7 @@ export default function Home() {
             <div>
               <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-2" style={{ fontFamily: "var(--font-sans)" }}>Our Fleet</p>
               <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
-                Every vehicle earns<br />purchasing power.
+                Every eligible transaction<br />can earn DCP.
               </h2>
             </div>
             <Link href="/fleet" className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-black transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
@@ -359,7 +359,7 @@ export default function Home() {
                 Your loyalty has<br />a dollar value.
               </h2>
               <p className="text-gray-400 leading-relaxed mb-8 text-[15px]" style={{ fontFamily: "var(--font-sans)" }}>
-                Every membership payment, vehicle transaction, and rental earns DCP — Dream Carz Points that grow into real transportation purchasing power.
+                Earn DCP through qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, referrals, and anniversary activity — then redeem eligible points for real rewards.
               </p>
               <Link href="/calculator" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-100 transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
                 Calculate your value <ChevronRight size={14} />
@@ -386,21 +386,16 @@ export default function Home() {
       {/* ═══════════ TESTIMONIALS ═══════════ */}
       <section className="py-24 px-6 lg:px-10">
         <div className="max-w-7xl mx-auto">
-          <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-3 text-center" style={{ fontFamily: "var(--font-sans)" }}>Member Stories</p>
+          <p className="text-[11px] uppercase tracking-[0.15em] text-gray-400 mb-3 text-center" style={{ fontFamily: "var(--font-sans)" }}>The Dream Carz Difference</p>
           <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-black text-center mb-14" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}>
-            Trusted by members.
+            Why Dream Carz.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {testimonials.map((t, i) => (
+            {memberReasons.map((item, i) => (
               <div key={i} className="p-6 rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-300">
-                <div className="flex gap-0.5 mb-4">
-                  {[...Array(5)].map((_, j) => <Star key={j} size={12} className="fill-black text-black" />)}
-                </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-5" style={{ fontFamily: "var(--font-sans)" }}>"{t.text}"</p>
-                <div>
-                  <p className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>{t.name}</p>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wider mt-0.5" style={{ fontFamily: "var(--font-sans)" }}>{t.tier}</p>
-                </div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-4">Dream Carz</div>
+                <p className="text-lg font-semibold text-black mb-3" style={{ fontFamily: "var(--font-display)" }}>{item.title}</p>
+                <p className="text-sm text-gray-600 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>{item.text}</p>
               </div>
             ))}
           </div>
@@ -414,7 +409,7 @@ export default function Home() {
             Ready to start?
           </h2>
           <p className="text-gray-400 mb-8 text-[15px] leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
-            Join DreamCarz Network and turn every drive into an investment in your future vehicle ownership.
+            Start your freedom journey with membership beginning at $39.95 per month. Cancel anytime.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             {isAuthenticated ? (

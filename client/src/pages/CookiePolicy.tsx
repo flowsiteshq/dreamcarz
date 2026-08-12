@@ -9,9 +9,8 @@ const cookieTypes = [
     required: true,
     description: "These cookies are essential for the website to function properly. They enable core features such as security, network management, and account authentication. You cannot opt out of these cookies.",
     examples: [
-      { name: "session_id", purpose: "Maintains your logged-in session", duration: "Session" },
-      { name: "__Host-oauth_state", purpose: "CSRF protection during OAuth login", duration: "10 minutes" },
-      { name: "dreamcarz_auth", purpose: "Authenticates your membership account", duration: "30 days" },
+      { name: "dreamcarz_session", purpose: "Maintains the secure DreamCarz member session", duration: "30 days" },
+      { name: "app_session_id", purpose: "Supports compatible legacy sessions during the account transition", duration: "Session" },
     ],
   },
   {
@@ -182,4 +181,3 @@ export default function CookiePolicy() {
     </div>
   );
 }
-

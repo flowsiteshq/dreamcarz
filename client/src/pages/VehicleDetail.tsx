@@ -62,7 +62,7 @@ export const allVehicles = [
     creditFreeEligible: true, creditFreeThreshold: 2550,
     colors: ["Brilliant Silver Metallic", "Gun Metallic", "Deep Blue Pearl", "Pearl White Tricoat"],
     features: ["ProPILOT Assist", "Apple CarPlay & Android Auto", "8-inch Touchscreen", "AWD All-Weather Capability", "Heated Front Seats", "Bose Audio System"],
-    description: "The Altima offers AWD capability at a value price — perfect for members who need all-weather confidence while earning DCP on every mile.",
+    description: "The Altima offers AWD capability at a value price — perfect for members who need all-weather confidence while earning DCP through qualifying rental activity.",
   },
   {
     id: 105, name: "Chevrolet Malibu 2023", make: "Chevrolet", model: "Malibu", year: 2023,
@@ -123,7 +123,7 @@ export const allVehicles = [
     creditFreeEligible: true, creditFreeThreshold: 21750,
     colors: ["Guards Red", "GT Silver Metallic", "Jet Black Metallic", "Gentian Blue Metallic", "Chalk"],
     features: ["Porsche Active Suspension Management", "Sport Chrono Package", "BOSE Surround Sound", "Porsche Communication Management", "Sport Exhaust System", "Carbon Ceramic Brakes"],
-    description: "The icon. The Porsche 911 Carrera is the benchmark by which all sports cars are measured. Timeless design, exhilarating performance, and now it earns you DCP.",
+    description: "The icon. The Porsche 911 Carrera is the benchmark by which all sports cars are measured. Timeless design, exhilarating performance, and qualifying rental activity that can earn DCP.",
   },
   {
     id: 2, name: "Audi R8 V10 Performance", make: "Audi", model: "R8 V10", year: 2024,

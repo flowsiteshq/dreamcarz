@@ -189,7 +189,7 @@ export default function MyVehicles() {
                     <span className="font-semibold text-black">Total</span>
                     <span className="font-bold text-black">${Math.round(extendDays * 245 * 0.85).toLocaleString()}</span>
                   </div>
-                  <p className="text-[10px] text-green-600 mt-1.5 font-medium">+{(extendDays * 245 * 10).toLocaleString()} DCP earned on this extension</p>
+                  <p className="text-[10px] text-green-600 mt-1.5 font-medium">Qualifying DCP will be confirmed with your extension</p>
                 </div>
                 <p className="text-[11px] text-gray-400 mb-4">New end date: <strong className="text-black">{newEndDate}</strong></p>
                 <button onClick={handleExtendSubmit} className="w-full py-3 bg-black text-white text-[13px] font-semibold rounded-full hover:bg-gray-900 transition-colors active:scale-[0.98]">

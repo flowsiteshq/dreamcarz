@@ -18,3 +18,13 @@
 - [x] Update sign-in, navigation, and protected member routes for the direct DreamCarz account flow.
 - [x] Add authentication tests and verify the Railway-compatible build.
 - [x] Push the direct DreamCarz authentication flow to the GitHub main branch.
+- [x] Extract and confirm the approved messaging, offers, and operating details from the latest Dream Carz flyer.
+- [x] Complete the website and member-app flyer-content update without changing visual design or colors.
+- [x] Audit remaining public and in-app surfaces for pre-flyer messaging, pricing, and legacy authentication copy, then update applicable content.
+- [x] Complete visual content QA across key public and member pages to confirm flyer messaging is consistent and design/colors are preserved.
+- [x] Audit Fleet, Calculator, Contact, legal/policy pages, and remaining public routes for flyer-relevant content.
+- [x] Audit My Account, Drive Network, Rewards, Support, onboarding, and remaining member routes for flyer-relevant or legacy copy.
+- [x] Complete the deck content update and full slide-by-slide verification against approved flyer information.
+- [x] Re-present the refreshed DreamCarz deck and confirm the delivered presentation reflects updated content.
+- [x] Verify the website, app, and presentation updates and publish the refreshed deliverables.
+- [ ] Push the flyer-content website and app updates to GitHub main for the Railway deployment.

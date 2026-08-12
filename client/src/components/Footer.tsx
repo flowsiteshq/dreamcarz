@@ -24,7 +24,7 @@ export default function Footer() {
               />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-6" style={{ fontFamily: "var(--font-sans)" }}>
-              Your trusted partner for premium automotive membership. The longer you stay, the more valuable your transportation relationship becomes.
+              Freedom. Drive. Earn. Dream Carz is a complete automotive ecosystem that helps members save, earn, and build freedom through vehicles, rewards, and relationships.
             </p>
             <div className="flex items-center gap-3">
               {[<Facebook size={16} />, <Twitter size={16} />, <Instagram size={16} />].map((icon, i) => (

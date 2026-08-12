@@ -41,7 +41,7 @@ const progressPct = Math.min((dcpValue / targetAmount) * 100, 100); // ~6.8%
 const remaining = Math.max(targetAmount - dcpValue, 0); // ~$39,150
 const monthlyDcpValueEarned = member.monthlyDcpEarned * 0.01; // $85/mo
 const monthsRemaining = Math.ceil(remaining / monthlyDcpValueEarned); // ~460 months at current rate
-const monthsWithElite = Math.ceil(remaining / (monthlyDcpValueEarned * 1.25)); // 25% faster with Elite
+const estimatedYears = Math.max(dreamCar.timeline, Math.ceil(monthsRemaining / 12));
 
 // ── Timeline milestones ────────────────────────────────────────────────
 const milestones = [
@@ -61,7 +61,7 @@ const milestones = [
     date: "Est. March 2026",
     desc: "Reach $4,200 in DCP value toward your Lamborghini.",
     status: "active",
-    reward: "500 DCP bonus",
+    reward: "Journey milestone unlocked",
   },
   {
     id: 3,
@@ -70,7 +70,7 @@ const milestones = [
     date: "Est. September 2026",
     desc: "Reach $10,500 in DCP value. Unlock the Quarter Way badge.",
     status: "locked",
-    reward: "1,500 DCP + Quarter Way badge",
+    reward: "Quarter Way badge",
   },
   {
     id: 4,
@@ -79,7 +79,7 @@ const milestones = [
     date: "Est. June 2027",
     desc: "Reach $21,000 in DCP value. Unlock a tier discount.",
     status: "locked",
-    reward: "3,000 DCP + Halfway badge + tier discount",
+    reward: "Halfway badge + qualifying tier benefits",
   },
   {
     id: 5,
@@ -88,7 +88,7 @@ const milestones = [
     date: "Est. March 2028",
     desc: "Reach $31,500 in DCP value. Almost Credit Free qualified.",
     status: "locked",
-    reward: "5,000 DCP + Almost There badge",
+    reward: "Almost There badge",
   },
   {
     id: 6,
@@ -97,7 +97,7 @@ const milestones = [
     date: "Est. December 2028",
     desc: "You've reached $42,000 in DCP value. You qualify for Credit Free access to your Lamborghini Huracán EVO.",
     status: "locked",
-    reward: "10,000 DCP + Dream Achieved badge + exclusive event invite",
+    reward: "Dream Achieved badge + exclusive member perk",
   },
 ];
 
@@ -106,8 +106,8 @@ const accelerators = [
   {
     icon: TrendingUp,
     title: "Upgrade to Elite",
-    impact: "Earn DCP 25% faster",
-    desc: "Elite members earn at 1.5x vs your current 1.2x — shaving months off your timeline.",
+    impact: "Explore qualifying tier benefits",
+    desc: "Review membership benefits and eligibility that may support your selected freedom journey.",
     cta: "View Elite Benefits",
     href: "/dashboard/membership",
     urgency: "high",
@@ -115,8 +115,8 @@ const accelerators = [
   {
     icon: Award,
     title: "Refer a Friend",
-    impact: "+2,000 DCP per referral",
-    desc: "Each friend you refer earns you 2,000 DCP instantly. Refer 10 friends = 20,000 DCP.",
+    impact: "Earn qualifying DCP through referrals",
+    desc: "Successful membership referrals may earn qualifying DCP toward your selected dream-car goal.",
     cta: "Get Referral Link",
     href: "/dashboard/rewards",
     urgency: "medium",
@@ -124,8 +124,8 @@ const accelerators = [
   {
     icon: Calendar,
     title: "Extend Your Rentals",
-    impact: "More DCP per dollar",
-    desc: "Longer rentals earn more DCP per day than short ones. Maximize each booking.",
+    impact: "Build qualifying rental activity",
+    desc: "Qualifying rental activity can help build DCP toward your selected dream-car goal.",
     cta: "Extend Current Rental",
     href: "/dashboard/vehicles",
     urgency: "medium",
@@ -238,8 +238,8 @@ export default function DreamJourney() {
               <Clock size={13} className="text-blue-500" />
               <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Est. Timeline</p>
             </div>
-            <p className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>~{Math.ceil(monthsWithElite / 12)} yrs</p>
-            <p className="text-[11px] text-gray-400">with Elite upgrade</p>
+            <p className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>~{estimatedYears} yrs</p>
+            <p className="text-[11px] text-gray-400">based on your selected timeline</p>
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="flex items-center gap-2 mb-1">

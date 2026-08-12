@@ -1,16 +1,16 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { DollarSign, Users, TrendingUp, Award, Zap, ChevronRight } from "lucide-react";
+import { DollarSign, Users, TrendingUp, Award, Zap, ChevronRight, Car } from "lucide-react";
 import { Link } from "wouter";
 
 const earnings = [
-  { icon:<DollarSign size={20}/>, title:"Personal Membership Sales", desc:"Earn cash commissions on every membership you personally enroll." },
-  { icon:<Users size={20}/>, title:"Team Production", desc:"Build a team and earn override commissions on their qualifying production." },
-  { icon:<TrendingUp size={20}/>, title:"Vehicle Transactions", desc:"Earn on qualifying vehicle transactions your customers complete through Dream Carz." },
-  { icon:<Award size={20}/>, title:"Rank Bonuses", desc:"Hit production milestones and unlock rank bonuses that reward your growth." },
-  { icon:<Zap size={20}/>, title:"DCP Bonuses", desc:"Earn DCP in addition to cash — building your own transportation purchasing power." },
-  { icon:<TrendingUp size={20}/>, title:"Renewal Income", desc:"Earn ongoing renewal commissions as your members maintain their memberships." },
+  { icon:<Car size={20}/>, title:"Dream Carz Supplies Vehicles", desc:"Operate a location and manage qualifying vehicle activity with Dream Carz vehicle support." },
+  { icon:<Users size={20}/>, title:"Operate & Manage", desc:"Build a local business by managing customer relationships and day-to-day operations." },
+  { icon:<DollarSign size={20}/>, title:"Transaction Commissions", desc:"Earn on qualifying rentals, RTO/LTO activity, and sales transactions." },
+  { icon:<TrendingUp size={20}/>, title:"Scalable Location Model", desc:"Grow a location model designed to support expansion with lower operational risk." },
+  { icon:<Award size={20}/>, title:"Leadership & Performance", desc:"Qualifying growth may unlock leadership overrides and performance bonuses." },
+  { icon:<Zap size={20}/>, title:"Training Included", desc:"No experience is needed to begin; Dream Carz provides a path to learn, operate, and grow." },
 ];
 
 export default function Agent() {
@@ -21,8 +21,8 @@ export default function Agent() {
       <section className="pt-28 pb-16 bg-section">
         <div className="container">
           <div className="section-label mb-3 reveal">Agent Opportunity</div>
-          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Earn Cash + DCP<br />for Every Member You Bring</h1>
-          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Dream Carz Agents earn cash commissions and DCP points for qualifying customer and member production. Build a team, earn overrides, and grow your own transportation purchasing power simultaneously.</p>
+          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>We Supply the Cars.<br />You Build the Business.</h1>
+          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Operate. Manage. Earn. Build a scalable Dream Carz location through qualifying rentals, RTO/LTO activity, and sales support.</p>
           <Link href="/membership" className="btn-primary reveal delay-300">Become an Agent <ChevronRight size={16} /></Link>
         </div>
       </section>
@@ -44,4 +44,3 @@ export default function Agent() {
     </div>
   );
 }
-

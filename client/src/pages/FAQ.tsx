@@ -11,7 +11,7 @@ const categories = [
     questions: [
       {
         q: "What membership tiers does DreamCarz offer?",
-        a: "DreamCarz offers four membership tiers:\n\n• **Freedom** ($199/mo) — 1x DCP earning, access to vehicles up to $20K value\n• **Plus** ($299/mo) — 1.1x DCP earning, access to vehicles up to $50K value\n• **Pro** ($499/mo) — 1.2x DCP earning, access to vehicles up to $80K value\n• **Elite** ($999/mo) — 1.5x DCP earning, unlimited fleet access\n\nAll tiers include 24/7 concierge support and the DCP loyalty program.",
+        a: "DreamCarz offers four membership tiers:\n\n• **Freedom** ($39.95/mo) — cancel anytime, DCP on qualifying activity, Credit Free access starts day 1 for qualifying members, roadside assistance\n• **Plus** ($69.95/mo) — enhanced access and DCP benefits\n• **Pro** ($99.95/mo) — enhanced DCP benefits, Interest Free and Drive Free eligibility\n• **Elite** ($149.95/mo) — maximum benefits and Be Free ownership-pathway eligibility\n\nProgram eligibility is subject to applicable terms.",
       },
       {
         q: "Can I upgrade or downgrade my membership?",
@@ -19,7 +19,7 @@ const categories = [
       },
       {
         q: "Is there a contract or long-term commitment?",
-        a: "DreamCarz memberships are month-to-month with no long-term contracts. You can cancel at any time with 30 days' notice. Founding Members who lock in during our launch period receive a lifetime rate guarantee.",
+        a: "Freedom membership starts at $39.95 per month and can be cancelled anytime. Any additional program terms, promotional offers, and eligibility requirements are provided during enrollment.",
       },
       {
         q: "What is the Founding Member benefit?",
@@ -41,11 +41,11 @@ const categories = [
       },
       {
         q: "How do I earn DCP?",
-        a: "You earn DCP automatically on every payment:\n\n• Monthly membership fees\n• Vehicle rental extensions\n• Upgrade fees\n• Referral bonuses\n\nYour earning rate depends on your tier: Freedom 1x, Plus 1.1x, Pro 1.2x, Elite 1.5x.",
+        a: "You can earn DCP on qualifying activity including:\n\n• Membership payments\n• Vehicle rentals\n• RTO/LTO payments\n• Vehicle purchases\n• Referrals once a referral becomes a member\n• Anniversary activity\n\nAvailability and amounts are subject to program terms.",
       },
       {
         q: "How do I redeem DCP?",
-        a: "DCP can be redeemed for:\n\n• Rental credits (offset your monthly fee)\n• Vehicle upgrade discounts\n• Exclusive experiences and events\n• Credit toward vehicle purchase (Credit Free program)\n\nContact our concierge team to initiate a redemption.",
+        a: "Eligible DCP can be redeemed for:\n\n• Free rental days\n• Lease and interest credits\n• Down-payment assistance\n• Vehicle-purchase credits\n• Service and maintenance savings\n• Exclusive member perks\n\nContact our concierge team to review your eligible redemption options.",
       },
       {
         q: "What is the DCP multiplier?",
@@ -89,7 +89,7 @@ const categories = [
     questions: [
       {
         q: "What is the Credit Free program?",
-        a: "The Credit Free program allows qualifying DreamCarz members to access vehicles without a traditional credit check. Instead of credit history, eligibility is based on your DCP balance, membership tenure, and payment history with DreamCarz.",
+        a: "Credit Free access starts day 1 for qualifying members and may allow vehicle access without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors.",
       },
       {
         q: "How do I qualify for Credit Free?",

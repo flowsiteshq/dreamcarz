@@ -18,7 +18,7 @@ interface Message {
 const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: string; href: string }[] }[] = [
   {
     patterns: [/dcp|dream carz point|loyalty point|point balance|how many point/i],
-    answer: "DCP (Dream Carz Points) are earned on every dollar you spend with DreamCarz. Your current balance is **285,000 DCP** worth **$2,850** in transportation purchasing power. Pro members earn at a **1.2x multiplier**.",
+    answer: "DCP (Dream Carz Points) are earned on qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful member referrals, and anniversary activity. Eligible DCP may be redeemed for rewards such as free rental days, lease and interest credits, down-payment assistance, purchase credits, service savings, and member perks.",
     actions: [{ label: "View Rewards", href: "/dashboard/rewards" }],
   },
   {
@@ -33,12 +33,12 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/upgrade|elite|pro|plus|freedom|tier|membership level/i],
-    answer: "DreamCarz has 4 membership tiers:\n• **Freedom** — $199/mo, 1x DCP, up to $20K vehicles\n• **Plus** — $299/mo, 1.1x DCP, up to $50K vehicles\n• **Pro** — $499/mo, 1.2x DCP, up to $80K vehicles\n• **Elite** — $999/mo, 1.5x DCP, unlimited fleet\n\nYou're currently on **Pro**. Contact us to upgrade to Elite.",
+    answer: "DreamCarz starts with **Freedom at $39.95/month** — cancel anytime. Freedom includes DCP on qualifying activity, roadside assistance, Hassle Free member pricing, and Credit Free access that starts day 1 for qualifying members. Plus, Pro, and Elite provide additional DCP and access benefits.",
     actions: [{ label: "View Membership", href: "/dashboard/membership" }, { label: "Call Us", href: "tel:3017722500" }],
   },
   {
     patterns: [/payment|bill|charge|invoice|how much|cost|price/i],
-    answer: "Your current plan is **Pro Member at $499/month**, renewing Jun 28, 2026. You can view all past payments, invoices, and your payment method on the Payments page.",
+    answer: "Your current plan is **Pro Member at $99.95/month**, renewing Jun 28, 2026. You can view all past payments, invoices, and your payment method on the Payments page.",
     actions: [{ label: "View Payments", href: "/dashboard/payments" }],
   },
   {
@@ -63,12 +63,12 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/credit free|credit.free|free car|no credit|without credit/i],
-    answer: "The **Credit Free** program lets qualifying members access vehicles without a traditional credit check. Eligibility is based on your DCP balance, membership tenure, and payment history. Ask our team for your current eligibility status.",
+    answer: "**Credit Free** starts day 1 for qualifying members and may provide access without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors. Ask our team to review your eligibility.",
     actions: [{ label: "Contact Concierge", href: "/dashboard/support" }],
   },
   {
     patterns: [/host|list my car|earn with my car|my car on platform/i],
-    answer: "The **DreamCarz Host Program** lets you list your personal vehicle on our platform. You keep ownership, we handle bookings, insurance, and payments. Hosts earn competitive per-day rates plus DCP.",
+    answer: "The **DreamCarz Host Program** lets you own, list, and earn. List your vehicle on the platform, connect with DreamCarz members as potential customers, earn qualifying transaction payouts, and build toward responsible fleet growth.",
     actions: [{ label: "Learn About Hosting", href: "/dashboard/support" }],
   },
   {
@@ -88,7 +88,7 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/reward|redeem|cashback|gift|perk/i],
-    answer: "Your **285,000 DCP** can be redeemed for rental credits, membership discounts, vehicle upgrades, and exclusive experiences. At your Pro 1.2x multiplier, that's **$3,420 in transportation power**.",
+    answer: "Eligible DCP may be used toward free rental days, lease and interest credits, down-payment assistance, vehicle purchase credits, service and maintenance savings, and exclusive member perks. Open Rewards to view your current options.",
     actions: [{ label: "View Rewards", href: "/dashboard/rewards" }],
   },
 ];

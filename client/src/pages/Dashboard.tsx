@@ -358,9 +358,9 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {[
                   { label: "Membership Payments", value: 128000, max: 200000, dcp: "128,000 DCP" },
-                  { label: "Vehicle Transactions", value: 180000, max: 200000, dcp: "180,000 DCP" },
-                  { label: "Rental Activity", value: 85000, max: 200000, dcp: "85,000 DCP" },
-                  { label: "Good-Standing Bonus", value: 40000, max: 200000, dcp: "40,000 DCP" },
+                  { label: "Vehicle Rentals", value: 180000, max: 200000, dcp: "180,000 DCP" },
+                  { label: "RTO/LTO & Vehicle Purchases", value: 85000, max: 200000, dcp: "85,000 DCP" },
+                  { label: "Referrals & Anniversary", value: 40000, max: 200000, dcp: "40,000 DCP" },
                 ].map((item, i) => (
                   <div key={i}>
                     <div className="flex items-center justify-between mb-1.5">

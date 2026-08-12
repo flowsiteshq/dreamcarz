@@ -23,15 +23,15 @@ Membership is personal and non-transferable. You may not share your account cred
   },
   {
     title: "3. Membership Tiers & Fees",
-    content: `DreamCarz Network offers multiple membership tiers (Freedom, Plus, Pro, and Elite), each with distinct monthly fees, program fees, and benefits. By enrolling in a membership tier, you agree to pay the applicable monthly membership fee on the date it is due each month.
+    content: `DreamCarz Network offers multiple membership tiers (Freedom, Plus, Pro, and Elite), each with distinct monthly fees, program fees, and benefits. Freedom membership currently starts at $39.95 per month and may be cancelled at any time, subject to the applicable enrollment and billing terms. By enrolling in a membership tier, you agree to pay the applicable monthly membership fee on the date it is due each month.
 
 All fees are non-refundable unless otherwise stated in writing. We reserve the right to modify membership fees upon 30 days' written notice. Continued use of the Services after the effective date of a fee change constitutes your acceptance of the new fees.`,
   },
   {
     title: "4. DCP (Dream Carz Points) Program",
-    content: `The DCP program is a loyalty rewards program that allows members to accumulate points based on membership payments, vehicle transactions, rental activity, and good-standing bonuses. DCP points have no cash value and cannot be sold, transferred, or exchanged for cash.
+    content: `The DCP program is a loyalty rewards program that may allow members to accumulate points through qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful membership referrals, and anniversary activity. DCP points have no cash value and cannot be sold, transferred, or exchanged for cash.
 
-DCP redemption values, multipliers, and eligibility requirements are subject to change at our discretion. The Company makes no guarantee regarding the future value or redemption rate of DCP points. Points may expire if your account becomes inactive or is terminated.
+    Eligible DCP may be used toward qualifying rewards such as free rental days, lease and interest credits, down-payment assistance, vehicle-purchase credits, service and maintenance savings, and exclusive member perks. Redemption values, multipliers, and eligibility requirements are subject to change at our discretion. The Company makes no guarantee regarding the future value or redemption rate of DCP points. Points may expire if your account becomes inactive or is terminated.
 
 The "Credit Free" program and "Be Free" milestones described in our marketing materials are aspirational goals based on projected program participation. Actual outcomes depend on individual member activity, market conditions, and program availability at the time of redemption.`,
   },

@@ -6,7 +6,7 @@ import { Link } from "wouter";
 import { useState } from "react";
 
 const tiers = [
-  { name: "Freedom", price: 39.95, enrollment: 139, weeklyFee: 79, bonus: "Base", perks: ["DCP on all qualifying activity", "Credit Free vehicle access", "Roadside assistance included", "Base redemption multiplier (1.00x)", "Host vehicle listing eligible", "$79/week program fee"], featured: false },
+  { name: "Freedom", price: 39.95, enrollment: 139, weeklyFee: 79, bonus: "Base", perks: ["Start at $39.95/month — cancel anytime", "DCP on qualifying activity", "Credit Free access starts day 1", "Roadside assistance included", "Hassle Free member-only pricing", "$79/week program fee"], featured: false },
   { name: "Plus", price: 69.95, enrollment: 199, weeklyFee: 69, bonus: "+5%", perks: ["Everything in Freedom", "+5% redemption enhancement", "Reduced platform fee $69/wk", "Priority member support", "Enhanced DCP earning rates", "Worry Free VSC eligibility"], featured: false },
   { name: "Pro", price: 99.95, enrollment: 249, weeklyFee: 59, bonus: "+15%", perks: ["Everything in Plus", "+15% redemption enhancement", "$59/week program fee", "Fee Free DCP offset eligible", "Drive Free rental DCP eligible", "Priority inventory access"], featured: true },
   { name: "Elite", price: 149.95, enrollment: 299, weeklyFee: 49, bonus: "+25%", perks: ["Everything in Pro", "+25% redemption enhancement", "$49/week program fee", "Be Free ownership eligible", "Maximum combined multiplier", "Founding Member status available"], featured: false },
@@ -23,7 +23,7 @@ export default function Membership() {
         <div className="container text-center">
           <div className="section-label mb-3 reveal">Membership Tiers</div>
           <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Choose Your Level of Freedom</h1>
-          <p className="text-gray-500 max-w-xl mx-auto mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Every tier delivers real transportation value. Higher tiers amplify your DCP purchasing power and reduce your costs.</p>
+          <p className="text-gray-500 max-w-xl mx-auto mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>One membership. Many freedoms. Choose the path that helps you save, earn, and build transportation freedom.</p>
           <div className="inline-flex items-center gap-1 p-1 bg-white border border-gray-200 rounded-full reveal delay-300">
             {(["monthly", "annual"] as const).map((b) => (
               <button key={b} onClick={() => setBilling(b)} className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${billing === b ? "bg-black text-white" : "text-gray-500 hover:text-black"}`} style={{ fontFamily: "var(--font-sans)" }}>
@@ -59,7 +59,7 @@ export default function Membership() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-gray-400 mt-6" style={{ fontFamily: "var(--font-sans)" }}>Pricing subject to final financial validation. DCP earning rates to be determined by financial model.</p>
+          <p className="text-center text-xs text-gray-400 mt-6" style={{ fontFamily: "var(--font-sans)" }}>Freedom membership starts at $39.95 per month and may be cancelled anytime. Program eligibility and DCP rewards are subject to applicable terms.</p>
         </div>
       </section>
 

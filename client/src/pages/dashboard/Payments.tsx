@@ -2,12 +2,12 @@ import DashboardShell from "@/components/DashboardShell";
 import { CreditCard, Download, ChevronRight, TrendingUp } from "lucide-react";
 
 const transactions = [
-  { id: "INV-2026-042", date: "Jun 1, 2026", desc: "Pro Membership — June", amount: "$499.00", status: "Paid", dcp: "+4,990 DCP" },
-  { id: "INV-2026-041", date: "May 1, 2026", desc: "Pro Membership — May", amount: "$499.00", status: "Paid", dcp: "+4,990 DCP" },
-  { id: "INV-2026-040", date: "Apr 10, 2026", desc: "Vehicle Rental — Porsche 911", amount: "$245.00", status: "Paid", dcp: "+2,450 DCP" },
-  { id: "INV-2026-039", date: "Apr 1, 2026", desc: "Pro Membership — April", amount: "$499.00", status: "Paid", dcp: "+4,990 DCP" },
-  { id: "INV-2026-038", date: "Mar 1, 2026", desc: "Pro Membership — March", amount: "$499.00", status: "Paid", dcp: "+4,990 DCP" },
-  { id: "INV-2026-037", date: "Feb 1, 2026", desc: "Plus Membership — February", amount: "$299.00", status: "Paid", dcp: "+2,990 DCP" },
+  { id: "INV-2026-042", date: "Jun 1, 2026", desc: "Pro Membership — June", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+  { id: "INV-2026-041", date: "May 1, 2026", desc: "Pro Membership — May", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+  { id: "INV-2026-040", date: "Apr 10, 2026", desc: "Vehicle Rental — Porsche 911", amount: "$245.00", status: "Paid", dcp: "Qualifying DCP" },
+  { id: "INV-2026-039", date: "Apr 1, 2026", desc: "Pro Membership — April", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+  { id: "INV-2026-038", date: "Mar 1, 2026", desc: "Pro Membership — March", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+  { id: "INV-2026-037", date: "Feb 1, 2026", desc: "Plus Membership — February", amount: "$69.95", status: "Paid", dcp: "Qualifying DCP" },
 ];
 
 export default function Payments() {
@@ -22,9 +22,9 @@ export default function Payments() {
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Total Paid (2026)", value: "$2,540", icon: CreditCard },
+            { label: "Total Paid (2026)", value: "$514.75", icon: CreditCard },
             { label: "Next Payment", value: "Jul 1, 2026", icon: TrendingUp },
-            { label: "Next Amount", value: "$499.00", icon: CreditCard },
+            { label: "Next Amount", value: "$99.95", icon: CreditCard },
           ].map((s, i) => {
             const Icon = s.icon;
             return (
@@ -80,4 +80,3 @@ export default function Payments() {
     </DashboardShell>
   );
 }
-

@@ -5,12 +5,12 @@ import { ArrowDown, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 
 const stages = [
-  { n:"01", name:"HASSLE FREE™", tagline:"Easy, convenient vehicle access", desc:"Join Dream Carz and immediately enjoy streamlined vehicle access, a dedicated member experience, and a single relationship that handles everything automotive." },
-  { n:"02", name:"CREDIT FREE™", tagline:"Qualifying access without traditional credit scores", desc:"Build your DCP balance to 25% of your target vehicle value and qualify for Credit Free vehicle access — no traditional credit score required." },
-  { n:"03", name:"WORRY FREE™", tagline:"DCP toward Vehicle Service Contracts", desc:"Use eligible DCP toward qualifying Vehicle Service Contracts and vehicle protection. Your loyalty pays for peace of mind." },
-  { n:"04", name:"FEE FREE™", tagline:"DCP toward lease and program fees", desc:"Eligible DCP can offset qualifying Dream Carz lease and program fees. The longer you stay, the less you pay." },
-  { n:"05", name:"DRIVE FREE™", tagline:"DCP toward rental days", desc:"Apply eligible DCP toward qualifying rental days and vehicle-use expenses. Your accumulated loyalty literally drives you for free." },
-  { n:"06", name:"BE FREE™", tagline:"DCP toward vehicle ownership", desc:"The ultimate destination: use eligible DCP toward qualifying vehicle ownership." },
+  { n:"01", name:"HASSLE FREE™", tagline:"Day 1 · Easy, convenient vehicle access", desc:"Start with a simple way to access a vehicle, no-haggle member-only pricing, roadside assistance, Dream Carz certified vehicles, and DCP on eligible transactions." },
+  { n:"02", name:"CREDIT FREE™", tagline:"Starts Day 1 · Fast, simple approval", desc:"Qualifying members may access vehicles without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors." },
+  { n:"03", name:"WORRY FREE™", tagline:"Year 1 · Protection and peace of mind", desc:"Qualifying vehicles may include enhanced protection and warranty benefits designed to bring greater confidence while you drive and own." },
+  { n:"04", name:"INTEREST FREE™", tagline:"Year 2 · Put eligible DCP to work", desc:"Eligible DCP may reduce or cover interest charges on qualifying lease or financing programs, subject to program terms." },
+  { n:"05", name:"DRIVE FREE™", tagline:"Year 3 · Unlock free rental days", desc:"Eligible DCP may be used toward free rental days and additional member benefits, subject to availability and program terms." },
+  { n:"06", name:"BE FREE™", tagline:"Year 4+ · Build toward ownership", desc:"Eligible DCP may be used toward owning a vehicle, creating a longer-term path from membership activity to vehicle ownership." },
 ];
 
 export default function HowItWorks() {
@@ -22,7 +22,7 @@ export default function HowItWorks() {
         <div className="container text-center">
           <div className="section-label mb-3 reveal">The Dream Carz Journey</div>
           <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Six Stages to Transportation Freedom</h1>
-          <p className="text-gray-500 max-w-xl mx-auto reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>The longer you stay, the better you perform, and the more business you do with Dream Carz — the more valuable your transportation relationship becomes.</p>
+          <p className="text-gray-500 max-w-xl mx-auto reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Start strong. Stay loyal. Get freedom. The longer you stay, the more DCP-enabled benefits you can unlock.</p>
         </div>
       </section>
       <section className="py-16">

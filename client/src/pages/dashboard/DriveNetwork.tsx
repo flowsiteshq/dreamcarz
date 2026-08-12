@@ -13,16 +13,14 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
 const ranks = [
-  { id: 1, title: "Associate", icon: "🚗", color: "#6b7280", bgColor: "bg-gray-100", textColor: "text-gray-700" },
-  { id: 2, title: "Driver", icon: "🏎️", color: "#3b82f6", bgColor: "bg-blue-50", textColor: "text-blue-700" },
-  { id: 3, title: "Road Captain", icon: "⚡", color: "#8b5cf6", bgColor: "bg-purple-50", textColor: "text-purple-700" },
-  { id: 4, title: "Fleet Director", icon: "🏆", color: "#f59e0b", bgColor: "bg-amber-50", textColor: "text-amber-700" },
-  { id: 5, title: "Elite Executive", icon: "💎", color: "#f97316", bgColor: "bg-orange-50", textColor: "text-orange-700" },
-  { id: 6, title: "Dream Ambassador", icon: "👑", color: "#C9A84C", bgColor: "bg-black", textColor: "text-white" },
+  { id: 1, title: "Associate", icon: "🤝", color: "#6b7280", bgColor: "bg-gray-100", textColor: "text-gray-700" },
+  { id: 2, title: "Host", icon: "🚗", color: "#3b82f6", bgColor: "bg-blue-50", textColor: "text-blue-700" },
+  { id: 3, title: "Agent", icon: "📈", color: "#8b5cf6", bgColor: "bg-purple-50", textColor: "text-purple-700" },
+  { id: 4, title: "Freedom Member", icon: "⭐", color: "#C9A84C", bgColor: "bg-black", textColor: "text-white" },
 ];
 
-const currentRank = ranks[1]; // Driver
-const nextRank = ranks[2]; // Road Captain
+const currentRank = ranks[0];
+const nextRank = ranks[1];
 
 const downlineMembers = [
   { id: 1, name: "Marcus Johnson", tier: "Pro", rank: "Driver", joined: "Jan 2026", dcp: 42000, monthlyFee: 199, level: 1, active: true, referrals: 3 },
@@ -62,14 +60,15 @@ export default function DriveNetwork() {
   const referralLink = liveReferralCode
     ? `https://dreamcarz-xrgtgznf.manus.space/?ref=${liveReferralCode}`
     : "https://dreamcarz-xrgtgznf.manus.space/?ref=LOADING";
-  const liveTeamSize = stats?.teamSize ?? downlineMembers.length;
-  const liveTotalEarned = stats?.totalEarned ? (stats.totalEarned / 100) : earningsHistory.reduce((s, m) => s + m.total, 0);
-  const liveThisMonth = stats?.thisMonthTotal ? (stats.thisMonthTotal / 100) : earningsHistory[earningsHistory.length - 1].total;
-  const liveDirectRefs = stats?.directReferrals ?? 3;
-  const liveRank = stats?.rank ?? "driver";
-  const rankIndex = ranks.findIndex(r => r.title.toLowerCase().replace(" ", "_") === liveRank) ?? 1;
+  const liveTeamSize = stats?.teamSize ?? 0;
+  const liveTotalEarned = stats?.totalEarned ? (stats.totalEarned / 100) : 0;
+  const liveThisMonth = stats?.thisMonthTotal ? (stats.thisMonthTotal / 100) : 0;
+  const liveDirectRefs = stats?.directReferrals ?? 0;
+  const liveRank = stats?.rank ?? "associate";
+  const matchedRankIndex = ranks.findIndex(r => r.title.toLowerCase().replace(" ", "_") === liveRank);
+  const rankIndex = matchedRankIndex >= 0 ? matchedRankIndex : 0;
   const currentRankLive = ranks[Math.max(0, rankIndex)] ?? ranks[1];
-  const nextRankLive = ranks[Math.min(5, rankIndex + 1)] ?? ranks[2];
+  const nextRankLive = ranks[Math.min(ranks.length - 1, rankIndex + 1)] ?? ranks[1];
 
   const totalEarned = liveTotalEarned;
   const thisMonth = earningsHistory[earningsHistory.length - 1];
@@ -90,25 +89,25 @@ export default function DriveNetwork() {
     <DashboardShell title="Drive Network">
       <div className="space-y-4">
 
-        {/* Current rank hero */}
+            {/* Current business path hero */}
         <div className="bg-black rounded-3xl p-5 text-white relative overflow-hidden">
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #C9A84C 0%, transparent 60%)" }} />
           <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
-            <div className="text-[11px] text-white/40 uppercase tracking-wider mb-1">YOUR RANK</div>
+            <div className="text-[11px] text-white/40 uppercase tracking-wider mb-1">YOUR BUSINESS PATH</div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">{currentRankLive.icon}</span>
                 <span className="text-[22px] font-bold">{statsLoading ? "Loading..." : currentRankLive.title}</span>
               </div>
-              <div className="text-[12px] text-white/50">Rank {currentRankLive.id} of 6 · Next: {nextRankLive.title}</div>
-              {/* Progress to next rank */}
+              <div className="text-[12px] text-white/50">Path {currentRankLive.id} of {ranks.length} · Explore: {nextRankLive.title}</div>
+              {/* Progress to next path */}
               <div className="mt-3">
                 <div className="flex items-center justify-between text-[11px] text-white/40 mb-1">
-                  <span>Progress to {nextRank.title}</span>
-                  <span>3 / 10 enrollments · 0 / 1 Driver legs</span>
+                  <span>Explore {nextRankLive.title}</span>
+                  <span>Choose your path</span>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: "30%", background: "#C9A84C" }} />
+                  <div className="h-full rounded-full" style={{ width: `${((rankIndex + 1) / ranks.length) * 100}%`, background: "#C9A84C" }} />
                 </div>
               </div>
             </div>
@@ -151,13 +150,13 @@ export default function DriveNetwork() {
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
           <div className="space-y-4">
-            {/* 5 income streams summary */}
+            {/* Flyer-approved compensation themes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { label: "Referral Bonuses", value: `$${earningsHistory.reduce((s,m)=>s+m.referralBonus,0)}`, sub: "Lifetime", icon: Gift, color: "bg-blue-600" },
-                { label: "Residual Income", value: `$${thisMonth.residual}/mo`, sub: "This month", icon: TrendingUp, color: "bg-green-600" },
-                { label: "DCP Matching", value: "12,400 DCP", sub: "From team activity", icon: Zap, color: "bg-amber-500" },
-                { label: "Rank Bonus Earned", value: "$500", sub: "Driver rank bonus", icon: Award, color: "bg-purple-600" },
+                { label: "Advance Commissions", value: "Qualifying", sub: "Upfront activity", icon: Gift, color: "bg-blue-600" },
+                { label: "Monthly Residuals", value: "Qualifying", sub: "Ongoing activity", icon: TrendingUp, color: "bg-green-600" },
+                { label: "Leadership Overrides", value: "Qualifying", sub: "Leadership activity", icon: Zap, color: "bg-amber-500" },
+                { label: "Performance Bonuses", value: "Qualifying", sub: "Milestone activity", icon: Award, color: "bg-purple-600" },
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (
@@ -177,11 +176,11 @@ export default function DriveNetwork() {
 
             {/* Rank progression */}
             <div className="bg-white border border-gray-100 rounded-3xl p-5">
-              <div className="text-[13px] font-bold text-black mb-4">Rank Progression</div>
+              <div className="text-[13px] font-bold text-black mb-4">Business Paths</div>
               <div className="flex items-center gap-1 overflow-x-auto pb-2">
                 {ranks.map((rank, i) => {
-                  const isCompleted = rank.id < currentRank.id;
-                  const isCurrent = rank.id === currentRank.id;
+                  const isCompleted = rank.id < currentRankLive.id;
+                  const isCurrent = rank.id === currentRankLive.id;
                   return (
                     <div key={rank.id} className="flex items-center gap-1 flex-shrink-0">
                       <div className={`flex flex-col items-center gap-1 ${isCurrent ? "opacity-100" : isCompleted ? "opacity-100" : "opacity-40"}`}>
@@ -190,10 +189,10 @@ export default function DriveNetwork() {
                         }`}>
                           {isCompleted ? <Check size={14} className="text-green-600" /> : rank.icon}
                         </div>
-                        <div className={`text-[9px] font-bold text-center w-14 ${isCurrent ? "text-black" : "text-gray-400"}`}>{rank.title}</div>
+                        <div className={`text-[9px] font-bold text-center w-20 ${isCurrent ? "text-black" : "text-gray-400"}`}>{rank.title}</div>
                       </div>
                       {i < ranks.length - 1 && (
-                        <div className={`w-6 h-0.5 flex-shrink-0 mb-4 ${rank.id < currentRank.id ? "bg-green-400" : "bg-gray-200"}`} />
+                        <div className={`w-6 h-0.5 flex-shrink-0 mb-4 ${rank.id < currentRankLive.id ? "bg-green-400" : "bg-gray-200"}`} />
                       )}
                     </div>
                   );
@@ -201,33 +200,33 @@ export default function DriveNetwork() {
               </div>
             </div>
 
-            {/* Next rank requirements */}
+            {/* Next path guidance */}
             <div className="bg-gray-50 border border-gray-100 rounded-3xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[13px] font-bold text-black">Next Rank: {nextRank.icon} {nextRank.title}</div>
-                <span className="text-[11px] text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded-full">$500 bonus on unlock</span>
+                <div className="text-[13px] font-bold text-black">Explore: {nextRankLive.icon} {nextRankLive.title}</div>
+                <span className="text-[11px] text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded-full">Training included</span>
               </div>
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center justify-between text-[12px] mb-1">
-                    <span className="text-gray-500">Personal enrollments</span>
-                    <span className="font-bold text-black">3 / 10</span>
+                    <span className="text-gray-500">Next step</span>
+                    <span className="font-bold text-black">Learn the path</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-black rounded-full" style={{ width: "30%" }} />
+                    <div className="h-full bg-black rounded-full" style={{ width: "25%" }} />
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between text-[12px] mb-1">
-                    <span className="text-gray-500">Driver legs in downline</span>
-                    <span className="font-bold text-black">0 / 1</span>
+                    <span className="text-gray-500">Compensation themes</span>
+                    <span className="font-bold text-black">4 available</span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-black rounded-full" style={{ width: "0%" }} />
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-gray-400 mt-3">Marcus Johnson is closest to Driver rank — 0 more enrollments needed. Help him enroll 0 more to unlock your Driver leg.</p>
+              <p className="text-[11px] text-gray-400 mt-3">Explore Associate, Host, Agent, and Freedom Member paths. Qualifying compensation may include advance commissions, monthly residuals, leadership overrides, and performance bonuses.</p>
             </div>
           </div>
         )}
