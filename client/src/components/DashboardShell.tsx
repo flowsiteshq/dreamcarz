@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle,
-  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck
+  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -81,7 +81,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
           <img src="/manus-storage/logo-dark-wordmark-crop_bb978492.png" alt="DREAMCARZ" className="h-[12px] w-auto object-contain" />
         </div>
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          {sidebarLinks.map((link) => {
+          {[...sidebarLinks, ...(user?.role === "admin" ? [{ href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : [])].map((link) => {
             const Icon = link.icon;
             const active = location === link.href;
             return (

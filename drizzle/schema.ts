@@ -138,8 +138,78 @@ export const rentalApplicationDocuments = mysqlTable("rental_application_documen
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// ── Vehicle Reservation Requests ────────────────────────────────────────────
+
+export const reservationRequests = mysqlTable("reservation_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  reference: varchar("reference", { length: 24 }).notNull().unique(),
+  vehicleId: int("vehicleId").notNull(),
+  vehicleName: varchar("vehicleName", { length: 160 }).notNull(),
+  vehicleCategory: varchar("vehicleCategory", { length: 48 }).notNull(),
+  vehicleImage: varchar("vehicleImage", { length: 512 }).notNull(),
+  memberTier: mysqlEnum("memberTier", ["freedom", "plus", "pro", "elite"]).notNull(),
+  estimatedWeeklyFee: int("estimatedWeeklyFee").notNull(),
+  requestedStartDate: varchar("requestedStartDate", { length: 10 }).notNull(),
+  requestedEndDate: varchar("requestedEndDate", { length: 10 }).notNull(),
+  pickupLocation: varchar("pickupLocation", { length: 255 }).notNull(),
+  dropoffLocation: varchar("dropoffLocation", { length: 255 }),
+  contactPhone: varchar("contactPhone", { length: 32 }).notNull(),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["submitted", "under_review", "confirmed", "change_requested", "canceled", "declined"])
+    .default("submitted")
+    .notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ── Service & Incident Reports ─────────────────────────────────────────────
+
+export const serviceReports = mysqlTable("service_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  reference: varchar("reference", { length: 24 }).notNull().unique(),
+  vehicleName: varchar("vehicleName", { length: 160 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  description: text("description").notNull(),
+  reportedLocation: varchar("reportedLocation", { length: 255 }),
+  urgency: mysqlEnum("urgency", ["standard", "urgent"]).default("standard").notNull(),
+  status: mysqlEnum("status", ["submitted", "under_review", "assigned", "resolved", "closed"])
+    .default("submitted")
+    .notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const serviceReportPhotos = mysqlTable("service_report_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  userId: int("userId").notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  originalFilename: varchar("originalFilename", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const serviceReportReviewEvents = mysqlTable("service_report_review_events", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull(),
+  reviewerId: int("reviewerId"),
+  status: mysqlEnum("status", ["submitted", "under_review", "assigned", "resolved", "closed"]).notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type ReferralProfile = typeof referralProfiles.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Commission = typeof commissions.$inferSelect;
 export type RentalApplication = typeof rentalApplications.$inferSelect;
 export type RentalApplicationDocument = typeof rentalApplicationDocuments.$inferSelect;
+export type ReservationRequest = typeof reservationRequests.$inferSelect;
+export type ServiceReport = typeof serviceReports.$inferSelect;
+export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
+export type ServiceReportReviewEvent = typeof serviceReportReviewEvents.$inferSelect;

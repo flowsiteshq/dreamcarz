@@ -12,6 +12,8 @@ import {
   BarChart3, Crown, Info,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 
 // ── Full vehicle catalog with extended stats ──────────────────────────────
 export const allVehicles = [
@@ -191,10 +193,16 @@ type Tier = "freedom" | "plus" | "pro" | "elite";
 
 export default function VehicleDetail() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [selectedTier, setSelectedTier] = useState<Tier>("pro");
   const [showBooking, setShowBooking] = useState(false);
-  const [bookingForm, setBookingForm] = useState({ name: "", email: "", phone: "", date: "", message: "" });
+  const [bookingForm, setBookingForm] = useState({ phone: "", startDate: "", endDate: "", pickupLocation: "DreamCarz HQ · Lanham, MD", dropoffLocation: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [reservationReference, setReservationReference] = useState("");
+  const [bookingError, setBookingError] = useState("");
+  const utils = trpc.useUtils();
+  const applicationQuery = trpc.rentalOnboarding.getApplication.useQuery(undefined, { enabled: Boolean(user) });
+  const createReservation = trpc.reservations.create.useMutation();
 
   // Get vehicle ID from URL
   const params = new URLSearchParams(window.location.search);
@@ -207,9 +215,38 @@ export default function VehicleDetail() {
   const memberDcpValue = memberDcp * 0.01;
   const progressPct = Math.min((memberDcpValue / creditFreeValue) * 100, 100);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setBookingError("");
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (applicationQuery.data?.application?.status !== "approved") {
+      navigate("/dashboard/rental-setup");
+      return;
+    }
+    try {
+      const result = await createReservation.mutateAsync({
+        vehicleId: vehicle.id,
+        vehicleName: vehicle.name,
+        vehicleCategory: vehicle.category,
+        vehicleImage: vehicle.image,
+        memberTier: selectedTier,
+        estimatedWeeklyFee: vehicle.weeklyFee[selectedTier],
+        requestedStartDate: bookingForm.startDate,
+        requestedEndDate: bookingForm.endDate,
+        pickupLocation: bookingForm.pickupLocation,
+        dropoffLocation: bookingForm.dropoffLocation || undefined,
+        contactPhone: bookingForm.phone,
+        notes: bookingForm.message || undefined,
+      });
+      setReservationReference(result.reference);
+      setSubmitted(true);
+      await utils.reservations.list.invalidate();
+    } catch (error) {
+      setBookingError(error instanceof Error ? error.message : "We could not submit your reservation request. Please try again.");
+    }
   };
 
   return (
@@ -454,17 +491,35 @@ export default function VehicleDetail() {
                 {!submitted ? (
                   <>
                     <h3 className="text-xl font-bold text-black mb-1" style={{ fontFamily: "var(--font-display)" }}>Book the {vehicle.model}</h3>
-                    <p className="text-[12px] text-gray-400 mb-5">Fill out the form and our team will confirm within 2 hours.</p>
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                      <input required value={bookingForm.name} onChange={e => setBookingForm({...bookingForm, name: e.target.value})} placeholder="Your full name" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
-                      <input required type="email" value={bookingForm.email} onChange={e => setBookingForm({...bookingForm, email: e.target.value})} placeholder="Email address" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
-                      <input required value={bookingForm.phone} onChange={e => setBookingForm({...bookingForm, phone: e.target.value})} placeholder="Phone number" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
-                      <input required type="date" value={bookingForm.date} onChange={e => setBookingForm({...bookingForm, date: e.target.value})} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
-                      <textarea value={bookingForm.message} onChange={e => setBookingForm({...bookingForm, message: e.target.value})} placeholder="Any special requests or questions?" rows={3} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300 resize-none" />
-                      <button type="submit" className="w-full py-3 bg-black text-white font-bold rounded-2xl hover:bg-gray-900 transition-colors">
-                        Submit Booking Request
-                      </button>
-                    </form>
+                    <p className="text-[12px] text-gray-400 mb-5">Request your dates and our team will review availability before confirming anything.</p>
+                    {!user ? (
+                      <div className="space-y-4">
+                        <p className="text-[13px] leading-relaxed text-gray-500">Sign in to request this vehicle and keep every reservation inside your DreamCarz account.</p>
+                        <button onClick={() => navigate("/login")} className="w-full py-3 bg-black text-white font-bold rounded-2xl">Sign In to Continue</button>
+                      </div>
+                    ) : applicationQuery.isLoading ? (
+                      <div className="py-8 text-center text-[13px] text-gray-400">Checking your rental approval…</div>
+                    ) : applicationQuery.data?.application?.status !== "approved" ? (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-800">Complete Rental Setup and receive approval before submitting a vehicle request. Your saved profile will make this step faster.</div>
+                        <button onClick={() => navigate("/dashboard/rental-setup")} className="w-full py-3 bg-black text-white font-bold rounded-2xl">Complete Rental Setup</button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleSubmit} className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <input required min={new Date().toISOString().slice(0, 10)} type="date" value={bookingForm.startDate} onChange={e => setBookingForm({...bookingForm, startDate: e.target.value})} className="w-full px-3 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
+                          <input required min={bookingForm.startDate || new Date().toISOString().slice(0, 10)} type="date" value={bookingForm.endDate} onChange={e => setBookingForm({...bookingForm, endDate: e.target.value})} className="w-full px-3 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
+                        </div>
+                        <input required value={bookingForm.phone} onChange={e => setBookingForm({...bookingForm, phone: e.target.value})} placeholder="Best contact phone" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
+                        <input required value={bookingForm.pickupLocation} onChange={e => setBookingForm({...bookingForm, pickupLocation: e.target.value})} placeholder="Pickup location" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
+                        <input value={bookingForm.dropoffLocation} onChange={e => setBookingForm({...bookingForm, dropoffLocation: e.target.value})} placeholder="Different return location (optional)" className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300" />
+                        <textarea value={bookingForm.message} onChange={e => setBookingForm({...bookingForm, message: e.target.value})} placeholder="Special requests or questions (optional)" rows={3} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-gray-100 focus:border-gray-300 resize-none" />
+                        {bookingError && <p className="text-[12px] text-red-600">{bookingError}</p>}
+                        <button disabled={createReservation.isPending} type="submit" className="w-full py-3 bg-black text-white font-bold rounded-2xl hover:bg-gray-900 transition-colors disabled:opacity-50">
+                          {createReservation.isPending ? "Submitting Request…" : "Submit Reservation Request"}
+                        </button>
+                      </form>
+                    )}
                   </>
                 ) : (
                   <div className="text-center py-6">
@@ -472,8 +527,8 @@ export default function VehicleDetail() {
                       <CheckCircle2 size={24} className="text-green-600" />
                     </div>
                     <h3 className="text-xl font-bold text-black mb-2" style={{ fontFamily: "var(--font-display)" }}>Request Submitted!</h3>
-                    <p className="text-[13px] text-gray-400 mb-5">Our team will confirm your {vehicle.model} booking within 2 hours. We'll reach out at the contact info you provided.</p>
-                    <button onClick={() => { setShowBooking(false); setSubmitted(false); }} className="w-full py-3 bg-black text-white font-bold rounded-2xl">Done</button>
+                    <p className="text-[13px] text-gray-400 mb-1">Request {reservationReference} is now in review. We’ll contact you after availability is confirmed.</p>
+                    <button onClick={() => navigate("/dashboard/reservations")} className="w-full py-3 bg-black text-white font-bold rounded-2xl mt-5">View My Requests</button>
                   </div>
                 )}
               </div>

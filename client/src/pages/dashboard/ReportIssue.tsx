@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import { trpc } from "@/lib/trpc";
 import {
   ChevronRight, ExternalLink, Clock, Disc, Play, Wrench, BookOpen,
   Battery, Zap, Car, Volume2, AlertTriangle, ClipboardCheck,
@@ -32,7 +33,7 @@ const resourceItems = [
   { icon: Battery, label: "Vehicle Health", desc: "Diagnostics and status", arrow: true },
 ];
 
-interface PhotoFile { id: string; url: string; }
+interface PhotoFile { id: string; url: string; file: File; }
 
 export default function ReportIssue() {
   const [tab, setTab] = useState<Tab>("request");
@@ -44,14 +45,18 @@ export default function ReportIssue() {
   const [photos, setPhotos] = useState<PhotoFile[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [referenceId] = useState(() => `DC-${Date.now().toString().slice(-6)}`);
+  const [referenceId, setReferenceId] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const utils = trpc.useUtils();
+  const reportHistory = trpc.serviceReports.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const createReport = trpc.serviceReports.create.useMutation();
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newPhotos: PhotoFile[] = files.map(f => ({
       id: Math.random().toString(36).slice(2),
       url: URL.createObjectURL(f),
+      file: f,
     }));
     setPhotos(prev => [...prev, ...newPhotos].slice(0, 8));
   };
@@ -67,9 +72,34 @@ export default function ReportIssue() {
     );
   };
 
-  const handleSubmit = () => {
+  const readFileAsBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(new Error("Unable to read image"));
+    reader.readAsDataURL(file);
+  });
+
+  const handleSubmit = async () => {
+    if (!selectedCategory || !description.trim()) return;
     setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1500);
+    try {
+      const result = await createReport.mutateAsync({
+        category: selectedCategory,
+        description: description.trim(),
+        reportedLocation: location.trim() || undefined,
+        urgency: selectedCategory === "Collision & Glass" ? "urgent" : "standard",
+        photos: await Promise.all(photos.map(async photo => ({
+          filename: photo.file.name,
+          contentType: photo.file.type as "image/jpeg" | "image/png" | "image/webp",
+          base64: await readFileAsBase64(photo.file),
+        }))),
+      });
+      setReferenceId(result.reference);
+      setSubmitted(true);
+      await utils.serviceReports.list.invalidate();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Success screen ──
@@ -275,6 +305,10 @@ export default function ReportIssue() {
         {/* RESOURCES TAB */}
         {tab === "resources" && (
           <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <p className="text-[12px] font-semibold text-black mb-3">My report history</p>
+              {reportHistory.data?.length ? reportHistory.data.slice(0, 3).map(report => <div key={report.id} className="py-2 border-b border-gray-50 last:border-0"><div className="flex items-center justify-between"><div><p className="text-[12px] font-semibold text-black">{report.category}</p><p className="text-[10px] text-gray-400">{report.reference}</p></div><span className="text-[10px] font-bold uppercase text-gray-500">{report.status.replaceAll("_", " ")}</span></div>{report.history?.[0]?.note && <p className="mt-1 text-[10px] text-gray-400">Latest update: {report.history[0].note}</p>}</div>) : <p className="text-[12px] text-gray-400">No submitted service reports yet.</p>}
+            </div>
             <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
               {resourceItems.map((item, i) => {
                 const Icon = item.icon;

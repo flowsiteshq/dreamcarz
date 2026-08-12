@@ -28,3 +28,13 @@
 - [x] Re-present the refreshed DreamCarz deck and confirm the delivered presentation reflects updated content.
 - [x] Verify the website, app, and presentation updates and publish the refreshed deliverables.
 - [ ] Push the flyer-content website and app updates to GitHub main for the Railway deployment.
+- [ ] Confirm the active GitHub browser session and use it to authorize the pending repository synchronization.
+- [ ] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
+- [x] Audit remaining DreamCarz feature gaps and define the next production-ready release scope.
+- [x] Build a member booking and reservation request workflow with availability preferences and review status.
+- [ ] Complete operational follow-up for member requests, service reports, and administrative review.
+- [ ] Add persistent service and incident-report records with member submission, status, and review history.
+- [x] Connect the existing Report an Issue experience to the service-report backend and the administrator operations queue.
+- [ ] Test and publish the next completed DreamCarz feature release.
+- [ ] Add a persistent service-report review-event audit log and expose member/admin report timelines.
+- [ ] Add tests for service-report creation, review-status transitions, and review-history persistence.

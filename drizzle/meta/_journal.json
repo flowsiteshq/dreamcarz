@@ -29,6 +29,27 @@
       "when": 1786476187053,
       "tag": "0003_wandering_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786537093227,
+      "tag": "0004_familiar_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786537722318,
+      "tag": "0005_brainy_cloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786538141126,
+      "tag": "0006_wet_metal_master",
+      "breakpoints": true
     }
   ]
 }

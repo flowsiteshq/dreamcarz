@@ -10,6 +10,11 @@ import {
   commissions,
   rentalApplications,
   rentalApplicationDocuments,
+  reservationRequests,
+  users,
+  serviceReports,
+  serviceReportPhotos,
+  serviceReportReviewEvents,
 } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -17,6 +22,7 @@ import { z } from "zod";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
+import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 
 export const appRouter = router({
   system: systemRouter,
@@ -361,6 +367,237 @@ export const appRouter = router({
           .where(eq(rentalApplications.id, application.id));
 
         return { success: true, status: "under_review" as const };
+      }),
+  }),
+
+  reservations: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(reservationRequests)
+        .where(eq(reservationRequests.userId, ctx.user.id))
+        .orderBy(desc(reservationRequests.createdAt));
+    }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          vehicleId: z.number().int().positive(),
+          vehicleName: z.string().trim().min(2).max(160),
+          vehicleCategory: z.string().trim().min(2).max(48),
+          vehicleImage: z.string().trim().min(1).max(512),
+          memberTier: z.enum(["freedom", "plus", "pro", "elite"]),
+          estimatedWeeklyFee: z.number().int().positive().max(10_000),
+          requestedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          requestedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          pickupLocation: z.string().trim().min(2).max(255),
+          dropoffLocation: z.string().trim().max(255).optional(),
+          contactPhone: z.string().trim().min(7).max(32),
+          notes: z.string().trim().max(2_000).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Reservations are temporarily unavailable." });
+
+        if (!hasValidReservationDateRange(input.requestedStartDate, input.requestedEndDate)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Your return date must be after your pickup date." });
+        }
+
+        const applications = await db
+          .select({ status: rentalApplications.status })
+          .from(rentalApplications)
+          .where(eq(rentalApplications.userId, ctx.user.id))
+          .limit(1);
+        const application = applications[0];
+        if (!application || application.status !== "approved") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Complete Rental Setup and receive approval before requesting a vehicle.",
+          });
+        }
+
+        const reference = `DC-${new Date().getFullYear()}-${nanoid(7).toUpperCase()}`;
+        await db.insert(reservationRequests).values({
+          userId: ctx.user.id,
+          reference,
+          ...input,
+          status: "submitted",
+        });
+        return { success: true, reference };
+      }),
+
+    cancel: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Reservations are temporarily unavailable." });
+        const requests = await db
+          .select()
+          .from(reservationRequests)
+          .where(and(eq(reservationRequests.id, input.id), eq(reservationRequests.userId, ctx.user.id)))
+          .limit(1);
+        const request = requests[0];
+        if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Reservation request not found." });
+        if (!canMemberCancelReservation(request.status)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This reservation request can no longer be canceled." });
+        }
+        await db.update(reservationRequests).set({ status: "canceled" }).where(eq(reservationRequests.id, input.id));
+        return { success: true };
+      }),
+  }),
+
+  serviceReports: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const reports = await db.select().from(serviceReports).where(eq(serviceReports.userId, ctx.user.id)).orderBy(desc(serviceReports.createdAt));
+      return Promise.all(reports.map(async report => ({
+        ...report,
+        history: await db.select().from(serviceReportReviewEvents).where(eq(serviceReportReviewEvents.reportId, report.id)).orderBy(desc(serviceReportReviewEvents.createdAt)),
+      })));
+    }),
+
+    create: protectedProcedure
+      .input(z.object({
+        category: z.string().trim().min(2).max(80),
+        description: z.string().trim().min(5).max(4_000),
+        reportedLocation: z.string().trim().max(255).optional(),
+        urgency: z.enum(["standard", "urgent"]),
+        photos: z.array(z.object({
+          filename: z.string().min(1).max(120),
+          contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+          base64: z.string().min(100).max(8_400_000),
+        })).max(8),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service reporting is temporarily unavailable." });
+        const reference = `SR-${new Date().getFullYear()}-${nanoid(7).toUpperCase()}`;
+        const inserted = await db.insert(serviceReports).values({
+          userId: ctx.user.id,
+          reference,
+          vehicleName: "2024 Porsche 911 Carrera S",
+          category: input.category,
+          description: input.description,
+          reportedLocation: input.reportedLocation || null,
+          urgency: input.urgency,
+        });
+        const reportId = Number(inserted[0].insertId);
+        await db.insert(serviceReportReviewEvents).values({ reportId, status: "submitted", note: "Report received" });
+        for (const photo of input.photos) {
+          const bytes = Buffer.from(photo.base64, "base64");
+          if (bytes.length > 6 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "Each photo must be 6 MB or smaller." });
+          const extension = photo.contentType === "image/png" ? "png" : photo.contentType === "image/webp" ? "webp" : "jpg";
+          const { key } = await storagePut(`service-reports/${ctx.user.id}/${reportId}_${Date.now()}_${nanoid(4)}.${extension}`, bytes, photo.contentType);
+          await db.insert(serviceReportPhotos).values({ reportId, userId: ctx.user.id, storageKey: key, originalFilename: photo.filename, contentType: photo.contentType });
+        }
+        return { success: true, reference };
+      }),
+  }),
+
+  operations: router({
+    getQueue: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) return { applications: [], reservations: [], serviceReports: [] };
+
+      const applications = await db
+        .select({
+          id: rentalApplications.id,
+          status: rentalApplications.status,
+          currentStep: rentalApplications.currentStep,
+          phone: rentalApplications.phone,
+          requestedStartDate: rentalApplications.requestedStartDate,
+          requestedEndDate: rentalApplications.requestedEndDate,
+          pickupLocation: rentalApplications.pickupLocation,
+          identityVerificationStatus: rentalApplications.identityVerificationStatus,
+          submittedAt: rentalApplications.submittedAt,
+          reviewNote: rentalApplications.reviewNote,
+          memberName: users.name,
+          memberEmail: users.email,
+        })
+        .from(rentalApplications)
+        .innerJoin(users, eq(rentalApplications.userId, users.id))
+        .orderBy(desc(rentalApplications.updatedAt));
+
+      const reservations = await db
+        .select({
+          id: reservationRequests.id,
+          reference: reservationRequests.reference,
+          status: reservationRequests.status,
+          vehicleName: reservationRequests.vehicleName,
+          requestedStartDate: reservationRequests.requestedStartDate,
+          requestedEndDate: reservationRequests.requestedEndDate,
+          pickupLocation: reservationRequests.pickupLocation,
+          contactPhone: reservationRequests.contactPhone,
+          notes: reservationRequests.notes,
+          reviewNote: reservationRequests.reviewNote,
+          memberName: users.name,
+          memberEmail: users.email,
+        })
+        .from(reservationRequests)
+        .innerJoin(users, eq(reservationRequests.userId, users.id))
+        .orderBy(desc(reservationRequests.updatedAt));
+
+      const serviceReportsQueue = await db
+        .select({
+          id: serviceReports.id,
+          reference: serviceReports.reference,
+          status: serviceReports.status,
+          urgency: serviceReports.urgency,
+          category: serviceReports.category,
+          vehicleName: serviceReports.vehicleName,
+          description: serviceReports.description,
+          reportedLocation: serviceReports.reportedLocation,
+          reviewNote: serviceReports.reviewNote,
+          createdAt: serviceReports.createdAt,
+          memberName: users.name,
+          memberEmail: users.email,
+        })
+        .from(serviceReports)
+        .innerJoin(users, eq(serviceReports.userId, users.id))
+        .orderBy(desc(serviceReports.updatedAt));
+
+      return { applications, reservations, serviceReports: serviceReportsQueue };
+    }),
+
+    reviewApplication: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "needs_attention", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
+        await db.update(rentalApplications).set({
+          status: input.status,
+          identityVerificationStatus: input.status === "approved" ? "verified" : "manual_review",
+          reviewNote: input.reviewNote || null,
+          reviewedAt: new Date(),
+        }).where(eq(rentalApplications.id, input.id));
+        return { success: true };
+      }),
+
+    reviewReservation: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["under_review", "confirmed", "change_requested", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
+        await db.update(reservationRequests).set({ status: input.status, reviewNote: input.reviewNote || null, reviewedAt: new Date() }).where(eq(reservationRequests.id, input.id));
+        return { success: true };
+      }),
+
+    reviewServiceReport: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["under_review", "assigned", "resolved", "closed"]), reviewNote: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
+        await db.update(serviceReports).set({ status: input.status, reviewNote: input.reviewNote || null, reviewedAt: new Date() }).where(eq(serviceReports.id, input.id));
+        await db.insert(serviceReportReviewEvents).values({ reportId: input.id, reviewerId: ctx.user.id, status: input.status, note: input.reviewNote || null });
+        return { success: true };
       }),
   }),
 });
