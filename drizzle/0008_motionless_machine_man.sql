@@ -1,0 +1,1 @@
+ALTER TABLE `partner_locations` ADD `isInNetwork` int DEFAULT 1 NOT NULL;

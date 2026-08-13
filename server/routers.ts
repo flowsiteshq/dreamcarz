@@ -19,6 +19,7 @@ import {
 } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
 import { z } from "zod";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
@@ -506,8 +507,7 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) return [];
         const rows = await db.select().from(partnerLocations).where(eq(partnerLocations.isActive, 1)).orderBy(desc(partnerLocations.updatedAt));
-        const query = input?.query?.toLowerCase() || "";
-        return rows.filter(item => (!input?.category || input.category === "all" || item.category === input.category) && (!query || `${item.name} ${item.city} ${item.tags || ""}`.toLowerCase().includes(query)));
+        return filterPartnerDirectory(rows, input);
       }),
     adminList: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -518,7 +518,7 @@ export const appRouter = router({
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(partnerLocations).set({ isActive: input.isActive ? 1 : 0 }).where(eq(partnerLocations.id, input.id));
+        await db.update(partnerLocations).set({ isActive: partnerActivationValue(input.isActive) }).where(eq(partnerLocations.id, input.id));
       return { success: true };
     }),
   }),

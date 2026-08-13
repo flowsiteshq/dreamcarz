@@ -5,6 +5,7 @@
  * car washes, and parking garages.
  */
 import DashboardShell from "@/components/DashboardShell";
+import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
 import {
   MapPin, Zap, Wrench, AlertTriangle, Car, Star, Phone,
@@ -368,9 +369,13 @@ export default function LocationsPage() {
   const [activeCategory, setActiveCategory] = useState<LocationCategory>("all");
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(locations[0]);
   const [search, setSearch] = useState("");
+  const allPartners = trpc.partners.list.useQuery({ category: "all" }, { refetchOnWindowFocus: false });
   const livePartners = trpc.partners.list.useQuery({ query: search || undefined, category: activeCategory }, { refetchOnWindowFocus: false });
 
-  const filtered: Location[] = (livePartners.data?.length ? livePartners.data.map(item => ({ id: item.id, name: item.name, category: item.category as LocationCategory, address: item.address, city: item.city, state: item.state, zip: item.postalCode, phone: item.phone || undefined, hours: item.hours || undefined, distance: "Partner", rating: undefined, inNetwork: true, description: item.description || "DreamCarz approved partner.", tags: item.tags?.split(",").map(tag => tag.trim()).filter(Boolean) || [], lat: Number(item.latitude || 0), lng: Number(item.longitude || 0), userIncident: false })) : locations).filter(l => {
+  const toLocation = (item: NonNullable<typeof livePartners.data>[number]): Location => ({ id: item.id, name: item.name, category: item.category as LocationCategory, address: item.address, city: item.city, state: item.state, zip: item.postalCode, phone: item.phone || undefined, hours: item.hours || undefined, distance: item.isInNetwork ? "Partner" : "Listed location", rating: undefined, inNetwork: Boolean(item.isInNetwork), description: item.description || "DreamCarz listed location.", tags: item.tags?.split(",").map(tag => tag.trim()).filter(Boolean) || [], lat: Number(item.latitude || 0), lng: Number(item.longitude || 0), userIncident: false });
+  const incidentLocations = locations.filter(location => location.category === "incident");
+  const hasLiveDirectory = Boolean(allPartners.data?.length);
+  const filtered: Location[] = (hasLiveDirectory ? [...(livePartners.data || []).map(toLocation), ...incidentLocations] : locations).filter(l => {
     const matchCat = activeCategory === "all" || l.category === activeCategory;
     const matchSearch = search === "" ||
       l.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -379,15 +384,17 @@ export default function LocationsPage() {
     return matchCat && matchSearch;
   });
 
+  const directoryLocations = hasLiveDirectory ? allPartners.data!.map(toLocation) : locations.filter(location => location.category !== "incident");
+  const countByCategory = (category: LocationCategory) => category === "incident" ? incidentLocations.length : directoryLocations.filter(location => location.category === category).length;
   const counts: Record<LocationCategory, number> = {
-    all: locations.length,
-    dreamcarz: locations.filter(l => l.category === "dreamcarz").length,
-    repair: locations.filter(l => l.category === "repair").length,
-    charging: locations.filter(l => l.category === "charging").length,
-    incident: locations.filter(l => l.category === "incident").length,
-    dealership: locations.filter(l => l.category === "dealership").length,
-    carwash: locations.filter(l => l.category === "carwash").length,
-    parking: locations.filter(l => l.category === "parking").length,
+    all: directoryLocations.length + incidentLocations.length,
+    dreamcarz: countByCategory("dreamcarz"),
+    repair: countByCategory("repair"),
+    charging: countByCategory("charging"),
+    incident: countByCategory("incident"),
+    dealership: countByCategory("dealership"),
+    carwash: countByCategory("carwash"),
+    parking: countByCategory("parking"),
   };
 
   const IconComp = selectedLocation ? categoryIcons[selectedLocation.category] : MapPin;
@@ -435,18 +442,10 @@ export default function LocationsPage() {
 
           {/* Map embed */}
           <div className="lg:col-span-3 bg-gray-50 rounded-3xl overflow-hidden relative" style={{ minHeight: 420 }}>
-            <iframe
-              title="DreamCarz Locations Map"
-              width="100%"
-              height="100%"
-              style={{ border: 0, minHeight: 420 }}
-              loading="lazy"
-              allowFullScreen
-              src={`https://www.google.com/maps/embed/v1/search?key=AIzaSyD-placeholder&q=${encodeURIComponent(
-                selectedLocation
-                  ? `${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`
-                  : "10001 Derekwood Ln, Lanham, MD 20706"
-              )}`}
+            <MapView
+              className="h-[420px]"
+              initialCenter={selectedLocation ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : { lat: 38.9407, lng: -76.8610 }}
+              initialZoom={12}
             />
             {/* Map overlay with selected location info */}
             {selectedLocation && (

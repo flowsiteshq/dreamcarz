@@ -39,11 +39,14 @@
 - [ ] Add a persistent service-report review-event audit log and expose member/admin report timelines.
 - [ ] Add tests for service-report creation, review-status transitions, and review-history persistence.
 - [x] Audit the current Locations experience and define searchable partner data requirements.
-- [ ] Build member partner search, category filters, and partner location detail views.
-- [ ] Add administrator partner management with active/inactive controls.
-- [ ] Test and publish the DreamCarz partner-search release.
-- [ ] Populate the live partner directory with the current DreamCarz network and verify active/inactive search behavior.
-- [ ] Add partner-directory test coverage for listing and active-status management.
+- [x] Build member partner search, category filters, and partner location detail views.
+- [x] Correct member location filter counts to reflect the live partner directory while preserving personal incident counts.
+- [x] Distinguish DreamCarz in-network partners from member-reference locations so charging and parking listings are not mislabeled as partners.
+- [x] Replace the invalid placeholder Google Maps iframe with the built-in proxied interactive map on the member Locations page.
+- [x] Add administrator partner management with active/inactive controls.
+- [x] Test and publish the DreamCarz partner-search release.
+- [x] Populate the live partner directory with the current DreamCarz network and verify active/inactive search behavior.
+- [x] Add partner-directory test coverage for listing and active-status management.
 - [ ] Extract and compare the newly supplied Dream Carz flyer against current website and app content.
 - [x] Audit current membership, rewards, opportunity, and public homepage copy against the latest flyer integration notes.
 - [ ] Integrate the newly approved flyer messaging across applicable DreamCarz website and application screens without changing design or colors.

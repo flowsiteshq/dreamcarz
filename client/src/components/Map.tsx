@@ -149,6 +149,10 @@ export function MapView({
     init();
   }, [init]);
 
+  useEffect(() => {
+    map.current?.panTo(initialCenter);
+  }, [initialCenter.lat, initialCenter.lng]);
+
   return (
     <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />
   );

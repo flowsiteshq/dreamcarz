@@ -218,6 +218,7 @@ export const partnerLocations = mysqlTable("partner_locations", {
   tags: text("tags"),
   latitude: varchar("latitude", { length: 24 }),
   longitude: varchar("longitude", { length: 24 }),
+  isInNetwork: int("isInNetwork").default(1).notNull(),
   isActive: int("isActive").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
