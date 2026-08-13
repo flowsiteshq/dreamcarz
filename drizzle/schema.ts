@@ -204,6 +204,25 @@ export const serviceReportReviewEvents = mysqlTable("service_report_review_event
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const partnerLocations = mysqlTable("partner_locations", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  category: varchar("category", { length: 48 }).notNull(),
+  address: varchar("address", { length: 255 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  state: varchar("state", { length: 16 }).notNull(),
+  postalCode: varchar("postalCode", { length: 24 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  hours: varchar("hours", { length: 255 }),
+  description: text("description"),
+  tags: text("tags"),
+  latitude: varchar("latitude", { length: 24 }),
+  longitude: varchar("longitude", { length: 24 }),
+  isActive: int("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type ReferralProfile = typeof referralProfiles.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Commission = typeof commissions.$inferSelect;

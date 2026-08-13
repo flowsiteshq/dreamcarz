@@ -38,3 +38,22 @@
 - [ ] Test and publish the next completed DreamCarz feature release.
 - [ ] Add a persistent service-report review-event audit log and expose member/admin report timelines.
 - [ ] Add tests for service-report creation, review-status transitions, and review-history persistence.
+- [x] Audit the current Locations experience and define searchable partner data requirements.
+- [ ] Build member partner search, category filters, and partner location detail views.
+- [ ] Add administrator partner management with active/inactive controls.
+- [ ] Test and publish the DreamCarz partner-search release.
+- [ ] Populate the live partner directory with the current DreamCarz network and verify active/inactive search behavior.
+- [ ] Add partner-directory test coverage for listing and active-status management.
+- [ ] Extract and compare the newly supplied Dream Carz flyer against current website and app content.
+- [x] Audit current membership, rewards, opportunity, and public homepage copy against the latest flyer integration notes.
+- [ ] Integrate the newly approved flyer messaging across applicable DreamCarz website and application screens without changing design or colors.
+- [ ] Verify and publish the newly integrated flyer-content release.
+- [x] Compare the latest approved flyer content against the existing DreamCarz presentation deck.
+- [x] Update the affected DreamCarz deck slides with the latest flyer information without changing visual design or colors.
+- [x] Verify the refreshed deck slide by slide and present the updated version.
+- [x] Perform and document a full 20-slide QA pass of the refreshed DreamCarz deck for approved messaging, readability, and visual continuity.
+- [x] Update the deck metadata and outline notes to accurately reflect the refreshed flyer-approved slide content.
+- [x] Remove or substantiate any unsupported numerical or program claims identified during the full 20-slide presentation QA pass, including supporting deck metadata.
+- [x] Correct any footer slide-number mismatches identified during full-deck QA.
+- [x] Reconcile the slide-project outline metadata through supported presentation operations, without directly editing internal state files.
+- [x] Restore all 20 rendered-slide states after synchronizing the presentation outline metadata.

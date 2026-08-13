@@ -5,6 +5,7 @@
  * car washes, and parking garages.
  */
 import DashboardShell from "@/components/DashboardShell";
+import { trpc } from "@/lib/trpc";
 import {
   MapPin, Zap, Wrench, AlertTriangle, Car, Star, Phone,
   Clock, Navigation, ChevronRight, Shield, Droplets, ParkingCircle,
@@ -367,8 +368,9 @@ export default function LocationsPage() {
   const [activeCategory, setActiveCategory] = useState<LocationCategory>("all");
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(locations[0]);
   const [search, setSearch] = useState("");
+  const livePartners = trpc.partners.list.useQuery({ query: search || undefined, category: activeCategory }, { refetchOnWindowFocus: false });
 
-  const filtered = locations.filter(l => {
+  const filtered: Location[] = (livePartners.data?.length ? livePartners.data.map(item => ({ id: item.id, name: item.name, category: item.category as LocationCategory, address: item.address, city: item.city, state: item.state, zip: item.postalCode, phone: item.phone || undefined, hours: item.hours || undefined, distance: "Partner", rating: undefined, inNetwork: true, description: item.description || "DreamCarz approved partner.", tags: item.tags?.split(",").map(tag => tag.trim()).filter(Boolean) || [], lat: Number(item.latitude || 0), lng: Number(item.longitude || 0), userIncident: false })) : locations).filter(l => {
     const matchCat = activeCategory === "all" || l.category === activeCategory;
     const matchSearch = search === "" ||
       l.name.toLowerCase().includes(search.toLowerCase()) ||

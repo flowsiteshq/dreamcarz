@@ -22,9 +22,9 @@ export default function Rewards() {
         {/* DCP balance */}
         <div className="rounded-2xl p-6 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg, #111, #333)" }}>
           <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 translate-x-16 -translate-y-16" />
-          <p className="text-[11px] uppercase tracking-wider text-white/60 mb-1">Available DCP Balance</p>
+          <p className="text-[11px] uppercase tracking-wider text-white/60 mb-1">DCP Program Overview</p>
           <p className="text-4xl font-bold" style={{ fontFamily: "var(--font-display)" }}>285,000</p>
-          <p className="text-white/60 text-sm mt-1">$2,850 in transportation purchasing power</p>
+          <p className="text-white/60 text-sm mt-1">Earn DCP through qualifying activity and redeem eligible points for real rewards.</p>
           <div className="flex items-center gap-4 mt-4">
             <div>
               <p className="text-[10px] text-white/50 uppercase tracking-wider">Lifetime Earned</p>

@@ -221,13 +221,13 @@ export default function Opportunity() {
         <div className="container">
           <div className="text-center mb-12 reveal">
             <div className="section-label mb-3">Getting Started</div>
-            <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>3 Steps to Your First Check</h2>
+            <h2 className="font-display text-4xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Build Your Dream Carz Path</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { step: "01", title: "Join DreamCarz", desc: "Activate any membership tier. Your membership is your business foundation.", icon: Car },
-              { step: "02", title: "Share Your Link", desc: "Get your personal referral link from the Drive Network dashboard. Share it anywhere.", icon: Users },
-              { step: "03", title: "Earn & Build", desc: "Earn referral bonuses immediately. Build your downline for residual monthly income.", icon: TrendingUp },
+              { step: "01", title: "Choose Your Path", desc: "Build as an Associate, Host, Agent, or Freedom Member within the Dream Carz ecosystem.", icon: Car },
+              { step: "02", title: "Take Qualifying Action", desc: "Share, list, operate, or join—then follow the applicable program and compensation plan.", icon: Users },
+              { step: "03", title: "Earn & Build", desc: "Qualifying activity may create access to advance commissions, residuals, leadership overrides, and bonuses.", icon: TrendingUp },
             ].map((s, i) => {
               const Icon = s.icon;
               return (

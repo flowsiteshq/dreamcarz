@@ -15,6 +15,7 @@ import {
   serviceReports,
   serviceReportPhotos,
   serviceReportReviewEvents,
+  partnerLocations,
 } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -496,6 +497,30 @@ export const appRouter = router({
         }
         return { success: true, reference };
       }),
+  }),
+
+  partners: router({
+    list: publicProcedure
+      .input(z.object({ query: z.string().trim().max(120).optional(), category: z.string().trim().max(48).optional() }).optional())
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db.select().from(partnerLocations).where(eq(partnerLocations.isActive, 1)).orderBy(desc(partnerLocations.updatedAt));
+        const query = input?.query?.toLowerCase() || "";
+        return rows.filter(item => (!input?.category || input.category === "all" || item.category === input.category) && (!query || `${item.name} ${item.city} ${item.tags || ""}`.toLowerCase().includes(query)));
+      }),
+    adminList: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      return db ? db.select().from(partnerLocations).orderBy(desc(partnerLocations.updatedAt)) : [];
+    }),
+    setActive: protectedProcedure.input(z.object({ id: z.number().int().positive(), isActive: z.boolean() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(partnerLocations).set({ isActive: input.isActive ? 1 : 0 }).where(eq(partnerLocations.id, input.id));
+      return { success: true };
+    }),
   }),
 
   operations: router({

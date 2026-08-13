@@ -367,17 +367,19 @@ export default function Home() {
             </div>
             <div className="space-y-3">
               {[
-                { label: "Year 1 Multiplier", value: "1.00x" },
-                { label: "Year 2 Multiplier", value: "1.10x" },
-                { label: "Year 3 Multiplier", value: "1.20x" },
-                { label: "Year 5+ Multiplier", value: "1.50x" },
+                { label: "Day 1", value: "Hassle Free" },
+                { label: "Day 1", value: "Credit Free" },
+                { label: "Year 1", value: "Worry Free" },
+                { label: "Year 2", value: "Interest Free" },
+                { label: "Year 3", value: "Drive Free" },
+                { label: "Year 4+", value: "Be Free" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between py-3 border-b border-white/10">
                   <span className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>{item.label}</span>
                   <span className="font-mono text-lg font-bold text-white">{item.value}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-gray-600 pt-2" style={{ fontFamily: "var(--font-sans)" }}>Illustrative multipliers. Subject to financial modeling and final approval.</p>
+              <p className="text-[11px] text-gray-600 pt-2" style={{ fontFamily: "var(--font-sans)" }}>The longer you stay, the more you unlock. Eligibility and redemptions are subject to applicable program terms.</p>
             </div>
           </div>
         </div>

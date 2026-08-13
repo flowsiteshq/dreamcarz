@@ -50,6 +50,13 @@
       "when": 1786538141126,
       "tag": "0006_wet_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1786539732281,
+      "tag": "0007_woozy_union_jack",
+      "breakpoints": true
     }
   ]
 }

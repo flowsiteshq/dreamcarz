@@ -1,0 +1,7 @@
+# Latest Dream Carz Flyer — Approved Integration Notes
+
+The approved headline is **“One Membership. Many Freedoms. Endless Opportunities.”** The membership offer shown is **$39.95/month** with cancellation at any time. The approved positioning describes Dream Carz as a complete automotive ecosystem that helps people save, earn, and build freedom through vehicles, rewards, and relationships.
+
+The Freedom Progression is: **Hassle Free** (Day 1), **Credit Free Starts Day 1** (Day 1), **Worry Free** (Year 1), **Interest Free** (Year 2), **Drive Free** (Year 3), and **Be Free** (Year 4+). DCP is earned through membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, referrals, and anniversary bonuses. DCP redemption categories are free rental days, lease and interest credits, down-payment assistance, vehicle purchase credits, service and maintenance savings, and exclusive member perks.
+
+The approved participation paths are Associate, Host, Agent, and Freedom Member. Associate language: introduce others, earn advance commissions, monthly residual income, leadership rewards, and unlimited income potential. Host: list a car, members become customers, earn high transaction payouts, build long-term wealth. Agent: operate and manage a location, earn on rentals/RTO/LTO/sales, scalable model. The flyer also names compensation themes: advance commissions, monthly residuals, leadership overrides, and performance bonuses.

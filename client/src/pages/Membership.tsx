@@ -87,17 +87,17 @@ export default function Membership() {
       {/* Tenure */}
       <section className="py-16 bg-white">
         <div className="container text-center">
-          <div className="section-label mb-3 reveal">Tenure Rewards</div>
-          <h2 className="font-display text-4xl font-bold text-black mb-10 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>The Longer You Stay, the More Powerful Your DCP</h2>
-          <div className="grid grid-cols-5 gap-3 max-w-2xl mx-auto reveal delay-200">
-            {[{y:"Year 1",m:"1.00x"},{y:"Year 2",m:"1.10x"},{y:"Year 3",m:"1.20x"},{y:"Year 4",m:"1.35x"},{y:"Year 5+",m:"1.50x"}].map((item,i) => (
+          <div className="section-label mb-3 reveal">Freedom Progression</div>
+          <h2 className="font-display text-4xl font-bold text-black mb-10 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Start Strong. Stay Loyal. Get Freedom.</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-3xl mx-auto reveal delay-200">
+            {[{y:"Day 1",m:"Hassle Free"},{y:"Day 1",m:"Credit Free"},{y:"Year 1",m:"Worry Free"},{y:"Year 2",m:"Interest Free"},{y:"Year 3",m:"Drive Free"},{y:"Year 4+",m:"Be Free"}].map((item,i) => (
               <div key={i} className={`rounded-xl p-4 text-center ${i===4?"bg-black text-white":"bg-section border border-gray-200"}`}>
                 <div className={`font-mono text-xl font-bold mb-1 ${i===4?"text-white":"text-black"}`}>{item.m}</div>
                 <div className={`text-xs ${i===4?"text-gray-400":"text-gray-500"}`} style={{ fontFamily: "var(--font-sans)" }}>{item.y}</div>
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-5" style={{ fontFamily: "var(--font-sans)" }}>Illustrative multipliers. Subject to financial modeling and final approval.</p>
+          <p className="text-xs text-gray-400 mt-5" style={{ fontFamily: "var(--font-sans)" }}>The longer you stay, the more you unlock. Eligibility and DCP redemption remain subject to applicable program terms.</p>
         </div>
       </section>
       <Footer />
