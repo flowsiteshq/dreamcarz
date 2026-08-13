@@ -20,6 +20,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
+import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
 import { z } from "zod";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
@@ -458,7 +459,7 @@ export const appRouter = router({
       const reports = await db.select().from(serviceReports).where(eq(serviceReports.userId, ctx.user.id)).orderBy(desc(serviceReports.createdAt));
       return Promise.all(reports.map(async report => ({
         ...report,
-        history: await db.select().from(serviceReportReviewEvents).where(eq(serviceReportReviewEvents.reportId, report.id)).orderBy(desc(serviceReportReviewEvents.createdAt)),
+        history: orderServiceReportTimeline(await db.select().from(serviceReportReviewEvents).where(eq(serviceReportReviewEvents.reportId, report.id)).orderBy(desc(serviceReportReviewEvents.createdAt))),
       })));
     }),
 
@@ -477,11 +478,21 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service reporting is temporarily unavailable." });
+        const activeReservations = await db
+          .select({ vehicleName: reservationRequests.vehicleName })
+          .from(reservationRequests)
+          .where(and(eq(reservationRequests.userId, ctx.user.id), eq(reservationRequests.status, "confirmed")))
+          .orderBy(desc(reservationRequests.updatedAt))
+          .limit(1);
+        const currentVehicle = activeReservations[0]?.vehicleName;
+        if (!currentVehicle) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A confirmed DreamCarz reservation is required before submitting a vehicle service report." });
+        }
         const reference = `SR-${new Date().getFullYear()}-${nanoid(7).toUpperCase()}`;
         const inserted = await db.insert(serviceReports).values({
           userId: ctx.user.id,
           reference,
-          vehicleName: "2024 Porsche 911 Carrera S",
+          vehicleName: currentVehicle,
           category: input.category,
           description: input.description,
           reportedLocation: input.reportedLocation || null,
@@ -586,7 +597,12 @@ export const appRouter = router({
         .innerJoin(users, eq(serviceReports.userId, users.id))
         .orderBy(desc(serviceReports.updatedAt));
 
-      return { applications, reservations, serviceReports: serviceReportsQueue };
+      const serviceReportsWithHistory = await Promise.all(serviceReportsQueue.map(async report => ({
+        ...report,
+        history: orderServiceReportTimeline(await db.select().from(serviceReportReviewEvents).where(eq(serviceReportReviewEvents.reportId, report.id)).orderBy(desc(serviceReportReviewEvents.createdAt))),
+      })));
+
+      return { applications, reservations, serviceReports: serviceReportsWithHistory };
     }),
 
     reviewApplication: protectedProcedure

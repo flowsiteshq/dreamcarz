@@ -32,12 +32,12 @@
 - [ ] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
 - [x] Audit remaining DreamCarz feature gaps and define the next production-ready release scope.
 - [x] Build a member booking and reservation request workflow with availability preferences and review status.
-- [ ] Complete operational follow-up for member requests, service reports, and administrative review.
-- [ ] Add persistent service and incident-report records with member submission, status, and review history.
+- [x] Complete operational follow-up for member requests, service reports, and administrative review.
+- [x] Add persistent service and incident-report records with member submission, status, and review history.
 - [x] Connect the existing Report an Issue experience to the service-report backend and the administrator operations queue.
-- [ ] Test and publish the next completed DreamCarz feature release.
-- [ ] Add a persistent service-report review-event audit log and expose member/admin report timelines.
-- [ ] Add tests for service-report creation, review-status transitions, and review-history persistence.
+- [x] Test and publish the next completed DreamCarz feature release.
+- [x] Add a persistent service-report review-event audit log and expose member/admin report timelines.
+- [x] Add tests for service-report creation, review-status transitions, and review-history persistence.
 - [x] Audit the current Locations experience and define searchable partner data requirements.
 - [x] Build member partner search, category filters, and partner location detail views.
 - [x] Correct member location filter counts to reflect the live partner directory while preserving personal incident counts.
@@ -47,10 +47,11 @@
 - [x] Test and publish the DreamCarz partner-search release.
 - [x] Populate the live partner directory with the current DreamCarz network and verify active/inactive search behavior.
 - [x] Add partner-directory test coverage for listing and active-status management.
-- [ ] Extract and compare the newly supplied Dream Carz flyer against current website and app content.
+- [x] Extract and compare the newly supplied Dream Carz flyer against current website and app content.
+- [x] Replace the calculator’s unsupported fixed DCP rates, value multiples, and savings outputs with flyer-approved educational content.
 - [x] Audit current membership, rewards, opportunity, and public homepage copy against the latest flyer integration notes.
-- [ ] Integrate the newly approved flyer messaging across applicable DreamCarz website and application screens without changing design or colors.
-- [ ] Verify and publish the newly integrated flyer-content release.
+- [x] Integrate the newly approved flyer messaging across applicable DreamCarz website and application screens without changing design or colors.
+- [x] Verify and publish the newly integrated flyer-content release.
 - [x] Compare the latest approved flyer content against the existing DreamCarz presentation deck.
 - [x] Update the affected DreamCarz deck slides with the latest flyer information without changing visual design or colors.
 - [x] Verify the refreshed deck slide by slide and present the updated version.

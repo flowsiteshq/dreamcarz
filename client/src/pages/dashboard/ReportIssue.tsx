@@ -46,10 +46,13 @@ export default function ReportIssue() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [referenceId, setReferenceId] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
   const reportHistory = trpc.serviceReports.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const reservations = trpc.reservations.list.useQuery(undefined, { refetchOnWindowFocus: false });
   const createReport = trpc.serviceReports.create.useMutation();
+  const confirmedReservation = reservations.data?.find(reservation => reservation.status === "confirmed");
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -82,6 +85,7 @@ export default function ReportIssue() {
   const handleSubmit = async () => {
     if (!selectedCategory || !description.trim()) return;
     setSubmitting(true);
+    setSubmissionError("");
     try {
       const result = await createReport.mutateAsync({
         category: selectedCategory,
@@ -97,6 +101,8 @@ export default function ReportIssue() {
       setReferenceId(result.reference);
       setSubmitted(true);
       await utils.serviceReports.list.invalidate();
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "We could not submit this service report. Please try again or call DreamCarz.");
     } finally {
       setSubmitting(false);
     }
@@ -137,9 +143,9 @@ export default function ReportIssue() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] text-gray-400 uppercase tracking-wider">How Can We Help?</p>
-              <h2 className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>2024 Porsche 911 Carrera S</h2>
+              <h2 className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>{confirmedReservation?.vehicleName}</h2>
             </div>
-            <img src="/manus-storage/dash-car-current_6e167bf1.png" alt="Porsche" className="h-16 object-contain" />
+            {confirmedReservation?.vehicleImage && <img src={confirmedReservation.vehicleImage} alt={confirmedReservation.vehicleName} className="h-16 object-contain" />}
           </div>
 
           {/* Back + category */}
@@ -210,6 +216,7 @@ export default function ReportIssue() {
             {submitting ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
             {submitting ? "Submitting..." : isUrgent ? "Submit Emergency Request" : "Submit Service Request"}
           </button>
+          {submissionError && <p className="rounded-xl bg-red-50 px-3 py-2 text-[12px] text-red-700">{submissionError}</p>}
 
           {/* Emergency roadside */}
           <a href="tel:3017722500"
@@ -230,9 +237,9 @@ export default function ReportIssue() {
         <div className="flex items-end justify-between pt-2">
           <div>
             <p className="text-[12px] text-gray-400 mb-0.5">How Can We Help?</p>
-            <h2 className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>2024 Porsche 911 Carrera S</h2>
+            <h2 className="text-xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>{confirmedReservation?.vehicleName || "No confirmed vehicle"}</h2>
           </div>
-          <img src="/manus-storage/dash-car-current_6e167bf1.png" alt="Porsche 911" className="h-20 object-contain -mb-2" />
+          {confirmedReservation?.vehicleImage ? <img src={confirmedReservation.vehicleImage} alt={confirmedReservation.vehicleName} className="h-20 object-contain -mb-2" /> : <Car size={34} className="mb-2 text-gray-300" />}
         </div>
 
         {/* Tabs */}
@@ -249,6 +256,7 @@ export default function ReportIssue() {
         {/* REQUEST TAB */}
         {tab === "request" && (
           <div className="space-y-3">
+            {!confirmedReservation && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-900">A confirmed DreamCarz reservation is required before you can submit a vehicle service report. Once confirmed, your real reserved vehicle will appear here.</div>}
             {/* AI describe box */}
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <p className="text-[12px] font-semibold text-black mb-2 flex items-center gap-1.5">
@@ -261,10 +269,10 @@ export default function ReportIssue() {
                   onChange={e => setAiQuery(e.target.value)}
                   placeholder='"Why is my check engine light on?"'
                   className="flex-1 bg-transparent text-[13px] text-black placeholder-gray-300 outline-none"
-                  onKeyDown={e => { if (e.key === "Enter" && aiQuery.trim()) { setSelectedCategory("Other"); setDescription(aiQuery); } }}
+                  onKeyDown={e => { if (confirmedReservation && e.key === "Enter" && aiQuery.trim()) { setSelectedCategory("Other"); setDescription(aiQuery); } }}
                 />
-                <button onClick={() => { if (aiQuery.trim()) { setSelectedCategory("Other"); setDescription(aiQuery); } }}
-                  className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors flex items-center justify-center flex-shrink-0">
+                <button disabled={!confirmedReservation} onClick={() => { if (confirmedReservation && aiQuery.trim()) { setSelectedCategory("Other"); setDescription(aiQuery); } }}
+                  className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40 transition-colors flex items-center justify-center flex-shrink-0">
                   <ChevronRight size={14} className="text-black" />
                 </button>
               </div>
@@ -275,8 +283,8 @@ export default function ReportIssue() {
               {requestCategories.map((cat, i) => {
                 const Icon = cat.icon;
                 return (
-                  <button key={i} onClick={() => setSelectedCategory(cat.label)}
-                    className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left">
+                  <button key={i} disabled={!confirmedReservation} onClick={() => setSelectedCategory(cat.label)}
+                    className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-45 transition-colors text-left">
                     <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                       <Icon size={16} className="text-gray-600" />
                     </div>

@@ -1,131 +1,72 @@
-import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import Navigation from "@/components/Navigation";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { useState, useMemo } from "react";
-import { Info } from "lucide-react";
+import { CheckCircle2, Info, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
 
-type Tier = "freedom"|"plus"|"pro"|"elite";
-const tierData = {
-  freedom: { price:39.95, enrollment:139, weeklyFee:79, redemptionBonus:0, label:"Freedom" },
-  plus: { price:69.95, enrollment:199, weeklyFee:69, redemptionBonus:0.05, label:"Plus" },
-  pro: { price:99.95, enrollment:249, weeklyFee:59, redemptionBonus:0.15, label:"Pro" },
-  elite: { price:149.95, enrollment:299, weeklyFee:49, redemptionBonus:0.25, label:"Elite" },
-};
-const tenureMults: Record<number,number> = {1:1.0,2:1.1,3:1.2,4:1.35,5:1.5};
-function getTenureMult(y:number) { return y>=5?1.5:tenureMults[y]??1.0; }
+const freedomProgression = [
+  { point: "Day 1", title: "Hassle Free", detail: "Start your DreamCarz membership journey." },
+  { point: "Day 1", title: "Credit Free", detail: "Begin building toward a more flexible transportation future." },
+  { point: "Year 1", title: "Worry Free", detail: "Use the member ecosystem, resources, and program pathways." },
+  { point: "Year 2", title: "Interest Free", detail: "Continue working toward your personal transportation goals." },
+  { point: "Year 3", title: "Drive Free", detail: "Advance through the program based on your individual journey." },
+  { point: "Year 4+", title: "Be Free", detail: "Sustain a long-term freedom plan built around your goals." },
+];
+
+const earningPathways = ["Membership payments", "Vehicle rentals", "RTO/LTO payments", "Vehicle purchases", "Referrals", "Anniversary bonuses"];
+const redemptionCategories = ["Free rental days", "Lease and interest credits", "Down-payment assistance", "Vehicle purchase credits", "Service and maintenance savings", "Exclusive member perks"];
 
 export default function Calculator() {
   useScrollReveal();
-  const [tier, setTier] = useState<Tier>("pro");
-  const [years, setYears] = useState(3);
-  const [vehiclePrice, setVehiclePrice] = useState(25000);
-  const [rentals, setRentals] = useState(4);
-
-  const calc = useMemo(() => {
-    const td = tierData[tier];
-    const membershipPaid = td.enrollment + td.price*12*years;
-    const tenureMult = getTenureMult(years);
-    const combinedMult = Math.min(tenureMult*(1+td.redemptionBonus), 2.0);
-    const dcpFromMembership = td.price*12*years*200;
-    const dcpFromVehicle = vehiclePrice*2;
-    const dcpFromRentals = rentals*5000;
-    const totalDCP = dcpFromMembership+dcpFromVehicle+dcpFromRentals;
-    const transportationPower = (totalDCP/100)*combinedMult;
-    const weeklyFeeSavings = (79-td.weeklyFee)*52*years;
-    const roadsideValue = 120*years;
-    const rentalSavings = rentals*150*years;
-    const totalSavings = weeklyFeeSavings+roadsideValue+rentalSavings;
-    const totalValue = totalSavings+transportationPower;
-    const memberValueRatio = totalValue/membershipPaid;
-    const creditFreeDCP = (vehiclePrice*0.25)/combinedMult*100;
-    return { membershipPaid, combinedMult, totalDCP, transportationPower, totalSavings, totalValue, memberValueRatio, creditFreeDCP, dcpFromMembership, dcpFromVehicle, dcpFromRentals };
-  }, [tier, years, vehiclePrice, rentals]);
-
-  const Slider = ({ label, value, min, max, step, onChange, fmt }: any) => (
-    <div className="mb-5">
-      <div className="flex justify-between items-center mb-2">
-        <label className="text-sm font-medium text-gray-700" style={{ fontFamily: "var(--font-sans)" }}>{label}</label>
-        <span className="font-mono text-sm font-bold text-black">{fmt(value)}</span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #000 0%, #000 ${((value-min)/(max-min))*100}%, #e5e7eb ${((value-min)/(max-min))*100}%, #e5e7eb 100%)` }} />
-    </div>
-  );
+  const [years, setYears] = useState(1);
+  const activeProgressionIndex = useMemo(() => years >= 4 ? 5 : years === 3 ? 4 : years === 2 ? 3 : 2, [years]);
+  const currentStage = freedomProgression[activeProgressionIndex];
 
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <section className="pt-28 pb-12 bg-section">
+      <section className="bg-section pb-12 pt-28">
         <div className="container text-center">
-          <div className="section-label mb-3 reveal">Value Calculator</div>
-          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>What Is Your Membership Actually Worth?</h1>
-          <p className="text-gray-500 max-w-xl mx-auto reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Adjust the inputs to see your projected DCP accumulation, transportation purchasing power, and member value ratio.</p>
+          <div className="section-label mb-3 reveal">Freedom Progression Planner</div>
+          <h1 className="font-display mb-4 text-5xl font-bold text-black">Plan Your Path to More Freedom.</h1>
+          <p className="mx-auto max-w-2xl text-gray-500">Explore the approved DreamCarz Freedom Progression, DCP earning pathways, and redemption categories. This is an educational planning view—not a value, return, or DCP-earnings projection.</p>
         </div>
       </section>
 
       <section className="py-16">
         <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 reveal">
-              <h2 className="font-display text-2xl font-bold text-black mb-6" style={{ fontFamily: "var(--font-display)" }}>Your Inputs</h2>
-              <div className="mb-6">
-                <label className="text-sm font-medium text-gray-700 block mb-3" style={{ fontFamily: "var(--font-sans)" }}>Membership Tier</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(Object.keys(tierData) as Tier[]).map(t => (
-                    <button key={t} onClick={() => setTier(t)} className={`py-2 text-xs font-semibold rounded-full transition-all ${tier===t?"bg-black text-white":"border border-gray-200 text-gray-500 hover:border-gray-400"}`} style={{ fontFamily: "var(--font-sans)" }}>{tierData[t].label}</button>
-                  ))}
-                </div>
+          <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
+            <div className="reveal rounded-2xl border border-gray-200 bg-white p-8">
+              <p className="section-label mb-2">Freedom Membership</p>
+              <div className="flex items-end justify-between border-b border-gray-100 pb-6">
+                <div><h2 className="font-display text-2xl font-bold text-black">$39.95 / month</h2><p className="mt-1 text-sm text-gray-500">Cancel anytime.</p></div>
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-[#B8860B]">Approved offer</span>
               </div>
-              <Slider label="Years as Member" value={years} min={1} max={10} step={1} onChange={setYears} fmt={(v:number) => `${v} yr${v>1?"s":""}`} />
-              <Slider label="Vehicle Price" value={vehiclePrice} min={5000} max={100000} step={1000} onChange={setVehiclePrice} fmt={(v:number) => `$${v.toLocaleString()}`} />
-              <Slider label="Annual Rentals" value={rentals} min={0} max={52} step={1} onChange={setRentals} fmt={(v:number) => `${v} rentals`} />
-              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 flex gap-2">
-                <Info size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-gray-500 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>DCP earning rates are illustrative and subject to final financial modeling. This calculator is for educational purposes only.</p>
+              <div className="mt-7">
+                <div className="mb-3 flex items-center justify-between"><label className="text-sm font-medium text-gray-700">Planning horizon</label><span className="font-mono text-sm font-bold text-black">{years} year{years > 1 ? "s" : ""}</span></div>
+                <input aria-label="Planning horizon" type="range" min={1} max={5} step={1} value={years} onChange={event => setYears(Number(event.target.value))} className="h-1.5 w-full cursor-pointer appearance-none rounded-full" style={{ background: `linear-gradient(to right, #000 0%, #000 ${((years - 1) / 4) * 100}%, #e5e7eb ${((years - 1) / 4) * 100}%, #e5e7eb 100%)` }} />
+                <div className="mt-2 flex justify-between text-[10px] font-semibold text-gray-400"><span>Year 1</span><span>Year 2</span><span>Year 3</span><span>Year 4+</span></div>
               </div>
+              <div className="mt-7 rounded-xl border border-gray-100 bg-gray-50 p-4"><div className="flex gap-2"><Info size={15} className="mt-0.5 shrink-0 text-gray-400" /><p className="text-xs leading-relaxed text-gray-500">DCP availability, earning criteria, redemption availability, and program terms are determined by the applicable membership and transaction documentation. DreamCarz does not present fixed DCP rates, savings, or personal outcomes in this planner.</p></div></div>
             </div>
 
-            <div className="space-y-5 reveal delay-100">
-              <div className="bg-black rounded-2xl p-8 text-center">
-                <div className="section-label text-gray-400 mb-2">Member Value Ratio</div>
-                <div className="font-mono text-7xl font-bold text-white mb-2">{calc.memberValueRatio.toFixed(2)}x</div>
-                <div className="text-sm text-gray-400" style={{ fontFamily: "var(--font-sans)" }}>Total value vs membership cost</div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <h3 className="font-display text-lg font-bold text-black mb-4" style={{ fontFamily: "var(--font-display)" }}>Value Breakdown</h3>
-                <div className="space-y-3">
-                  {[
-                    { label:"A. Membership Cost", value:`-$${calc.membershipPaid.toFixed(0)}`, positive:false },
-                    { label:"B. Actual Savings", value:`+$${calc.totalSavings.toFixed(0)}`, positive:true },
-                    { label:"C. Transportation Power", value:`+$${calc.transportationPower.toFixed(0)}`, positive:true },
-                    { label:"D. Total Member Value", value:`$${calc.totalValue.toFixed(0)}`, bold:true },
-                  ].map((item,i) => (
-                    <div key={i} className={`flex justify-between items-center py-2 ${i<3?"border-b border-gray-100":""}`}>
-                      <span className={`text-sm ${item.bold?"font-semibold text-black":"text-gray-600"}`} style={{ fontFamily: "var(--font-sans)" }}>{item.label}</span>
-                      <span className={`font-mono text-sm font-bold ${item.positive?"text-black":item.bold?"text-black":"text-gray-700"}`}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <h3 className="font-display text-lg font-bold text-black mb-4" style={{ fontFamily: "var(--font-display)" }}>DCP Accumulation</h3>
-                <div className="space-y-2">
-                  {[
-                    { label:"From Membership Payments", dcp:calc.dcpFromMembership },
-                    { label:"From Vehicle Transaction", dcp:calc.dcpFromVehicle },
-                    { label:"From Rentals", dcp:calc.dcpFromRentals },
-                  ].map((item,i) => (
-                    <div key={i} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                      <span className="text-xs text-gray-500" style={{ fontFamily: "var(--font-sans)" }}>{item.label}</span>
-                      <span className="font-mono text-xs font-bold text-black">{item.dcp.toLocaleString()} DCP</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-sm font-semibold text-black" style={{ fontFamily: "var(--font-sans)" }}>Total DCP</span>
-                    <span className="font-mono text-base font-bold text-black">{calc.totalDCP.toLocaleString()} DCP</span>
-                  </div>
-                </div>
-              </div>
+            <div className="reveal delay-100 rounded-2xl bg-black p-8 text-white">
+              <div className="section-label mb-2 text-gray-400">Current planning milestone</div>
+              <div className="mb-3 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C9A84C] text-black"><Sparkles size={18} /></div><div><p className="font-display text-3xl font-bold">{currentStage.title}</p><p className="text-sm text-white/55">{currentStage.point}</p></div></div>
+              <p className="text-sm leading-relaxed text-white/70">{currentStage.detail}</p>
+              <div className="mt-8 flex gap-1.5">{freedomProgression.map((stage, index) => <div key={stage.title} className={`h-2 flex-1 rounded-full ${index <= activeProgressionIndex ? "bg-[#C9A84C]" : "bg-white/15"}`} />)}</div>
+              <p className="mt-3 text-[11px] text-white/45">Progression stages communicate the program journey; they are not a promise of financial, credit, vehicle, or earnings outcomes.</p>
             </div>
+          </div>
+
+          <div className="mx-auto mt-8 max-w-5xl rounded-2xl border border-gray-200 bg-white p-7 reveal">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="section-label mb-2">Approved Freedom Progression</p><h2 className="font-display text-2xl font-bold text-black">Six stages, one member journey.</h2></div><p className="max-w-md text-right text-xs text-gray-500">Use this sequence to frame your personal goals with DreamCarz—not as a schedule of guaranteed results.</p></div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{freedomProgression.map((stage, index) => <div key={stage.title} className={`rounded-xl border p-4 ${index === activeProgressionIndex ? "border-[#C9A84C] bg-amber-50" : "border-gray-100 bg-white"}`}><div className="flex items-center justify-between gap-3"><p className="font-display text-lg font-bold text-black">{stage.title}</p><span className="text-[10px] font-bold uppercase tracking-wide text-[#B8860B]">{stage.point}</span></div><p className="mt-2 text-xs leading-relaxed text-gray-500">{stage.detail}</p></div>)}</div>
+          </div>
+
+          <div className="mx-auto mt-8 grid max-w-5xl gap-8 lg:grid-cols-2">
+            <div className="reveal rounded-2xl border border-gray-200 bg-white p-7"><p className="section-label mb-2">DCP earning pathways</p><h2 className="font-display mb-5 text-2xl font-bold text-black">Ways DCP may be earned</h2><div className="space-y-3">{earningPathways.map(pathway => <div key={pathway} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"><CheckCircle2 size={16} className="text-[#B8860B]" /><span className="text-sm font-medium text-gray-700">{pathway}</span></div>)}</div></div>
+            <div className="reveal delay-100 rounded-2xl border border-gray-200 bg-white p-7"><p className="section-label mb-2">DCP redemption categories</p><h2 className="font-display mb-5 text-2xl font-bold text-black">Ways DCP may be redeemed</h2><div className="space-y-3">{redemptionCategories.map(category => <div key={category} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"><CheckCircle2 size={16} className="text-[#B8860B]" /><span className="text-sm font-medium text-gray-700">{category}</span></div>)}</div></div>
           </div>
         </div>
       </section>
