@@ -101,6 +101,24 @@ export async function createDirectSession(userId: number) {
   return { token, expiresAt };
 }
 
+export async function setDirectPasswordForUser(userId: number, password: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DreamCarz accounts are temporarily unavailable");
+
+  const existingCredential = await db
+    .select({ id: userCredentials.id })
+    .from(userCredentials)
+    .where(eq(userCredentials.userId, userId))
+    .limit(1);
+  const passwordHash = await hashPassword(password);
+
+  if (existingCredential[0]) {
+    await db.update(userCredentials).set({ passwordHash }).where(eq(userCredentials.id, existingCredential[0].id));
+  } else {
+    await db.insert(userCredentials).values({ userId, passwordHash });
+  }
+}
+
 export async function getDirectSessionUser(token: string | undefined): Promise<User | null> {
   if (!token) return null;
   const db = await getDb();

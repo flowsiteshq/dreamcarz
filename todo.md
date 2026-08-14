@@ -30,6 +30,12 @@
 - [ ] Push the flyer-content website and app updates to GitHub main for the Railway deployment.
 - [ ] Confirm the active GitHub browser session and use it to authorize the pending repository synchronization.
 - [ ] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
+- [x] Export the redesigned DreamCarz investor deck as a PDF and deliver it directly.
+- [ ] Diagnose the reported DreamCarz sign-in failure across the login interface and direct authentication backend.
+- [ ] Fix the DreamCarz sign-in flow and verify successful member access to My Account.
+- [ ] Add secure direct-password setup for existing legacy-authenticated DreamCarz accounts.
+- [ ] Provision and verify a one-time temporary direct-login password for the existing DreamCarz administrator account.
+- [ ] Push the current DreamCarz project updates to flowsiteshq/dreamcarz main at the user’s request.
 - [x] Audit remaining DreamCarz feature gaps and define the next production-ready release scope.
 - [x] Build a member booking and reservation request workflow with availability preferences and review status.
 - [x] Complete operational follow-up for member requests, service reports, and administrative review.

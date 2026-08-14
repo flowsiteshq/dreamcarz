@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { createDirectSession, loginDirectAccount, registerDirectAccount, revokeDirectSession } from "./directAuth";
+import { createDirectSession, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
 import {
   referralProfiles,
   referrals,
@@ -65,6 +65,12 @@ export const appRouter = router({
           maxAge: DIRECT_SESSION_MAX_AGE_MS,
         });
         return user;
+      }),
+    setDirectPassword: protectedProcedure
+      .input(z.object({ password: z.string().min(10).max(128) }))
+      .mutation(async ({ ctx, input }) => {
+        await setDirectPasswordForUser(ctx.user.id, input.password);
+        return { success: true } as const;
       }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);

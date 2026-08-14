@@ -1,11 +1,30 @@
 import DashboardShell from "@/components/DashboardShell";
 import { User, Bell, Shield, CreditCard, LogOut, ChevronRight } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState({ email: true, sms: false, push: true });
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const setDirectPassword = trpc.auth.setDirectPassword.useMutation();
+
+  const saveDirectPassword = async () => {
+    setPasswordMessage(null);
+    if (password.length < 10) return setPasswordMessage("Use at least 10 characters for your password.");
+    if (password !== confirmPassword) return setPasswordMessage("Your passwords do not match.");
+    try {
+      await setDirectPassword.mutateAsync({ password });
+      setPassword("");
+      setConfirmPassword("");
+      setPasswordMessage("Your DreamCarz password is ready. You can now sign in with your email and this password.");
+    } catch (error) {
+      setPasswordMessage(error instanceof Error ? error.message : "We could not save your password. Please try again.");
+    }
+  };
 
   return (
     <DashboardShell title="Settings">
@@ -83,20 +102,12 @@ export default function SettingsPage() {
             <Shield size={16} className="text-gray-400" />
             <h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Security</h3>
           </div>
-          <div className="space-y-1">
-            {[
-              { label: "Change Password", desc: "Update your account password" },
-              { label: "Two-Factor Authentication", desc: "Add an extra layer of security" },
-              { label: "Active Sessions", desc: "View and manage logged-in devices" },
-            ].map((s, i) => (
-              <button key={i} className="w-full flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-lg px-2 transition-colors text-left">
-                <div>
-                  <p className="text-[13px] font-medium text-black">{s.label}</p>
-                  <p className="text-[11px] text-gray-400">{s.desc}</p>
-                </div>
-                <ChevronRight size={14} className="text-gray-300" />
-              </button>
-            ))}
+          <p className="mb-4 text-[12px] leading-relaxed text-gray-500">Set a direct password for your existing account. You can then sign in with <span className="font-medium text-black">{user?.email}</span> even if your account was originally created with another sign-in method.</p>
+          <div className="space-y-3">
+            <input value={password} onChange={event => setPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="New password (at least 10 characters)" className="h-11 w-full rounded-xl border border-gray-200 px-3 text-sm text-black outline-none focus:border-black" />
+            <input value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Confirm new password" className="h-11 w-full rounded-xl border border-gray-200 px-3 text-sm text-black outline-none focus:border-black" />
+            <button onClick={saveDirectPassword} disabled={setDirectPassword.isPending} className="flex h-11 w-full items-center justify-center rounded-xl bg-black text-sm font-semibold text-white disabled:opacity-60">{setDirectPassword.isPending ? "Saving password…" : "Save DreamCarz password"}</button>
+            {passwordMessage && <p className={`rounded-lg px-3 py-2 text-[12px] ${passwordMessage.startsWith("Your DreamCarz") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{passwordMessage}</p>}
           </div>
         </div>
 
@@ -111,4 +122,3 @@ export default function SettingsPage() {
     </DashboardShell>
   );
 }
-

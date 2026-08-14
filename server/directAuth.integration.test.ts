@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { authSessions, userCredentials, users } from "../drizzle/schema";
-import { createDirectSession, getDirectSessionUser, loginDirectAccount, registerDirectAccount, revokeDirectSession } from "./directAuth";
+import { createDirectSession, getDirectSessionUser, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
 import { getDb } from "./db";
 
 const testEmail = `dreamcarz-auth-smoke-${Date.now()}@example.test`;
@@ -40,5 +40,21 @@ describe("direct DreamCarz account flow", () => {
 
     await revokeDirectSession(session.token);
     await expect(getDirectSessionUser(session.token)).resolves.toBeNull();
+  });
+
+  it("replaces a member password so an existing account can use direct sign-in", async () => {
+    const originalPassword = "DreamCarz!2026";
+    const replacementPassword = "DreamCarz!2027";
+    const registered = await registerDirectAccount({
+      name: "DreamCarz Legacy Password Test",
+      email: `dreamcarz-auth-password-${Date.now()}@example.test`,
+      password: originalPassword,
+    });
+    expect(registered).not.toBeNull();
+    testUserId = registered!.id;
+
+    await setDirectPasswordForUser(registered!.id, replacementPassword);
+    await expect(loginDirectAccount(registered!.email!, originalPassword)).resolves.toBeNull();
+    await expect(loginDirectAccount(registered!.email!, replacementPassword)).resolves.toMatchObject({ id: registered!.id });
   });
 });
