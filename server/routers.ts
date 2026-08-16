@@ -96,11 +96,26 @@ export const appRouter = router({
       return profile[0] ?? null;
     }),
 
-    // Get the user's direct downline
+    // Get a real, privacy-conscious view of the user's direct referral activity.
     getDownline: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return [];
-      return db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id));
+      return db
+        .select({
+          id: referrals.id,
+          userId: referrals.referredId,
+          name: users.name,
+          email: users.email,
+          level: referrals.level,
+          status: referrals.status,
+          joinedAt: referrals.createdAt,
+          rank: referralProfiles.rank,
+        })
+        .from(referrals)
+        .innerJoin(users, eq(referrals.referredId, users.id))
+        .leftJoin(referralProfiles, eq(referralProfiles.userId, referrals.referredId))
+        .where(eq(referrals.referrerId, ctx.user.id))
+        .orderBy(desc(referrals.createdAt));
     }),
 
     // Get commission history (last 12 months)
@@ -122,11 +137,13 @@ export const appRouter = router({
         profile = await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1);
       }
       const directReferrals = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id));
+      const activeDirectReferrals = directReferrals.filter(referral => referral.status === "active").length;
       const thisMonth = new Date().toISOString().slice(0, 7);
       const monthCommissions = await db.select().from(commissions).where(and(eq(commissions.userId, ctx.user.id), eq(commissions.month, thisMonth))).limit(1);
       return {
         teamSize: directReferrals.length,
         directReferrals: directReferrals.length,
+        activeDirectReferrals,
         totalEarned: profile[0]?.totalEarned ?? 0,
         thisMonthTotal: monthCommissions[0]?.total ?? 0,
         rank: profile[0]?.rank ?? "associate",

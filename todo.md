@@ -36,6 +36,12 @@
 - [ ] Add secure direct-password setup for existing legacy-authenticated DreamCarz accounts.
 - [ ] Provision and verify a one-time temporary direct-login password for the existing DreamCarz administrator account.
 - [ ] Push the current DreamCarz project updates to flowsiteshq/dreamcarz main at the user’s request.
+- [x] Audit the existing Drive Network workflows and investor-deck requirements for the marketer dashboard.
+- [x] Build a dedicated DreamCarz marketer MLM dashboard with compliant referral, team, rank, and earnings-activity features.
+- [x] Add behavioral tests for marketer dashboard metrics, ranks, and referral workflows.
+- [x] Verify the marketer dashboard across desktop and mobile, then publish the feature.
+- [x] Add router-level coverage for live marketer metrics, direct-team mapping, and referral-link readiness.
+- [x] Add router-level tests for referral registration success, duplicate prevention, and self-referral rejection.
 - [x] Audit remaining DreamCarz feature gaps and define the next production-ready release scope.
 - [x] Build a member booking and reservation request workflow with availability preferences and review status.
 - [x] Complete operational follow-up for member requests, service reports, and administrative review.
