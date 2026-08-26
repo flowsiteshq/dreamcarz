@@ -77,19 +77,21 @@ describe("DreamCarz ecosystem process content", () => {
     const detail = source("client/src/pages/VehicleDetail.tsx");
     const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
     for (const imageKey of [
-      "dreamcarz-2024-chevrolet-malibu-gray",
-      "dreamcarz-2022-chevrolet-traverse-white",
-      "dreamcarz-2024-ford-fusion-gray",
-      "dreamcarz-2020-chevrolet-traverse-gray",
-      "dreamcarz-2019-chevrolet-malibu-black",
-      "dreamcarz-2015-ford-taurus-gray",
-      "dreamcarz-2020-chevrolet-equinox-gray",
-      "dreamcarz-2020-chevrolet-equinox-black",
+      "dreamcarz-semantic-2024-chevrolet-malibu-gray",
+      "dreamcarz-semantic-2022-chevrolet-traverse-white",
+      "dreamcarz-semantic-2024-ford-fusion-gray",
+      "dreamcarz-semantic-2020-chevrolet-traverse-gray",
+      "dreamcarz-semantic-2019-chevrolet-malibu-black",
+      "dreamcarz-semantic-2015-ford-taurus-gray",
+      "dreamcarz-semantic-2020-chevrolet-equinox-gray",
+      "dreamcarz-semantic-2020-chevrolet-equinox-black",
     ]) {
       expect(fleet).toContain(imageKey);
       expect(detail).toContain(imageKey);
       expect(memberVehicles).toContain(imageKey);
     }
+    expect(fleet).toContain("bg-transparent");
+    expect(memberVehicles).toContain("bg-transparent");
   });
 
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {

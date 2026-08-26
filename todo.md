@@ -98,3 +98,9 @@
 - [x] Replace public and member inventory placeholders with the corresponding confirmed vehicle images.
 - [x] Test and visually verify vehicle images, labels, and confirmed-inventory accuracy before publishing.
 - [x] Document final completed-asset QA for every confirmed vehicle image on public and member inventory screens.
+- [x] Create transparent vehicle cutouts for all eight confirmed DreamCarz inventory vehicles.
+- [x] Replace studio-background vehicle images with the transparent cutouts across public and member inventory cards.
+- [x] Visually verify the refined fleet-card presentation against the provided reference before publishing.
+- [x] Remove residual green chroma-key halos and fragments from every generated vehicle cutout.
+- [x] Re-verify fleet, vehicle-detail, and My Vehicles imagery for clean background-free vehicle presentation.
+- [x] Run semantic vehicle background removal on the approved inventory source images to eliminate detached cutout artifacts.

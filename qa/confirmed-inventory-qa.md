@@ -23,3 +23,13 @@ Final visual QA confirmed that all eight confirmed inventory cards render comple
 ## Browser-rendered evidence
 
 The public Fleet browser review displayed completed vehicle photography for the first four visible cards—gray 2024 Chevrolet Malibu, white 2022 Chevrolet Traverse, gray 2024 Ford Fusion, and gray 2020 Chevrolet Traverse—with no placeholder treatment. The authenticated My Vehicles browser review displayed the corresponding completed vehicle photography in both visible rows, including the black 2019 Malibu, gray 2015 Taurus, gray 2020 Equinox, and black 2020 Equinox. The two browser reviews showed no generating or failed image state.
+
+## Final background-removal correction
+
+The first transparent-cutout attempt introduced detached green and gray artifacts, so it was replaced with semantic background removal from the approved vehicle source images. Final Fleet, My Vehicles, and 2024 Chevrolet Malibu detail screenshots show isolated vehicle cutouts without studio-card backgrounds, chroma-key fringe, or detached artifacts. The Fleet card proportions, white field, thin dividers, restrained inventory typography, and white/black/gold visual system now match the supplied direction.
+
+## Direct final inspection
+
+The final public Fleet screenshot directly showed all eight inventory vehicles as isolated cutouts on the page’s white field. The two-row, four-column inventory grid has no rectangular studio-photo backgrounds, detached fragments, or green haloing; it retains the user-supplied vehicle names and colors only. The final authenticated My Vehicles screenshot independently showed the same eight clean cutouts across both rows, with no background blocks or visual artifacts. Both pages preserve the reference’s restrained white canvas, thin gray dividers, compact vehicle scale, black type, and gold category labels.
+
+The final 2024 Chevrolet Malibu detail screenshot also showed the same isolated gray Malibu cutout on the warm-white page field. No studio rectangle, detached artifact, green halo, or colored fringe was visible around the vehicle, while the vehicle detail content remained unchanged.
