@@ -8,10 +8,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 
 const navLinks = [
   { href: "/fleet", label: "Fleet" },
-  { href: "/membership", label: "Membership" },
+  { href: "/membership", label: "Members" },
   { href: "/contact", label: "Locations" },
-  { href: "/how-it-works", label: "About" },
-  { href: "/opportunity", label: "Opportunity" },
+  { href: "/opportunity", label: "Associate Path" },
+  { href: "/opportunity#fleet-partner", label: "Fleet Partners" },
 ];
 
 export default function Navigation() {

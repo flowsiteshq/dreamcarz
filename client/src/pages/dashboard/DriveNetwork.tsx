@@ -41,17 +41,17 @@ export default function DriveNetwork() {
     : "";
 
   return (
-    <DashboardShell title="Marketer Hub">
+    <DashboardShell title="Associate Path">
       <div className="mx-auto max-w-6xl space-y-5">
         <section className="overflow-hidden rounded-3xl bg-black p-6 text-white">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#d9bc6b]"><Target size={14} /> Drive Network Marketer Hub</div>
-              <h2 className="font-display text-3xl font-bold leading-tight">Build with clarity. Lead with approved information.</h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/60">Your live referral activity, recognized commission records, and approved sharing tools—designed for a responsible DreamCarz business path.</p>
+              <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#d9bc6b]"><Target size={14} /> DreamCarz Associate Path</div>
+              <h2 className="font-display text-3xl font-bold leading-tight">Build customers. Create progress.</h2>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/60">Build verified customer relationships, recognize qualifying activity, and use approved sharing tools—designed for a responsible DreamCarz business path.</p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/5 p-4 lg:min-w-[260px]">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-white/45">Current business path</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-white/45">Current Associate path</div>
               <div className="mt-1 text-xl font-bold">{currentPath.label}</div>
               <div className="mt-1 text-xs text-white/50">Next: {nextPath.label}</div>
             </div>
@@ -76,8 +76,8 @@ export default function DriveNetwork() {
           </section>
 
           <section className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-            <div className="rounded-3xl border border-gray-100 bg-white p-5">
-              <div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold text-black">Business path</h3><p className="mt-1 text-xs leading-relaxed text-gray-500">A visibility tool—not a promise of rank, compensation, or results.</p></div><ShieldCheck size={18} className="text-[#b8860b]" /></div>
+              <div className="rounded-3xl border border-gray-100 bg-white p-5">
+              <div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold text-black">Build → Recognize → Unlock</h3><p className="mt-1 text-xs leading-relaxed text-gray-500">A visibility tool—not a promise of rank, compensation, or results.</p></div><ShieldCheck size={18} className="text-[#b8860b]" /></div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {marketerPaths.map(path => {
                   const completed = marketerPaths.findIndex(item => item.id === currentPath.id) > marketerPaths.findIndex(item => item.id === path.id);

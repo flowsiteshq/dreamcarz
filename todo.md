@@ -77,3 +77,10 @@
 - [x] Audit the investor deck for unsupported claims, numerical inconsistencies, logical gaps, and execution risks.
 - [x] Redesign the investor deck in the established DreamCarz website and presentation visual system while retaining defensible content.
 - [x] Verify and present the revised investor-ready deck.
+- [x] Audit public and in-app process content against the approved Member, Associate, and Fleet Partner ecosystem pathways.
+- [x] Align public website navigation, pathway pages, and DreamCarz Value messaging with the approved ecosystem process.
+- [x] Align My Account, Dream Journey, Drive Network, and fleet-partner touchpoints with the approved member and participation journeys.
+- [x] Add automated coverage and visually verify the aligned website and member-app pathways before publishing.
+- [x] Update the public navigation to expose the approved Member, Associate, and Fleet Partner pathways clearly.
+- [x] Add a clear Fleet Partner process touchpoint from My Account and align the My Account dashboard with the approved member journey.
+- [x] Perform authenticated visual QA of My Account, Membership, Dream Journey, and Associate Path before publishing.

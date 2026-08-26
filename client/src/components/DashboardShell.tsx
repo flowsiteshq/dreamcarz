@@ -19,7 +19,7 @@ const sidebarLinks = [
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/report", label: "Report an Issue", icon: AlertTriangle },
   { href: "/dashboard/dream-journey", label: "Dream Journey", icon: Trophy },
-  { href: "/dashboard/drive-network", label: "Drive Network", icon: Network },
+  { href: "/dashboard/drive-network", label: "Associate Path", icon: Network },
   { href: "/dashboard/locations", label: "Locations", icon: MapPin },
   { href: "/dashboard/support", label: "Support", icon: Headphones },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -100,17 +100,17 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
         <div className="px-3 pb-4 flex-shrink-0 space-y-3">
           <div className="rounded-2xl bg-black text-white p-4 relative overflow-hidden">
             <div className="absolute bottom-0 right-0 w-20 h-20 rounded-full bg-white/5 translate-x-6 translate-y-6" />
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">DCP Balance</p>
-            <p className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>285,000</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">$2,850 Value</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">DreamCarz Value</p>
+            <p className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Eligible activity</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Review your available value in My Account</p>
             <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
               <div className="h-full bg-white rounded-full" style={{ width: "68%" }} />
             </div>
             <div className="flex items-center justify-between mt-2">
-              <p className="text-[10px] text-gray-500">Transportation Power</p>
-              <p className="text-[11px] font-bold text-white">$3,420</p>
+              <p className="text-[10px] text-gray-500">Approved transportation use</p>
+              <p className="text-[11px] font-bold text-white">Program rules apply</p>
             </div>
-            <p className="text-[10px] text-gray-500">At 1.2x multiplier</p>
+            <p className="text-[10px] text-gray-500">Eligibility, release, redemption, and availability apply.</p>
             <Link href="/dashboard/rewards" className="mt-2 text-[10px] text-gray-400 hover:text-white transition-colors flex items-center gap-1">
               View activity <ChevronRight size={10} />
             </Link>

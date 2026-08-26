@@ -1,0 +1,51 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const source = (relativePath: string) =>
+  readFileSync(resolve(process.cwd(), relativePath), "utf8");
+
+describe("DreamCarz ecosystem process content", () => {
+  it("presents the approved Member, Associate, and Fleet Partner pathways publicly", () => {
+    const home = source("client/src/pages/Home.tsx");
+    const opportunity = source("client/src/pages/Opportunity.tsx");
+    const navigation = source("client/src/components/Navigation.tsx");
+
+    for (const term of ["Member", "Associate", "Fleet Partner", "Join", "Drive", "Build", "Use"]) {
+      expect(`${home}\n${opportunity}`).toContain(term);
+    }
+    expect(navigation).toContain('label: "Associate Path"');
+    expect(navigation).toContain('label: "Fleet Partners"');
+  });
+
+  it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {
+    const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
+    const journey = source("client/src/pages/dashboard/DreamJourney.tsx");
+    const shell = source("client/src/components/DashboardShell.tsx");
+    const content = `${membership}\n${journey}\n${shell}`;
+
+    expect(content).toContain("Eligibility, release, redemption");
+    expect(content).not.toContain("1.2x multiplier");
+    expect(content).not.toContain("Credit Free threshold");
+    expect(content).not.toContain("DCP Accumulation Projection");
+    expect(content).not.toContain("$2,850 Value");
+  });
+
+  it("labels the in-app business area as the Associate Path and preserves compliant guidance", () => {
+    const shell = source("client/src/components/DashboardShell.tsx");
+    const associateHub = source("client/src/pages/dashboard/DriveNetwork.tsx");
+
+    expect(shell).toContain('label: "Associate Path"');
+    expect(associateHub).toContain("Build customers. Create progress.");
+    expect(associateHub).toContain("Build verified customer relationships");
+    expect(associateHub).toContain("does not make income, rank, or outcome guarantees");
+  });
+
+  it("gives My Account a member-process summary and a distinct Fleet Partner entry point", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain("Join → Drive → Build → Use");
+    expect(dashboard).toContain("Fleet Partner Path");
+    expect(dashboard).toContain("Final vehicle, membership, activity, compensation, fleet, and program terms");
+  });
+});
