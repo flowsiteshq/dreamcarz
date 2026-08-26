@@ -1,0 +1,23 @@
+CREATE TABLE `vehicle_inquiries` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`reference` varchar(24) NOT NULL,
+	`userId` int,
+	`inquiryType` enum('rental','purchase') NOT NULL,
+	`vehicleId` varchar(96) NOT NULL,
+	`vehicleName` varchar(160) NOT NULL,
+	`contactName` varchar(160) NOT NULL,
+	`contactEmail` varchar(320) NOT NULL,
+	`contactPhone` varchar(32) NOT NULL,
+	`preferredContact` enum('phone','email') NOT NULL DEFAULT 'phone',
+	`requestedStartDate` varchar(10),
+	`requestedEndDate` varchar(10),
+	`pickupLocation` varchar(255),
+	`notes` text,
+	`status` enum('submitted','under_review','contacted','closed','declined') NOT NULL DEFAULT 'submitted',
+	`reviewNote` text,
+	`reviewedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `vehicle_inquiries_id` PRIMARY KEY(`id`),
+	CONSTRAINT `vehicle_inquiries_reference_unique` UNIQUE(`reference`)
+);

@@ -104,3 +104,13 @@
 - [x] Remove residual green chroma-key halos and fragments from every generated vehicle cutout.
 - [x] Re-verify fleet, vehicle-detail, and My Vehicles imagery for clean background-free vehicle presentation.
 - [x] Run semantic vehicle background removal on the approved inventory source images to eliminate detached cutout artifacts.
+- [x] Replace flawed vehicle cutouts with clean Nano Banana vehicle visuals for all eight confirmed inventory vehicles.
+- [x] Add vehicle-specific Rent this vehicle and Buy this vehicle actions to public fleet and vehicle-detail views.
+- [x] Build persistent rental-request and purchase-inquiry workflows with clear member-facing confirmation states.
+- [x] Test and visually verify clean vehicle visuals plus complete rent-or-buy flows before publishing.
+- [x] Make each confirmed vehicle card open a full-screen vehicle viewer with the large vehicle image and rent-or-buy actions.
+- [x] Verify all eight Nano Banana studio assets completed successfully and render without placeholders on Fleet, Vehicle Detail, and My Vehicles.
+- [x] Submit and verify both a rental request and a purchase inquiry end-to-end, including persisted `vehicle_inquiries` records and success states.
+- [x] Add router-level coverage for rental and purchase vehicle-inquiry creation, validation, and persistence.
+- [x] Directly inspect and document all eight Nano Banana studio asset files and their final public/member inventory rendering.
+- [x] Directly inspect and document the final Vehicle Detail studio-asset rendering after the visual-system replacement.

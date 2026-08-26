@@ -11,6 +11,7 @@ import {
   rentalApplications,
   rentalApplicationDocuments,
   reservationRequests,
+  vehicleInquiries,
   users,
   serviceReports,
   serviceReportPhotos,
@@ -26,6 +27,7 @@ import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
+import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 
 export const appRouter = router({
   system: systemRouter,
@@ -473,6 +475,53 @@ export const appRouter = router({
         await db.update(reservationRequests).set({ status: "canceled" }).where(eq(reservationRequests.id, input.id));
         return { success: true };
       }),
+  }),
+
+  vehicleInquiries: router({
+    create: publicProcedure
+      .input(z.object({
+        inquiryType: z.enum(["rental", "purchase"]),
+        vehicleId: z.string().trim().min(2).max(96),
+        vehicleName: z.string().trim().min(2).max(160),
+        contactName: z.string().trim().min(2).max(160),
+        contactEmail: z.string().trim().email().max(320),
+        contactPhone: z.string().trim().min(7).max(32),
+        preferredContact: z.enum(["phone", "email"]),
+        requestedStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        requestedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        pickupLocation: z.string().trim().max(255).optional(),
+        notes: z.string().trim().max(2_000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle requests are temporarily unavailable." });
+
+        if (input.inquiryType === "rental") {
+          if (!hasCompleteRentalInquiry(input)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Add a pickup location and valid rental dates to continue." });
+          }
+        }
+
+        const referenceCode = nanoid(7).toUpperCase().replace(/[^A-Z0-9]/g, "X");
+        const reference = `${vehicleInquiryReferencePrefix(input.inquiryType)}-${new Date().getFullYear()}-${referenceCode}`;
+        await db.insert(vehicleInquiries).values({
+          reference,
+          userId: ctx.user?.id ?? null,
+          ...input,
+          requestedStartDate: input.requestedStartDate ?? null,
+          requestedEndDate: input.requestedEndDate ?? null,
+          pickupLocation: input.pickupLocation ?? null,
+          notes: input.notes ?? null,
+          status: "submitted",
+        });
+        return { success: true, reference, inquiryType: input.inquiryType } as const;
+      }),
+
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(vehicleInquiries).where(eq(vehicleInquiries.userId, ctx.user.id)).orderBy(desc(vehicleInquiries.createdAt));
+    }),
   }),
 
   serviceReports: router({

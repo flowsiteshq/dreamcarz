@@ -33,3 +33,21 @@ The first transparent-cutout attempt introduced detached green and gray artifact
 The final public Fleet screenshot directly showed all eight inventory vehicles as isolated cutouts on the page’s white field. The two-row, four-column inventory grid has no rectangular studio-photo backgrounds, detached fragments, or green haloing; it retains the user-supplied vehicle names and colors only. The final authenticated My Vehicles screenshot independently showed the same eight clean cutouts across both rows, with no background blocks or visual artifacts. Both pages preserve the reference’s restrained white canvas, thin gray dividers, compact vehicle scale, black type, and gold category labels.
 
 The final 2024 Chevrolet Malibu detail screenshot also showed the same isolated gray Malibu cutout on the warm-white page field. No studio rectangle, detached artifact, green halo, or colored fringe was visible around the vehicle, while the vehicle detail content remained unchanged.
+
+## Nano Banana source review
+
+The first direct Nano Banana source review confirmed a complete, correctly proportioned 2024 gray Chevrolet Malibu with all wheels visible and generous margin. The model rendered a green-key source background, so these premium source images are being passed through semantic subject extraction before integration; the green source files themselves will not be used in the website.
+
+The intermediate semantic extraction retained a small amount of green-key color in the source vehicle’s glass and edge regions. A final pixel-level cleanup removes green-key pixels after semantic extraction, producing the asset set that will be used on the white DreamCarz inventory surfaces.
+
+## Final vehicle-experience verification
+
+The replacement Nano Banana studio asset set was verified in the full public Fleet grid, vehicle detail page, and authenticated My Vehicles grid. All eight confirmed vehicles rendered as complete, warm-white studio images with no failed/generating placeholder, green-key field, detached artifact, or external scene.
+
+The 2024 Chevrolet Malibu vehicle detail view was checked directly. Its large image opens the full-screen viewer, and its distinct **Rent this vehicle** and **Buy this vehicle** actions open the appropriate form. A controlled rental request and a controlled purchase inquiry both reached the confirmation screen and persisted as `submitted` records in `vehicle_inquiries`; the two explicitly labeled QA records were removed immediately after verification.
+
+Direct image-contact-sheet inspection confirmed all eight completed Nano Banana studio files depict the expected confirmed vehicle/color combinations with full vehicles, uniform warm-white studio fields, and no generating or failed placeholders. Direct public Fleet screenshot inspection confirmed the same eight final images render on the live grid without green-key color, detached cutout fragments, or external scene backgrounds; each card also exposes the full-vehicle, rent, and buy paths.
+
+Direct authenticated My Vehicles screenshot inspection confirmed all eight final studio assets render again in the member interface with complete vehicles, consistent warm-white fields, no image placeholders, and the visible **View full vehicle · Rent or buy** path on every card.
+
+Direct Vehicle Detail screenshot inspection confirmed the final `dreamcarz-studio-2024-chevrolet-malibu-gray` image renders as a complete vehicle on the warm-white image field with no generating/failed placeholder, crop artifact, or green-key residue. The large image remains paired with the visible **Rent this vehicle** and **Buy this vehicle** actions.

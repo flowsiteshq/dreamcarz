@@ -77,14 +77,14 @@ describe("DreamCarz ecosystem process content", () => {
     const detail = source("client/src/pages/VehicleDetail.tsx");
     const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
     for (const imageKey of [
-      "dreamcarz-semantic-2024-chevrolet-malibu-gray",
-      "dreamcarz-semantic-2022-chevrolet-traverse-white",
-      "dreamcarz-semantic-2024-ford-fusion-gray",
-      "dreamcarz-semantic-2020-chevrolet-traverse-gray",
-      "dreamcarz-semantic-2019-chevrolet-malibu-black",
-      "dreamcarz-semantic-2015-ford-taurus-gray",
-      "dreamcarz-semantic-2020-chevrolet-equinox-gray",
-      "dreamcarz-semantic-2020-chevrolet-equinox-black",
+      "dreamcarz-studio-2024-chevrolet-malibu-gray",
+      "dreamcarz-studio-2022-chevrolet-traverse-white",
+      "dreamcarz-studio-2024-ford-fusion-gray",
+      "dreamcarz-studio-2020-chevrolet-traverse-gray",
+      "dreamcarz-studio-2019-chevrolet-malibu-black",
+      "dreamcarz-studio-2015-ford-taurus-gray",
+      "dreamcarz-studio-2020-chevrolet-equinox-gray",
+      "dreamcarz-studio-2020-chevrolet-equinox-black",
     ]) {
       expect(fleet).toContain(imageKey);
       expect(detail).toContain(imageKey);
@@ -92,6 +92,22 @@ describe("DreamCarz ecosystem process content", () => {
     }
     expect(fleet).toContain("bg-transparent");
     expect(memberVehicles).toContain("bg-transparent");
+  });
+
+  it("keeps direct full-screen, rental, and purchase paths available for confirmed vehicles", () => {
+    const fleet = source("client/src/pages/Fleet.tsx");
+    const detail = source("client/src/pages/VehicleDetail.tsx");
+    const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
+    const vehicleDialog = source("client/src/components/VehicleExperienceDialog.tsx");
+
+    expect(fleet).toContain("Rent this vehicle");
+    expect(fleet).toContain("Buy this vehicle");
+    expect(detail).toContain("Rent this vehicle");
+    expect(detail).toContain("Buy this vehicle");
+    expect(memberVehicles).toContain("View full vehicle · Rent or buy");
+    expect(vehicleDialog).toContain("Submit rental request");
+    expect(vehicleDialog).toContain("Submit purchase inquiry");
+    expect(vehicleDialog).toContain("vehicleInquiries.create");
   });
 
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {

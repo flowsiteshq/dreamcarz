@@ -165,6 +165,32 @@ export const reservationRequests = mysqlTable("reservation_requests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// ── Vehicle Rental & Purchase Inquiries ─────────────────────────────────────
+
+export const vehicleInquiries = mysqlTable("vehicle_inquiries", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 24 }).notNull().unique(),
+  userId: int("userId"),
+  inquiryType: mysqlEnum("inquiryType", ["rental", "purchase"]).notNull(),
+  vehicleId: varchar("vehicleId", { length: 96 }).notNull(),
+  vehicleName: varchar("vehicleName", { length: 160 }).notNull(),
+  contactName: varchar("contactName", { length: 160 }).notNull(),
+  contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 32 }).notNull(),
+  preferredContact: mysqlEnum("preferredContact", ["phone", "email"]).default("phone").notNull(),
+  requestedStartDate: varchar("requestedStartDate", { length: 10 }),
+  requestedEndDate: varchar("requestedEndDate", { length: 10 }),
+  pickupLocation: varchar("pickupLocation", { length: 255 }),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["submitted", "under_review", "contacted", "closed", "declined"])
+    .default("submitted")
+    .notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── Service & Incident Reports ─────────────────────────────────────────────
 
 export const serviceReports = mysqlTable("service_reports", {
@@ -230,6 +256,7 @@ export type Commission = typeof commissions.$inferSelect;
 export type RentalApplication = typeof rentalApplications.$inferSelect;
 export type RentalApplicationDocument = typeof rentalApplicationDocuments.$inferSelect;
 export type ReservationRequest = typeof reservationRequests.$inferSelect;
+export type VehicleInquiry = typeof vehicleInquiries.$inferSelect;
 export type ServiceReport = typeof serviceReports.$inferSelect;
 export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
 export type ServiceReportReviewEvent = typeof serviceReportReviewEvents.$inferSelect;
