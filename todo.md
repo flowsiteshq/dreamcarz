@@ -27,15 +27,15 @@
 - [x] Complete the deck content update and full slide-by-slide verification against approved flyer information.
 - [x] Re-present the refreshed DreamCarz deck and confirm the delivered presentation reflects updated content.
 - [x] Verify the website, app, and presentation updates and publish the refreshed deliverables.
-- [ ] Push the flyer-content website and app updates to GitHub main for the Railway deployment.
-- [ ] Confirm the active GitHub browser session and use it to authorize the pending repository synchronization.
-- [ ] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
+- [x] Push the flyer-content website and app updates to GitHub main for the Railway deployment.
+- [x] Confirm the active GitHub browser session and use it to authorize the pending repository synchronization.
+- [x] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
 - [x] Export the redesigned DreamCarz investor deck as a PDF and deliver it directly.
-- [ ] Diagnose the reported DreamCarz sign-in failure across the login interface and direct authentication backend.
+- [x] Diagnose the reported DreamCarz sign-in failure across the login interface and direct authentication backend.
 - [ ] Fix the DreamCarz sign-in flow and verify successful member access to My Account.
-- [ ] Add secure direct-password setup for existing legacy-authenticated DreamCarz accounts.
-- [ ] Provision and verify a one-time temporary direct-login password for the existing DreamCarz administrator account.
-- [ ] Push the current DreamCarz project updates to flowsiteshq/dreamcarz main at the user’s request.
+- [x] Add secure direct-password setup for existing legacy-authenticated DreamCarz accounts.
+- [x] Provision and verify a one-time temporary direct-login password for the existing DreamCarz administrator account.
+- [x] Push the current DreamCarz project updates to flowsiteshq/dreamcarz main at the user’s request.
 - [x] Audit the existing Drive Network workflows and investor-deck requirements for the marketer dashboard.
 - [x] Build a dedicated DreamCarz marketer MLM dashboard with compliant referral, team, rank, and earnings-activity features.
 - [x] Add behavioral tests for marketer dashboard metrics, ranks, and referral workflows.
@@ -84,3 +84,8 @@
 - [x] Update the public navigation to expose the approved Member, Associate, and Fleet Partner pathways clearly.
 - [x] Add a clear Fleet Partner process touchpoint from My Account and align the My Account dashboard with the approved member journey.
 - [x] Perform authenticated visual QA of My Account, Membership, Dream Journey, and Associate Path before publishing.
+- [ ] Add the existing DreamCarz production database connection as Railway `DATABASE_URL` without replacing current records.
+- [ ] Redeploy Railway and verify production account creation, direct sign-in, and My Account access.
+- [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
+- [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
+- [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.

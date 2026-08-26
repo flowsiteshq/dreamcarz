@@ -18,6 +18,31 @@ describe("DreamCarz ecosystem process content", () => {
     expect(navigation).toContain('label: "Fleet Partners"');
   });
 
+  it("shows the Tesla Model 3 hero and every vehicle in the supplied current inventory", () => {
+    const home = source("client/src/pages/Home.tsx");
+
+    expect(home).toContain("dreamcarz-tesla-model-3-hero");
+    for (const vehicle of [
+      ["2024", "Chevrolet", "Malibu"],
+      ["2022", "Chevrolet", "Traverse"],
+      ["2024", "Ford", "Fusion"],
+      ["2020", "Chevrolet", "Traverse"],
+      ["2019", "Chevrolet", "Malibu"],
+      ["2015", "Ford", "Taurus"],
+      ["2020", "Chevrolet", "Equinox"],
+    ]) {
+      const [year, make, model] = vehicle;
+      expect(home).toContain(`year: "${year}"`);
+      expect(home).toContain(`make: "${make}"`);
+      expect(home).toContain(`model: "${model}"`);
+    }
+    expect(home).toContain('color: "Gray"');
+    expect(home).toContain('color: "Black"');
+    expect(home).toContain('color: "White"');
+    expect(home).toContain("Contact to confirm rental or sale");
+    expect(home).toContain("Availability");
+  });
+
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {
     const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
     const journey = source("client/src/pages/dashboard/DreamJourney.tsx");
