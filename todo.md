@@ -32,7 +32,7 @@
 - [x] Restore a usable GitHub browser authorization and synchronize the approved flyer-content release to GitHub main.
 - [x] Export the redesigned DreamCarz investor deck as a PDF and deliver it directly.
 - [x] Diagnose the reported DreamCarz sign-in failure across the login interface and direct authentication backend.
-- [ ] Fix the DreamCarz sign-in flow and verify successful member access to My Account.
+- [x] Fix the DreamCarz sign-in flow and verify successful member access to My Account.
 - [x] Add secure direct-password setup for existing legacy-authenticated DreamCarz accounts.
 - [x] Provision and verify a one-time temporary direct-login password for the existing DreamCarz administrator account.
 - [x] Push the current DreamCarz project updates to flowsiteshq/dreamcarz main at the user’s request.
@@ -84,8 +84,9 @@
 - [x] Update the public navigation to expose the approved Member, Associate, and Fleet Partner pathways clearly.
 - [x] Add a clear Fleet Partner process touchpoint from My Account and align the My Account dashboard with the approved member journey.
 - [x] Perform authenticated visual QA of My Account, Membership, Dream Journey, and Associate Path before publishing.
-- [ ] Add the existing DreamCarz production database connection as Railway `DATABASE_URL` without replacing current records.
-- [ ] Redeploy Railway and verify production account creation, direct sign-in, and My Account access.
+- [x] Add the existing DreamCarz production database connection as Railway `DATABASE_URL` without replacing current records.
+- [x] Redeploy Railway and verify production account creation, direct sign-in, and My Account access.
+- [x] Run a labeled production account-creation verification and confirm the new account reaches My Account.
 - [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
 - [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
 - [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.
@@ -128,3 +129,4 @@
 - [x] Replace generic membership tiers and unsupported pricing with Entry, Mid-Range, and Elite vehicle-access packages.
 - [x] Explain each package’s intended vehicle class and documented review process without unsupported guarantees, fees, or program claims.
 - [x] Connect package actions to relevant confirmed inventory exploration and test the revised Membership experience.
+- [x] Commit and push the latest verified DreamCarz website and app release to GitHub main.
