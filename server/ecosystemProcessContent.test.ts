@@ -72,6 +72,26 @@ describe("DreamCarz ecosystem process content", () => {
     expect(reservations).not.toContain("estimatedWeeklyFee}/week");
   });
 
+  it("renders a corresponding confirmed vehicle image on public and member inventory cards", () => {
+    const fleet = source("client/src/pages/Fleet.tsx");
+    const detail = source("client/src/pages/VehicleDetail.tsx");
+    const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
+    for (const imageKey of [
+      "dreamcarz-2024-chevrolet-malibu-gray",
+      "dreamcarz-2022-chevrolet-traverse-white",
+      "dreamcarz-2024-ford-fusion-gray",
+      "dreamcarz-2020-chevrolet-traverse-gray",
+      "dreamcarz-2019-chevrolet-malibu-black",
+      "dreamcarz-2015-ford-taurus-gray",
+      "dreamcarz-2020-chevrolet-equinox-gray",
+      "dreamcarz-2020-chevrolet-equinox-black",
+    ]) {
+      expect(fleet).toContain(imageKey);
+      expect(detail).toContain(imageKey);
+      expect(memberVehicles).toContain(imageKey);
+    }
+  });
+
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {
     const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
     const journey = source("client/src/pages/dashboard/DreamJourney.tsx");

@@ -94,3 +94,7 @@
 - [x] Add guard coverage and visual verification that no unsupported vehicle listings remain.
 - [x] Audit and correct My Vehicles, reservation, and current-vehicle member screens to use confirmed inventory only.
 - [x] Expand inventory guard coverage and document visual QA for public fleet, vehicle detail, and member inventory screens.
+- [x] Create clear vehicle images for every confirmed DreamCarz inventory vehicle.
+- [x] Replace public and member inventory placeholders with the corresponding confirmed vehicle images.
+- [x] Test and visually verify vehicle images, labels, and confirmed-inventory accuracy before publishing.
+- [x] Document final completed-asset QA for every confirmed vehicle image on public and member inventory screens.
