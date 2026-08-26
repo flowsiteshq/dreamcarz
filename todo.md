@@ -125,3 +125,6 @@
 - [x] Test every homepage action and visually verify the navigation correction before publishing.
 - [x] Verify every visible homepage action from a scrolled position reaches its correct destination or workflow state at the expected top position.
 - [x] Manually test each homepage action pattern from a scrolled position and record its destination or workflow state.
+- [x] Replace generic membership tiers and unsupported pricing with Entry, Mid-Range, and Elite vehicle-access packages.
+- [x] Explain each package’s intended vehicle class and documented review process without unsupported guarantees, fees, or program claims.
+- [x] Connect package actions to relevant confirmed inventory exploration and test the revised Membership experience.

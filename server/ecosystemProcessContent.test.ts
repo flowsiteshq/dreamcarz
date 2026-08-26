@@ -123,6 +123,26 @@ describe("DreamCarz ecosystem process content", () => {
     expect(content).not.toContain("$2,850 Value");
   });
 
+  it("uses vehicle-access packages instead of unsupported membership pricing and links them to confirmed inventory", () => {
+    const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
+    const fleet = source("client/src/pages/Fleet.tsx");
+
+    for (const packageLabel of ["Entry vehicle access", "Mid-Range vehicle access", "Elite vehicle access"]) {
+      expect(membership).toContain(packageLabel);
+    }
+    expect(membership).toContain('href: "/fleet?access=entry"');
+    expect(membership).toContain('href: "/fleet?access=mid-range"');
+    expect(membership).toContain('href: "/fleet?access=elite"');
+    expect(membership).not.toContain("$39.95");
+    expect(membership).not.toContain("$69.95");
+    expect(membership).not.toContain("$99.95");
+    expect(membership).not.toContain("$149.95");
+    expect(fleet).toContain('new URLSearchParams(window.location.search).get("access")');
+    expect(fleet).toContain('access: "entry"');
+    expect(fleet).toContain('access: "mid-range"');
+    expect(fleet).toContain('access: "elite"');
+  });
+
   it("labels the in-app business area as the Associate Path and preserves compliant guidance", () => {
     const shell = source("client/src/components/DashboardShell.tsx");
     const associateHub = source("client/src/pages/dashboard/DriveNetwork.tsx");
