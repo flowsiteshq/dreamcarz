@@ -114,3 +114,9 @@
 - [x] Add router-level coverage for rental and purchase vehicle-inquiry creation, validation, and persistence.
 - [x] Directly inspect and document all eight Nano Banana studio asset files and their final public/member inventory rendering.
 - [x] Directly inspect and document the final Vehicle Detail studio-asset rendering after the visual-system replacement.
+- [x] Rebuild the homepage information hierarchy to align with the supplied DreamCarz reference.
+- [x] Restore the homepage prompt bar with actionable DreamCarz help and pathway prompts.
+- [x] Add the reference-aligned pathway, transportation journey, confirmed inventory, and support sections using only approved content and the eight confirmed vehicles.
+- [x] Test and visually compare the reconstructed homepage before publishing.
+- [x] Audit the reconstructed homepage copy against approved DreamCarz process language and remove unsupported new claims.
+- [x] Directly inspect and document visual QA comparison of the final homepage against the supplied reference, including prompt bar visibility and section hierarchy.

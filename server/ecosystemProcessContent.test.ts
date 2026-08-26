@@ -39,8 +39,8 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain('color: "Gray"');
     expect(home).toContain('color: "Black"');
     expect(home).toContain('color: "White"');
-    expect(home).toContain("Contact to confirm rental or sale");
-    expect(home).toContain("Availability");
+    expect(home).toContain("Rent or buy");
+    expect(home).toContain("Find my path");
   });
 
   it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
