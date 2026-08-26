@@ -140,4 +140,26 @@ describe("DreamCarz ecosystem process content", () => {
     expect(dashboard).toContain("Fleet Partner Path");
     expect(dashboard).toContain("Final vehicle, membership, activity, compensation, fleet, and program terms");
   });
+
+  it("gives homepage actions concrete destinations and resets scroll on every route change", () => {
+    const home = source("client/src/pages/Home.tsx");
+    const app = source("client/src/App.tsx");
+
+    for (const destination of [
+      'href="/fleet"',
+      'href="/membership"',
+      'href: "/opportunity"',
+      'href="/contact"',
+      'navigate("/fleet")',
+      'navigate("/opportunity")',
+      'navigate("/membership")',
+      'navigate(isAuthenticated ? "/dashboard" : "/login")',
+      "/vehicle?id=${vehicle.id}",
+    ]) {
+      expect(home).toContain(destination);
+    }
+
+    expect(app).toContain('window.scrollTo({ top: 0, left: 0, behavior: "auto" })');
+    expect(app).toContain("function ScrollToTop()");
+  });
 });

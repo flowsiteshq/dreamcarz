@@ -120,3 +120,8 @@
 - [x] Test and visually compare the reconstructed homepage before publishing.
 - [x] Audit the reconstructed homepage copy against approved DreamCarz process language and remove unsupported new claims.
 - [x] Directly inspect and document visual QA comparison of the final homepage against the supplied reference, including prompt bar visibility and section hierarchy.
+- [x] Audit all homepage action links and buttons for incorrect bottom-of-page navigation.
+- [x] Correct homepage routing so every action opens its intended page or vehicle workflow.
+- [x] Test every homepage action and visually verify the navigation correction before publishing.
+- [x] Verify every visible homepage action from a scrolled position reaches its correct destination or workflow state at the expected top position.
+- [x] Manually test each homepage action pattern from a scrolled position and record its destination or workflow state.
