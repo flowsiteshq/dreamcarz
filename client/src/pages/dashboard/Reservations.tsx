@@ -1,6 +1,6 @@
 import DashboardShell from "@/components/DashboardShell";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, MapPin, Clock, ChevronRight, Plus, ClipboardCheck, X } from "lucide-react";
+import { CalendarDays, MapPin, Clock, ChevronRight, Plus, ClipboardCheck, X, Car } from "lucide-react";
 import { Link } from "wouter";
 
 const statusStyles = {
@@ -21,6 +21,16 @@ const statusLabels = {
   declined: "Unavailable",
 } as const;
 
+const confirmedVehicleNames = new Set([
+  "2024 Chevrolet Malibu",
+  "2022 Chevrolet Traverse",
+  "2024 Ford Fusion",
+  "2020 Chevrolet Traverse",
+  "2019 Chevrolet Malibu",
+  "2015 Ford Taurus",
+  "2020 Chevrolet Equinox",
+]);
+
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -31,6 +41,7 @@ export default function Reservations() {
   const cancelReservation = trpc.reservations.cancel.useMutation({
     onSuccess: () => utils.reservations.list.invalidate(),
   });
+  const visibleReservations = reservationsQuery.data?.filter((reservation) => confirmedVehicleNames.has(reservation.vehicleName)) ?? [];
 
   return (
     <DashboardShell title="Reservations">
@@ -51,15 +62,15 @@ export default function Reservations() {
 
         {reservationsQuery.isLoading ? (
           <div className="rounded-3xl border border-gray-100 bg-white px-6 py-12 text-center text-[13px] text-gray-400">Loading your reservation requests…</div>
-        ) : reservationsQuery.data?.length ? (
+        ) : visibleReservations.length ? (
           <div className="space-y-3">
-            {reservationsQuery.data.map((reservation) => {
+            {visibleReservations.map((reservation) => {
               const canCancel = ["submitted", "under_review", "change_requested"].includes(reservation.status);
               return (
                 <div key={reservation.id} className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300">
                   <div className="flex items-start gap-4">
-                    <div className="w-20 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                      <img src={reservation.vehicleImage} alt={reservation.vehicleName} className="w-full h-full object-contain" />
+                    <div className="w-20 h-14 rounded-xl bg-gray-50 flex shrink-0 items-center justify-center">
+                      <Car size={23} className="text-[#a8832d]" aria-hidden="true" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -72,13 +83,13 @@ export default function Reservations() {
                       <div className="flex flex-wrap gap-3 mt-2">
                         <span className="flex items-center gap-1 text-[11px] text-gray-400"><CalendarDays size={11} /> {formatDate(reservation.requestedStartDate)} – {formatDate(reservation.requestedEndDate)}</span>
                         <span className="flex items-center gap-1 text-[11px] text-gray-400"><MapPin size={11} /> {reservation.pickupLocation}</span>
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400"><Clock size={11} /> Est. ${reservation.estimatedWeeklyFee}/week · Final terms pending review</span>
+                        <span className="flex items-center gap-1 text-[11px] text-gray-400"><Clock size={11} /> Final rental or sale terms pending review</span>
                       </div>
                       {reservation.reviewNote && <p className="mt-3 text-[12px] leading-relaxed text-gray-500">DreamCarz note: {reservation.reviewNote}</p>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
-                    <Link href={`/vehicle?id=${reservation.vehicleId}`} className="flex items-center gap-1.5 px-4 py-2 bg-black text-white text-[11px] font-semibold rounded-full hover:bg-gray-900 transition-colors">Vehicle Details <ChevronRight size={13} /></Link>
+                    <Link href="/fleet" className="flex items-center gap-1.5 px-4 py-2 bg-black text-white text-[11px] font-semibold rounded-full hover:bg-gray-900 transition-colors">Confirmed Inventory <ChevronRight size={13} /></Link>
                     {canCancel && <button disabled={cancelReservation.isPending} onClick={() => cancelReservation.mutate({ id: reservation.id })} className="flex items-center gap-1.5 px-4 py-2 border border-red-100 text-red-500 text-[11px] rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"><X size={12} /> Cancel Request</button>}
                   </div>
                 </div>

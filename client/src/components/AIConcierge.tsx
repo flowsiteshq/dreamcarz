@@ -23,8 +23,8 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/extend|more day|longer|keep the car/i],
-    answer: "You can extend your current Porsche 911 rental directly from My Vehicles. Select the car, tap **Extend**, choose your additional days, and we'll confirm within 1 hour.",
-    actions: [{ label: "Extend Rental", href: "/dashboard/vehicles" }],
+    answer: "If you have an active DreamCarz rental, open My Vehicles or contact the team to request an extension. Extensions are confirmed only after DreamCarz reviews current vehicle availability.",
+    actions: [{ label: "My Vehicles", href: "/dashboard/vehicles" }],
   },
   {
     patterns: [/swap|different car|change vehicle|switch car/i],
@@ -43,7 +43,7 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/reservation|book|reserve|upcoming|schedule/i],
-    answer: "You have **1 active rental** (Porsche 911 Carrera S, 18 days remaining) and **1 upcoming reservation** (Range Rover Sport SE, starting May 24). View all reservations for full details.",
+    answer: "Open Reservations to review your current requests and reservation status. DreamCarz confirms vehicle availability before a request is accepted.",
     actions: [{ label: "View Reservations", href: "/dashboard/reservations" }],
   },
   {
@@ -83,8 +83,8 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/vehicle|car|fleet|garage|my car/i],
-    answer: "Your garage currently has **1 active rental** (Porsche 911 Carrera S), **1 upcoming reservation** (Range Rover Sport SE), and **1 wishlist vehicle** (Porsche 911 Turbo S). Browse the full fleet to add more.",
-    actions: [{ label: "My Vehicles", href: "/dashboard/vehicles" }],
+    answer: "The current confirmed DreamCarz inventory includes four sedans—two Chevrolet Malibus, a Ford Fusion, and a Ford Taurus—and four SUVs—two Chevrolet Traverses and two Chevrolet Equinox vehicles. Open the confirmed inventory to review the exact year and color of each vehicle, then contact DreamCarz to confirm rental or sale options.",
+    actions: [{ label: "View Confirmed Inventory", href: "/fleet" }],
   },
   {
     patterns: [/reward|redeem|cashback|gift|perk/i],

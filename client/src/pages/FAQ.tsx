@@ -63,7 +63,7 @@ const categories = [
     questions: [
       {
         q: "What types of vehicles are available?",
-        a: "DreamCarz offers a diverse fleet including:\n\n• **Value** — Honda Civic, Toyota Camry, Nissan Altima, and more (under $20K)\n• **Luxury** — BMW 5 Series, Mercedes E-Class, Audi A6\n• **Sports** — Porsche 911, Chevrolet Corvette, Ford Mustang GT500\n• **Supercar** — Lamborghini Huracán, Ferrari 488, McLaren 720S\n• **Electric** — Tesla Model S, Rivian R1T\n• **SUV** — Range Rover, Cadillac Escalade, BMW X7\n\nVehicle access depends on your membership tier.",
+        a: "The current confirmed DreamCarz inventory is:\n\n• **Sedans** — 2024 Chevrolet Malibu (Gray), 2024 Ford Fusion (Gray), 2019 Chevrolet Malibu (Black), and 2015 Ford Taurus (Gray)\n• **SUVs** — 2022 Chevrolet Traverse (White), 2020 Chevrolet Traverse (Gray), 2020 Chevrolet Equinox (Gray), and 2020 Chevrolet Equinox (Black)\n\nContact DreamCarz to confirm current rental or sale options for a specific vehicle.",
       },
       {
         q: "How long can I keep a vehicle?",

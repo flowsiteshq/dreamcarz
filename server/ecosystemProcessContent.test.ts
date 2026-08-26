@@ -43,6 +43,35 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain("Availability");
   });
 
+  it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
+    const inventoryContent = [
+      source("client/src/pages/Fleet.tsx"),
+      source("client/src/pages/VehicleDetail.tsx"),
+      source("client/src/pages/dashboard/MyVehicles.tsx"),
+      source("client/src/pages/dashboard/Reservations.tsx"),
+      source("client/src/pages/FAQ.tsx"),
+      source("client/src/components/AIConcierge.tsx"),
+    ].join("\n");
+
+    for (const vehicle of [
+      "2024 Chevrolet Malibu",
+      "2022 Chevrolet Traverse",
+      "2024 Ford Fusion",
+      "2020 Chevrolet Traverse",
+      "2019 Chevrolet Malibu",
+      "2015 Ford Taurus",
+      "2020 Chevrolet Equinox",
+    ]) {
+      expect(inventoryContent).toContain(vehicle);
+    }
+    for (const unsupportedVehicle of ["Porsche", "Lamborghini", "Ferrari", "Range Rover", "Mercedes", "Audi", "Honda Civic", "Toyota Camry", "Nissan Altima", "Hyundai Tucson", "Kia Sportage", "Ford Escape", "Rivian", "Cadillac Escalade", "McLaren"]) {
+      expect(inventoryContent).not.toContain(unsupportedVehicle);
+    }
+    const reservations = source("client/src/pages/dashboard/Reservations.tsx");
+    expect(reservations).toContain("confirmedVehicleNames.has(reservation.vehicleName)");
+    expect(reservations).not.toContain("estimatedWeeklyFee}/week");
+  });
+
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {
     const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
     const journey = source("client/src/pages/dashboard/DreamJourney.tsx");

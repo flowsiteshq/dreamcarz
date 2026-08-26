@@ -89,3 +89,8 @@
 - [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
 - [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
 - [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.
+- [x] Audit every public and member-app inventory surface for unsupported vehicle listings.
+- [x] Remove generic vehicle listings and show only the eight user-confirmed DreamCarz inventory vehicles.
+- [x] Add guard coverage and visual verification that no unsupported vehicle listings remain.
+- [x] Audit and correct My Vehicles, reservation, and current-vehicle member screens to use confirmed inventory only.
+- [x] Expand inventory guard coverage and document visual QA for public fleet, vehicle detail, and member inventory screens.
