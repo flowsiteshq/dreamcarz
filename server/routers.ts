@@ -18,6 +18,7 @@ import {
   transactionAgreements,
   transactionConsents,
   transactionDocuments,
+  vehicleConditionReports,
   users,
   serviceReports,
   serviceReportPhotos,
@@ -34,12 +35,18 @@ import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
+import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
+import { createStripePaymentMethodSetup, getPaymentProviderStatus } from "./paymentProvider";
+import { getAgreementProviderStatus } from "./agreementProvider";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
   initialTransactionLifecycle,
   isApprovedTransactionVehicle,
   isTransactionStep,
+  canTransitionTransaction,
+  TRANSACTION_STATUSES,
+  transactionStepForStatus,
   TRANSACTION_MEMBERSHIP_PLANS,
   TRANSACTION_REFERENCE_PREFIX,
 } from "../shared/transactionLifecycle";
@@ -597,6 +604,179 @@ export const appRouter = router({
         .orderBy(desc(vehicleTransactions.updatedAt));
     }),
 
+    identityProviderStatus: protectedProcedure.query(() => getIdentityProviderStatus()),
+
+    startIdentityVerification: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        identityDocumentConsent: z.literal(true),
+        biometricConsent: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const transactions = await db.select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "identity") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the saved profile steps before starting identity verification." });
+        }
+        const returnUrl = process.env.STRIPE_IDENTITY_RETURN_URL;
+        const provider = getIdentityProviderStatus();
+        if (!provider.configured || !returnUrl) return { started: false as const, provider };
+        const session = await createStripeIdentityVerificationSession({
+          transactionReference: transaction.reference,
+          userId: ctx.user.id,
+          returnUrl: `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}ref=${encodeURIComponent(transaction.reference)}`,
+        });
+        if (!session.configured) return { started: false as const, provider: session.provider };
+        await db.insert(transactionConsents).values([
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_document", policyVersion: "transaction-identity-v1", source: "stripe_identity" },
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_biometric", policyVersion: "transaction-identity-v1", source: "stripe_identity" },
+        ]);
+        await db.update(vehicleTransactions).set({
+          status: "verification_pending",
+          currentStep: "identity",
+          identityStatus: "pending",
+          licenseStatus: "pending",
+          identityProvider: "stripe_identity",
+          identitySessionId: session.sessionId,
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.update(customerProfiles).set({
+          profileStatus: "ready_for_verification",
+          identityStatus: "pending",
+          licenseStatus: "pending",
+          identityProvider: "stripe_identity",
+          identityProviderSessionId: session.sessionId,
+        }).where(eq(customerProfiles.userId, ctx.user.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "identity.provider_session_created",
+          fromStatus: transaction.status,
+          toStatus: "verification_pending",
+          metadata: JSON.stringify({ provider: "stripe_identity", sessionId: session.sessionId }),
+        });
+        return { started: true as const, clientSecret: session.clientSecret, provider: session.provider };
+      }),
+
+    paymentProviderStatus: protectedProcedure.query(() => getPaymentProviderStatus()),
+
+    agreementProviderStatus: protectedProcedure.query(() => getAgreementProviderStatus()),
+
+    startPaymentMethodSetup: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), futurePaymentConsent: z.literal(true) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment setup is temporarily unavailable." });
+        const transactions = await db.select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "payment") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must complete the preceding transaction review before collecting a payment method." });
+        }
+        const returnUrl = process.env.STRIPE_PAYMENT_RETURN_URL;
+        const provider = getPaymentProviderStatus();
+        if (!provider.configured || !returnUrl) return { started: false as const, provider };
+        const callback = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}ref=${encodeURIComponent(transaction.reference)}`;
+        const paymentSetup = await createStripePaymentMethodSetup({
+          transactionReference: transaction.reference,
+          customerId: transaction.stripeCustomerId,
+          customerEmail: transaction.contactEmail,
+          customerName: transaction.contactName,
+          successUrl: callback,
+          cancelUrl: callback,
+        });
+        if (!paymentSetup.configured) return { started: false as const, provider: paymentSetup.provider };
+        await db.insert(transactionConsents).values({
+          transactionId: transaction.id,
+          userId: ctx.user.id,
+          consentType: "payment_authorization",
+          policyVersion: "payment-method-v1",
+          source: "stripe_checkout_setup",
+        });
+        await db.update(vehicleTransactions).set({
+          status: "payment_pending",
+          currentStep: "payment",
+          paymentStatus: "pending",
+          paymentProvider: "stripe_checkout",
+          stripeCustomerId: paymentSetup.customerId,
+          stripeCheckoutSessionId: paymentSetup.checkoutSessionId,
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "payment.method_setup_started",
+          fromStatus: transaction.status,
+          toStatus: "payment_pending",
+          metadata: JSON.stringify({ provider: "stripe_checkout", checkoutSessionId: paymentSetup.checkoutSessionId }),
+        });
+        return { started: true as const, checkoutUrl: paymentSetup.url, provider: paymentSetup.provider };
+      }),
+
+    activeTransactions: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(vehicleTransactions)
+        .where(and(eq(vehicleTransactions.userId, ctx.user.id), inArray(vehicleTransactions.status, ["ready_for_pickup", "active_rental", "return_pending", "settlement_pending"])))
+        .orderBy(desc(vehicleTransactions.updatedAt));
+    }),
+
+    submitConditionReport: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        stage: z.enum(["pickup", "return"]),
+        odometerReading: z.number().int().min(0).max(2_000_000).optional(),
+        fuelLevel: z.string().trim().max(32).optional(),
+        notes: z.string().trim().max(2_000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle condition reporting is temporarily unavailable." });
+        const transactions = await db.select().from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Condition reporting is available only for rental transactions." });
+        const pickupAllowed = input.stage === "pickup" && transaction.status === "ready_for_pickup";
+        const returnAllowed = input.stage === "return" && ["active_rental", "return_pending"].includes(transaction.status);
+        if (!pickupAllowed && !returnAllowed) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This condition report is not available at the current rental lifecycle stage." });
+        await db.insert(vehicleConditionReports).values({
+          transactionId: transaction.id,
+          stage: input.stage,
+          completedByUserId: ctx.user.id,
+          odometerReading: input.odometerReading,
+          fuelLevel: input.fuelLevel,
+          notes: input.notes,
+          status: "submitted",
+        });
+        const isReturn = input.stage === "return";
+        await db.update(vehicleTransactions).set({
+          status: isReturn && transaction.status === "active_rental" ? "return_pending" : transaction.status,
+          currentStep: isReturn ? "return" : transaction.currentStep,
+          conditionStatus: isReturn ? "return_complete" : "pickup_complete",
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: `condition.${input.stage}_report_submitted`,
+          fromStatus: transaction.status,
+          toStatus: isReturn && transaction.status === "active_rental" ? "return_pending" : transaction.status,
+          metadata: JSON.stringify({ stage: input.stage, hasOdometerReading: input.odometerReading !== undefined, hasFuelLevel: Boolean(input.fuelLevel), hasNotes: Boolean(input.notes) }),
+        });
+        return { success: true };
+      }),
+
     backOffice: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Back-office records are temporarily unavailable." });
@@ -1108,6 +1288,118 @@ export const appRouter = router({
 
       return { applications, reservations, serviceReports: serviceReportsWithHistory };
     }),
+
+    transactionConsole: protectedProcedure
+      .input(z.object({ query: z.string().trim().max(120).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db.select({
+          id: vehicleTransactions.id,
+          reference: vehicleTransactions.reference,
+          transactionType: vehicleTransactions.transactionType,
+          vehicleName: vehicleTransactions.vehicleName,
+          membershipPlan: vehicleTransactions.membershipPlan,
+          status: vehicleTransactions.status,
+          currentStep: vehicleTransactions.currentStep,
+          identityStatus: vehicleTransactions.identityStatus,
+          licenseStatus: vehicleTransactions.licenseStatus,
+          eligibilityStatus: vehicleTransactions.eligibilityStatus,
+          insuranceStatus: vehicleTransactions.insuranceStatus,
+          paymentStatus: vehicleTransactions.paymentStatus,
+          agreementStatus: vehicleTransactions.agreementStatus,
+          conditionStatus: vehicleTransactions.conditionStatus,
+          pickupStatus: vehicleTransactions.pickupStatus,
+          returnStatus: vehicleTransactions.returnStatus,
+          settlementStatus: vehicleTransactions.settlementStatus,
+          deliveryStatus: vehicleTransactions.deliveryStatus,
+          updatedAt: vehicleTransactions.updatedAt,
+          customerName: users.name,
+          customerEmail: users.email,
+        }).from(vehicleTransactions).innerJoin(users, eq(vehicleTransactions.userId, users.id)).orderBy(desc(vehicleTransactions.updatedAt));
+        const query = input?.query?.toLowerCase();
+        return query ? rows.filter(row => [row.reference, row.vehicleName, row.customerName, row.customerEmail, row.status].some(value => value?.toLowerCase().includes(query))) : rows;
+      }),
+
+    transactionDetail: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction records are temporarily unavailable." });
+        const rows = await db.select({ transaction: vehicleTransactions, customerName: users.name, customerEmail: users.email })
+          .from(vehicleTransactions).innerJoin(users, eq(vehicleTransactions.userId, users.id))
+          .where(eq(vehicleTransactions.reference, input.reference)).limit(1);
+        const record = rows[0];
+        if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const [agreements, documents, consents, conditionReports, events] = await Promise.all([
+          db.select().from(transactionAgreements).where(eq(transactionAgreements.transactionId, record.transaction.id)).orderBy(desc(transactionAgreements.updatedAt)),
+          db.select({ id: transactionDocuments.id, documentType: transactionDocuments.documentType, originalFilename: transactionDocuments.originalFilename, contentType: transactionDocuments.contentType, status: transactionDocuments.status, createdAt: transactionDocuments.createdAt }).from(transactionDocuments).where(eq(transactionDocuments.transactionId, record.transaction.id)).orderBy(desc(transactionDocuments.createdAt)),
+          db.select().from(transactionConsents).where(eq(transactionConsents.transactionId, record.transaction.id)).orderBy(desc(transactionConsents.acceptedAt)),
+          db.select().from(vehicleConditionReports).where(eq(vehicleConditionReports.transactionId, record.transaction.id)).orderBy(desc(vehicleConditionReports.updatedAt)),
+          db.select().from(transactionEvents).where(eq(transactionEvents.transactionId, record.transaction.id)).orderBy(desc(transactionEvents.createdAt)),
+        ]);
+        return { ...record, agreements, documents, consents, conditionReports, events };
+      }),
+
+    updateTransactionStatus: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), nextStatus: z.enum(TRANSACTION_STATUSES), note: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction operations are temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (!canTransitionTransaction(transaction.status, input.nextStatus)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "That transaction status change is not allowed from the current lifecycle stage." });
+        await db.update(vehicleTransactions).set({ status: input.nextStatus, currentStep: transactionStepForStatus(transaction.transactionType, input.nextStatus, transaction.currentStep) }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.status_changed", fromStatus: transaction.status, toStatus: input.nextStatus, note: input.note || null });
+        return { success: true };
+      }),
+
+    reviewTransactionStates: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        identityStatus: z.enum(["not_started", "pending", "verified", "requires_input", "manual_review", "redacted"]).optional(),
+        licenseStatus: z.enum(["not_started", "pending", "verified", "expired", "manual_review", "failed"]).optional(),
+        eligibilityStatus: z.enum(["not_started", "pending", "cleared", "manual_review", "ineligible"]).optional(),
+        insuranceStatus: z.enum(["not_required", "pending", "verified", "manual_review", "rejected"]).optional(),
+        agreementStatus: z.enum(["not_required", "draft", "awaiting_signature", "signed", "declined", "voided"]).optional(),
+        conditionStatus: z.enum(["not_started", "pickup_complete", "return_complete", "review_required"]).optional(),
+        pickupStatus: z.enum(["not_applicable", "pending", "verified", "completed", "missed"]).optional(),
+        returnStatus: z.enum(["not_applicable", "pending", "in_progress", "inspected", "complete"]).optional(),
+        settlementStatus: z.enum(["not_applicable", "pending", "complete", "adjustment_required", "disputed"]).optional(),
+        deliveryStatus: z.enum(["not_applicable", "pending", "scheduled", "verified", "completed", "missed"]).optional(),
+        note: z.string().trim().max(2_000).optional(),
+      }).refine(input => Object.entries(input).some(([key, value]) => key !== "reference" && key !== "note" && value !== undefined), { message: "Select at least one review status to update." }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction operations are temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const updates = Object.fromEntries(Object.entries(input).filter(([key, value]) => !["reference", "note"].includes(key) && value !== undefined));
+        await db.update(vehicleTransactions).set(updates).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.review_states_updated", note: input.note || null, metadata: JSON.stringify(updates) });
+        return { success: true };
+      }),
+
+    getTransactionRecordLink: protectedProcedure
+      .input(z.object({ transactionId: z.number().int().positive(), source: z.enum(["document", "agreement"]), recordId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
+        const transactions = await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(eq(vehicleTransactions.id, input.transactionId)).limit(1);
+        if (!transactions[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const record = input.source === "document"
+          ? (await db.select({ key: transactionDocuments.storageKey }).from(transactionDocuments).where(and(eq(transactionDocuments.id, input.recordId), eq(transactionDocuments.transactionId, input.transactionId))).limit(1))[0]
+          : (await db.select({ key: transactionAgreements.signedDocumentKey }).from(transactionAgreements).where(and(eq(transactionAgreements.id, input.recordId), eq(transactionAgreements.transactionId, input.transactionId))).limit(1))[0];
+        if (!record?.key) throw new TRPCError({ code: "NOT_FOUND", message: "A secure record is not available for this item." });
+        return { url: await storageGetSignedUrl(record.key) };
+      }),
 
     reviewApplication: protectedProcedure
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "needs_attention", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))

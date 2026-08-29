@@ -1,0 +1,1 @@
+ALTER TABLE `vehicle_transactions` ADD `stripeSetupIntentId` varchar(160);

@@ -8,6 +8,8 @@ import {
   Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { loadStripe } from "@stripe/stripe-js";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
@@ -33,6 +35,84 @@ const tierColors: Record<string, string> = {
   Elite: "linear-gradient(90deg, #111, #B8860B)",
 };
 
+function IdentityVerificationLauncher({ reference }: { reference: string }) {
+  const [consents, setConsents] = useState({ document: false, biometric: false });
+  const [message, setMessage] = useState("");
+  const provider = trpc.transactions.identityProviderStatus.useQuery(undefined, { refetchOnWindowFocus: false });
+  const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
+  const start = trpc.transactions.startIdentityVerification.useMutation();
+
+  if (!provider.data?.configured || transaction.data?.transaction.currentStep !== "identity") return null;
+
+  const launch = async () => {
+    if (!consents.document || !consents.biometric) {
+      setMessage("Please acknowledge both the document and biometric verification consents before continuing.");
+      return;
+    }
+    try {
+      setMessage("");
+      const response = await start.mutateAsync({ reference, identityDocumentConsent: true, biometricConsent: true });
+      if (!response.started) { setMessage("Identity verification is not configured. Your transaction remains available for manual review."); return; }
+      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+      if (!stripe) { setMessage("The secure identity window could not be opened. Please contact DreamCarz support."); return; }
+      const result = await stripe.verifyIdentity(response.clientSecret);
+      setMessage(result.error ? (result.error.message ?? "The provider could not complete verification. Please use manual review or try again later.") : "Your verification was submitted. DreamCarz will update this record after the provider response is verified.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The identity session could not be started. Please use the manual-review path.");
+    }
+  };
+
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Configured provider option</p><h2 className="mt-2 font-display text-xl font-bold">Verify with Stripe Identity</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz receives only the provider result needed for this transaction. Your verification session is tied to this account and must be completed by you.</p><label className="mt-4 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.document} onChange={event => setConsents(current => ({ ...current, document: event.target.checked }))} className="mt-0.5 accent-black" />I consent to secure document verification for this transaction.</label><label className="mt-3 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.biometric} onChange={event => setConsents(current => ({ ...current, biometric: event.target.checked }))} className="mt-0.5 accent-black" />I separately consent to a live-selfie/biometric comparison performed by the configured provider.</label><button type="button" disabled={start.isPending} onClick={() => void launch()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Preparing secure session…" : "Begin secure identity verification"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+}
+
+function PaymentMethodSetupLauncher({ reference }: { reference: string }) {
+  const [authorized, setAuthorized] = useState(false);
+  const [message, setMessage] = useState("");
+  const provider = trpc.transactions.paymentProviderStatus.useQuery(undefined, { refetchOnWindowFocus: false });
+  const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
+  const start = trpc.transactions.startPaymentMethodSetup.useMutation();
+
+  if (!provider.data?.configured || transaction.data?.transaction.currentStep !== "payment") return null;
+
+  const launch = async () => {
+    if (!authorized) { setMessage("Please authorize the stated future payment-method use before continuing to the payment provider."); return; }
+    try {
+      setMessage("");
+      const response = await start.mutateAsync({ reference, futurePaymentConsent: true });
+      if (!response.started) { setMessage("Secure payment setup is not configured. Your transaction remains available for DreamCarz manual review."); return; }
+      window.location.assign(response.checkoutUrl);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Secure payment setup could not be started. Please contact DreamCarz support.");
+    }
+  };
+
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Configured payment provider</p><h2 className="mt-2 font-display text-xl font-bold">Add a payment method securely</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz does not receive or store your card number, security code, or expiry date. The payment provider collects the method securely. No transaction amount is shown or charged here; final rates, deposits, and authorization terms must be confirmed before any charge.</p><label className="mt-4 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={authorized} onChange={event => setAuthorized(event.target.checked)} className="mt-0.5 accent-black" />I authorize DreamCarz to save this payment method only for the payment use and terms I approve in the final transaction agreement. I understand this step does not itself charge a vehicle price or deposit.</label><button type="button" disabled={start.isPending} onClick={() => void launch()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Opening secure payment…" : "Continue to secure payment"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+}
+
+function RentalConditionReportPanel({ reference }: { reference: string }) {
+  const [odometerReading, setOdometerReading] = useState("");
+  const [fuelLevel, setFuelLevel] = useState("");
+  const [notes, setNotes] = useState("");
+  const [message, setMessage] = useState("");
+  const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
+  const submit = trpc.transactions.submitConditionReport.useMutation({ onSuccess: () => transaction.refetch() });
+  const record = transaction.data?.transaction;
+  const stage = record?.currentStep === "pickup" ? "pickup" as const : "return" as const;
+  const eligible = record?.transactionType === "rental" && (record.currentStep === "pickup" || record.currentStep === "active_rental" || record.currentStep === "return");
+  if (!eligible) return null;
+  const save = async () => {
+    const parsedOdometer = odometerReading.trim() ? Number(odometerReading) : undefined;
+    if (parsedOdometer !== undefined && (!Number.isInteger(parsedOdometer) || parsedOdometer < 0)) { setMessage("Enter a valid non-negative whole-number odometer reading."); return; }
+    try {
+      setMessage("");
+      await submit.mutateAsync({ reference, stage, odometerReading: parsedOdometer, fuelLevel: fuelLevel || undefined, notes: notes || undefined });
+      setOdometerReading(""); setFuelLevel(""); setNotes("");
+      setMessage(`${stage === "pickup" ? "Pickup" : "Return"} condition report submitted for DreamCarz review.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "The condition report could not be saved. Please try again."); }
+  };
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">{stage} condition record</p><h2 className="mt-2 font-display text-xl font-bold">{stage === "pickup" ? "Document the vehicle at handoff" : "Document the vehicle at return"}</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Record observed mileage, fuel level, and notes. This creates an account-bound inspection record; it is not a final settlement or damage determination.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-xs font-semibold text-gray-700">Odometer reading <input value={odometerReading} onChange={event => setOdometerReading(event.target.value)} inputMode="numeric" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label><label className="grid gap-1 text-xs font-semibold text-gray-700">Fuel level <input value={fuelLevel} onChange={event => setFuelLevel(event.target.value)} placeholder="Example: Full" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label></div><label className="mt-3 grid gap-1 text-xs font-semibold text-gray-700">Condition notes <textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={3} placeholder="Note any observed condition concerns" className="border border-gray-300 bg-white p-3 text-sm font-normal text-black" /></label><button type="button" disabled={submit.isPending} onClick={() => void save()} className="mt-4 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{submit.isPending ? "Saving report…" : `Submit ${stage} report`}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+}
+
 interface DashboardShellProps {
   children: React.ReactNode;
   title?: string;
@@ -44,6 +124,19 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [aiFocused, setAiFocused] = useState(false);
+  const utils = trpc.useUtils();
+  const transactionReference = new URLSearchParams(location.split("?")[1] ?? "").get("ref");
+  const withdrawal = trpc.transactions.withdrawIdentityConsent.useMutation({
+    onSuccess: async () => {
+      if (!transactionReference) return;
+      await utils.transactions.get.invalidate({ reference: transactionReference });
+    },
+  });
+
+  const withdrawIdentityConsent = async (consentType: "identity_document" | "identity_biometric") => {
+    if (!transactionReference || !window.confirm("Withdraw this consent? Identity verification will pause and the transaction will require DreamCarz manual review.")) return;
+    await withdrawal.mutateAsync({ reference: transactionReference, consentType });
+  };
 
   const firstName = user?.name?.split(" ")[0] || "Member";
   const tier = "Pro";
@@ -175,6 +268,10 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
         </div>
         <main className="flex-1 p-5 lg:p-8">
           {children}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <section className="mx-auto mt-8 max-w-6xl border-t border-gray-200 pt-5"><p className="text-xs leading-5 text-gray-500">Need to change your mind about identity processing? Withdrawing consent pauses this transaction and routes it to manual review; retained records remain subject to applicable legal and retention obligations.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" disabled={withdrawal.isPending} onClick={() => void withdrawIdentityConsent("identity_document")} className="text-xs font-semibold underline underline-offset-4 disabled:opacity-50">Withdraw license-document consent</button><button type="button" disabled={withdrawal.isPending} onClick={() => void withdrawIdentityConsent("identity_biometric")} className="text-xs font-semibold underline underline-offset-4 disabled:opacity-50">Withdraw selfie consent</button></div>{withdrawal.error && <p className="mt-3 text-xs text-red-600">{withdrawal.error.message}</p>}</section>}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <IdentityVerificationLauncher reference={transactionReference} />}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <PaymentMethodSetupLauncher reference={transactionReference} />}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <RentalConditionReportPanel reference={transactionReference} />}
         </main>
         <AIConcierge />
       </div>

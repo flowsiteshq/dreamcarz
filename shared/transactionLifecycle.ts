@@ -17,6 +17,36 @@ export const TRANSACTION_MEMBERSHIP_PLANS = [
 export type TransactionType = keyof typeof TRANSACTION_REFERENCE_PREFIX;
 export type TransactionMembershipPlan = (typeof TRANSACTION_MEMBERSHIP_PLANS)[number];
 
+export const TRANSACTION_STATUSES = [
+  "initiated", "profile_incomplete", "verification_pending", "manual_review", "eligibility_review",
+  "payment_pending", "agreement_pending", "ready_for_pickup", "active_rental", "return_pending",
+  "settlement_pending", "completed", "canceled", "declined",
+] as const;
+
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
+const allowedTransactionTransitions: Record<TransactionStatus, readonly TransactionStatus[]> = {
+  initiated: ["profile_incomplete", "canceled"],
+  profile_incomplete: ["verification_pending", "manual_review", "declined", "canceled"],
+  verification_pending: ["eligibility_review", "manual_review", "declined", "canceled"],
+  manual_review: ["profile_incomplete", "verification_pending", "eligibility_review", "payment_pending", "agreement_pending", "ready_for_pickup", "declined", "canceled"],
+  eligibility_review: ["payment_pending", "manual_review", "declined", "canceled"],
+  payment_pending: ["agreement_pending", "manual_review", "declined", "canceled"],
+  agreement_pending: ["ready_for_pickup", "manual_review", "declined", "canceled"],
+  ready_for_pickup: ["active_rental", "return_pending", "completed", "manual_review", "canceled"],
+  active_rental: ["return_pending", "manual_review"],
+  return_pending: ["settlement_pending", "manual_review"],
+  settlement_pending: ["completed", "manual_review"],
+  completed: [],
+  canceled: [],
+  declined: [],
+};
+
+export function canTransitionTransaction(from: string, to: string) {
+  if (!TRANSACTION_STATUSES.includes(from as TransactionStatus) || !TRANSACTION_STATUSES.includes(to as TransactionStatus)) return false;
+  return allowedTransactionTransitions[from as TransactionStatus].includes(to as TransactionStatus);
+}
+
 export const RENTAL_TRANSACTION_STEPS = [
   "vehicle",
   "profile",
@@ -126,4 +156,18 @@ export function initialTransactionLifecycle(transactionType: TransactionType) {
   return transactionType === "rental"
     ? { status: "profile_incomplete" as const, currentStep: "profile", insuranceStatus: "pending" as const, paymentStatus: "pending" as const, agreementStatus: "draft" as const, pickupStatus: "pending" as const, activeRentalStatus: "pending" as const, returnStatus: "pending" as const, settlementStatus: "pending" as const, deliveryStatus: "not_applicable" as const }
     : { status: "profile_incomplete" as const, currentStep: "profile", insuranceStatus: "pending" as const, paymentStatus: "pending" as const, agreementStatus: "draft" as const, pickupStatus: "not_applicable" as const, activeRentalStatus: "not_applicable" as const, returnStatus: "not_applicable" as const, settlementStatus: "not_applicable" as const, deliveryStatus: "pending" as const };
+}
+
+export function transactionStepForStatus(transactionType: TransactionType, status: TransactionStatus, currentStep: string) {
+  if (status === "profile_incomplete") return "profile";
+  if (status === "verification_pending") return "identity";
+  if (status === "eligibility_review") return "eligibility";
+  if (status === "payment_pending") return transactionType === "rental" ? "payment" : "down_payment";
+  if (status === "agreement_pending") return "agreement";
+  if (status === "ready_for_pickup") return transactionType === "rental" ? "pickup" : "delivery";
+  if (status === "active_rental") return "active_rental";
+  if (status === "return_pending") return transactionType === "rental" ? "return" : "delivery";
+  if (status === "settlement_pending") return "settlement";
+  if (status === "completed") return transactionType === "rental" ? "settlement" : "delivery";
+  return currentStep;
 }

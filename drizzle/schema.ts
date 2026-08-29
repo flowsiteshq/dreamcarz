@@ -279,6 +279,9 @@ export const vehicleTransactions = mysqlTable("vehicle_transactions", {
   identitySessionId: varchar("identitySessionId", { length: 160 }),
   paymentProvider: varchar("paymentProvider", { length: 64 }),
   stripeCustomerId: varchar("stripeCustomerId", { length: 160 }),
+  stripePaymentMethodId: varchar("stripePaymentMethodId", { length: 160 }),
+  stripeSetupIntentId: varchar("stripeSetupIntentId", { length: 160 }),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 160 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 160 }),
   agreementProvider: varchar("agreementProvider", { length: 64 }),
   agreementEnvelopeId: varchar("agreementEnvelopeId", { length: 160 }),
@@ -367,6 +370,7 @@ export const transactionEvents = mysqlTable("transaction_events", {
   toStatus: varchar("toStatus", { length: 64 }),
   note: text("note"),
   metadata: text("metadata"),
+  providerEventId: varchar("providerEventId", { length: 160 }).unique(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

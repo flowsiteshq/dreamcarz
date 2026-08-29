@@ -117,7 +117,7 @@
 - [x] Add separate lifecycle states for identity, license, eligibility, insurance, payment, agreement, vehicle condition, pickup, active rental, return, settlement, and purchase delivery.
 - [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
 - [ ] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
-- [ ] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
+- [x] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
 - [ ] Configure Stripe customer, payment method, checkout, webhook, and identifier-only audit handling for DreamCarz transactions.
 - [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
 - [ ] Configure an electronic-signature provider for dynamically generated rental and purchase agreements with lifecycle callbacks.
@@ -170,3 +170,5 @@
 - [x] Commit and push the latest verified DreamCarz website and app release to GitHub main.
 - [x] Add a protected customer back-office view of each customer’s transaction agreements, agreement status, and signed-document access when available.
 - [x] Add a protected customer back-office view of driver-license verification status and securely stored license-document records, without exposing sensitive documents publicly.
+- [x] Render transaction condition reports in the administrator detail view, including stage, review status, odometer, fuel, notes, and safe evidence metadata.
+- [x] Add a clear administrator payment-evidence view with provider, identifier-only payment references, current status, and related audit history without exposing secrets.
