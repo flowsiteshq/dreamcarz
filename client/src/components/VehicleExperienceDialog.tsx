@@ -24,6 +24,7 @@ type ViewState = "overview" | "rental" | "purchase" | "success";
 
 type VehicleExperienceDialogProps = {
   vehicle: InventoryVehicle;
+  membershipPlan?: { name: string; enrollment: string; monthly: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialView?: "overview" | "rental" | "purchase";
@@ -31,7 +32,7 @@ type VehicleExperienceDialogProps = {
 
 const inputClass = "h-11 w-full border border-gray-200 bg-white px-3 text-sm text-black outline-none ring-0 placeholder:text-gray-400 focus:border-black";
 
-export function VehicleExperienceDialog({ vehicle, open, onOpenChange, initialView = "overview" }: VehicleExperienceDialogProps) {
+export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenChange, initialView = "overview" }: VehicleExperienceDialogProps) {
   const [view, setView] = useState<ViewState>("overview");
   const [submittedInquiryType, setSubmittedInquiryType] = useState<"rental" | "purchase" | null>(null);
   const [form, setForm] = useState({
@@ -82,7 +83,7 @@ export function VehicleExperienceDialog({ vehicle, open, onOpenChange, initialVi
       requestedStartDate: isRental ? form.requestedStartDate : undefined,
       requestedEndDate: isRental ? form.requestedEndDate : undefined,
       pickupLocation: isRental ? form.pickupLocation : undefined,
-      notes: form.notes || undefined,
+      notes: [membershipPlan ? `Selected membership context: ${membershipPlan.name} (${membershipPlan.enrollment} enrollment; ${membershipPlan.monthly}). Vehicle costs remain separate.` : "", form.notes].filter(Boolean).join("\n") || undefined,
     });
   };
 
@@ -129,6 +130,7 @@ export function VehicleExperienceDialog({ vehicle, open, onOpenChange, initialVi
                 <DialogTitle className="font-display text-4xl font-bold tracking-[-0.05em] text-black">{isRental ? "Start your rental request." : "Send a purchase inquiry."}</DialogTitle>
                 <DialogDescription className="max-w-xl leading-relaxed text-gray-600">{isRental ? "We will confirm vehicle availability, then help you complete the required rental steps." : "We will confirm current availability and discuss the applicable purchase path directly with you."}</DialogDescription>
               </DialogHeader>
+              {membershipPlan && <div className="mt-6 border-l-2 border-[#a8832d] bg-[#fcfaf2] px-4 py-3 text-sm leading-6 text-gray-700"><strong className="text-black">Your selected membership: {membershipPlan.name}</strong> · {membershipPlan.enrollment} enrollment · {membershipPlan.monthly}. This membership amount is separate from the vehicle costs reviewed for this {isRental ? "rental" : "purchase"} request.</div>}
               <form onSubmit={submitInquiry} className="mt-9 grid gap-5">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-semibold text-black">Your name<input required value={form.contactName} onChange={(event) => setForm({ ...form, contactName: event.target.value })} className={inputClass} placeholder="Full name" /></label>

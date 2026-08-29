@@ -90,6 +90,14 @@
 - [x] Diagnose why the Railway production hero and confirmed vehicle image requests fail.
 - [x] Correct the Railway-compatible static asset delivery path for the Tesla hero and all confirmed vehicle visuals.
 - [x] Verify production hero and vehicle images render on the live DreamCarz homepage and Fleet page before publishing.
+- [ ] Extract and verify monthly membership, vehicle-entry, rental, and purchase pricing from the user-provided pricing source.
+- [x] Design a clear membership-plus-vehicle pricing page that separates recurring membership from per-vehicle access costs.
+- [ ] Connect pricing-plan selection to the corresponding vehicle Rent and Buy workflows without hiding required costs.
+- [ ] Test and visually verify the pricing-to-vehicle flow before publishing.
+- [ ] Obtain the verified vehicle-entry, rental, and purchase pricing matrix before displaying vehicle-specific amounts.
+- [ ] Preserve selected membership and vehicle-access package context through Fleet, Vehicle Detail, Rent, and Buy flows.
+- [ ] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
+- [ ] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
 - [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
 - [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
 - [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.
