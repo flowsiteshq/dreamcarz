@@ -10,19 +10,17 @@ Stripe Checkout or Payment Elements should collect payment details through Strip
 
 ## Agreements
 
-DocuSign eSignature supports embedded signing and event notifications for signature status. A production agreement flow should generate an agreement from reviewed data only after identity/eligibility conditions are satisfied, route the customer to an embedded signing session, and store the envelope identifier, signature status, timestamps, and a signed-document reference. [4] [5]
+DreamCarz will use a native controlled signing workflow rather than an external e-signature provider. The application prepares an agreement only from an administrator-activated, counsel-approved immutable template, snapshots the rendered content at preparation, captures the account-bound signer name and explicit acknowledgement, records a timestamp and integrity hash, stores a private signed artifact, and appends immutable audit events. Native signing remains subject to counsel’s approval of the agreement language, entity identity, disclosure, record-retention, and electronic-signature process before production release.
 
 ## Contract addendum scope
 
-The user-provided **Dream Carz Rental Contract Addendum** includes renter initials and acknowledgements for vehicle condition, tires, fluid maintenance, overheating/towing instructions, tickets/impounds, early return/deposit treatment, rideshare maintenance, rent-to-own terms, smoking, cleanliness, late return, GPS disclosure, attorneys’ fees, and final acknowledgement. These terms should be rendered only into a legally reviewed agreement template; the workflow should capture agreement version, signer identity, signed timestamp, and signature-provider evidence rather than treating an in-app checkbox as a completed agreement.
+The user-provided **Dream Carz Rental Contract Addendum** includes renter initials and acknowledgements for vehicle condition, tires, fluid maintenance, overheating/towing instructions, tickets/impounds, early return/deposit treatment, rideshare maintenance, rent-to-own terms, smoking, cleanliness, late return, GPS disclosure, attorneys’ fees, and final acknowledgement. These terms can be rendered only into a legally reviewed native agreement template; the workflow captures template version, signer identity, explicit acknowledgement, signed timestamp, integrity record, and a private signed artifact. The addendum must not be activated until legal review resolves its apparent Awesome Auto Group, Inc./Dream Carz, LLC entity inconsistency.
 
 ## Sources
 
 [1]: https://docs.stripe.com/identity "Stripe Identity"
 [2]: https://docs.stripe.com/identity/verification-sessions "Stripe Verification Sessions API"
 [3]: https://docs.stripe.com/identity/handle-verification-outcomes "Stripe Identity verification outcomes"
-[4]: https://developers.docusign.com/docs/esign-rest-api/esign101/concepts/embedding/embedded-signing/ "DocuSign embedded signing"
-[5]: https://developers.docusign.com/docs/esign-rest-api/reference/connect/ "DocuSign Connect"
 
 ## Stripe Identity implementation update — 2026-08-29
 
@@ -41,12 +39,8 @@ Payment completion is provider-driven. The verified Stripe webhook is prepared t
 [6]: https://docs.stripe.com/payments/save-and-reuse?payment-ui=embedded-components "Stripe Checkout setup mode for saving payment methods"
 [7]: https://docs.stripe.com/payments/payment-intents/verifying-status "Stripe payment status updates and fulfillment webhooks"
 
-## DocuSign agreement implementation update — 2026-08-29
+## Native agreement implementation update — 2026-08-29
 
-DocuSign documents that embedded signing uses an envelope recipient view so an authenticated signer can review and sign within the application experience. DreamCarz should create the envelope only after an approved, legally reviewed agreement template and authorized transaction data are available; it should retain the provider envelope identifier, lifecycle status, timestamps, and a signed-document reference rather than treating an in-app acknowledgement as a signature. [8] [9]
+DreamCarz replaced the inactive external-agreement path with native controlled document signing. An administrator must first deliberately activate an exact, counsel-approved rental or purchase template with an immutable version and legal-approval reference. The customer then reviews the transaction-specific content snapshot, types their full legal name, makes separate agreement acknowledgement and electronic-signature-consent assertions, and creates a timestamped private signed artifact. The system records a cryptographic integrity hash, a hashed network-address record when present, the account-bound signer ID, the document version, and chronological transaction events.
 
-DocuSign Connect can report envelope lifecycle events, including `envelope-completed` after all recipients have completed signing. DreamCarz must use the provider callback as the source of truth for a signed agreement and must not release a vehicle solely because a browser returns from a recipient view. [10]
-
-[8]: https://developers.docusign.com/docs/esign-rest-api/esign101/concepts/embedding/embedded-signing/ "DocuSign embedded signing"
-[9]: https://developers.docusign.com/docs/esign-rest-api/reference/envelopes/envelopeviews/createrecipient/ "DocuSign recipient view API"
-[10]: https://developers.docusign.com/platform/webhooks/connect/event-triggers/ "DocuSign Connect event triggers"
+The application does not assert that a native signature alone is sufficient for any jurisdiction, transaction, or agreement. The supplied addendum remains unavailable to customers until appropriate counsel approves the exact language, entity information, disclosures, retention policy, and signing process.

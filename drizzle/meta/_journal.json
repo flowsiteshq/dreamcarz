@@ -134,6 +134,20 @@
       "when": 1788023807382,
       "tag": "0018_dear_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1788025072384,
+      "tag": "0019_white_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1788037119434,
+      "tag": "0020_late_tarot",
+      "breakpoints": true
     }
   ]
 }

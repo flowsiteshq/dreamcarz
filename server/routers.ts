@@ -16,8 +16,10 @@ import {
   vehicleTransactions,
   transactionEvents,
   transactionAgreements,
+  agreementTemplates,
   transactionConsents,
   transactionDocuments,
+  transactionAdditionalDrivers,
   vehicleConditionReports,
   users,
   serviceReports,
@@ -33,23 +35,39 @@ import { z } from "zod";
 import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
+import { createHash } from "node:crypto";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
 import { createStripePaymentMethodSetup, getPaymentProviderStatus } from "./paymentProvider";
-import { getAgreementProviderStatus } from "./agreementProvider";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
   initialTransactionLifecycle,
   isApprovedTransactionVehicle,
   isTransactionStep,
+  nextCustomerTransactionStep,
   canTransitionTransaction,
   TRANSACTION_STATUSES,
   transactionStepForStatus,
   TRANSACTION_MEMBERSHIP_PLANS,
   TRANSACTION_REFERENCE_PREFIX,
 } from "../shared/transactionLifecycle";
+
+function escapeAgreementHtml(value: string) {
+  return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
+}
+
+function renderAgreementContent(template: string, transaction: { reference: string; vehicleName: string; contactName: string | null }) {
+  return template
+    .replaceAll("{{TRANSACTION_REFERENCE}}", transaction.reference)
+    .replaceAll("{{VEHICLE_NAME}}", transaction.vehicleName)
+    .replaceAll("{{CUSTOMER_NAME}}", transaction.contactName ?? "DreamCarz customer");
+}
+
+function nativeSignatureHash(input: { agreementId: number; signerName: string; acknowledgedAt: Date; contentSnapshot: string }) {
+  return createHash("sha256").update([input.agreementId, input.signerName, input.acknowledgedAt.toISOString(), input.contentSnapshot, process.env.JWT_SECRET ?? "dreamcarz-native-signature"].join("|"), "utf8").digest("hex");
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -666,8 +684,6 @@ export const appRouter = router({
 
     paymentProviderStatus: protectedProcedure.query(() => getPaymentProviderStatus()),
 
-    agreementProviderStatus: protectedProcedure.query(() => getAgreementProviderStatus()),
-
     startPaymentMethodSetup: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32), futurePaymentConsent: z.literal(true) }))
       .mutation(async ({ ctx, input }) => {
@@ -976,6 +992,29 @@ export const appRouter = router({
         return { success: true, status: "manual_review" as const };
       }),
 
+    requestIdentityRecordDeletion: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), reason: z.string().trim().min(2).max(1_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Privacy controls are temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        await db.update(vehicleTransactions).set({ status: "manual_review", currentStep: "identity", identityStatus: "manual_review", licenseStatus: "manual_review" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "privacy.identity_record_deletion_requested",
+          fromStatus: transaction.status,
+          toStatus: "manual_review",
+          note: input.reason || null,
+        });
+        return { success: true, status: "manual_review" as const };
+      }),
+
     get: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32) }))
       .query(async ({ ctx, input }) => {
@@ -1069,6 +1108,160 @@ export const appRouter = router({
         return { success: true, nextStep };
       }),
 
+    saveEligibility: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), attestsInformationAccurate: z.literal(true), notes: z.string().trim().max(1_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility review is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "eligibility") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Eligibility details can be saved when DreamCarz opens the eligibility-review stage." });
+        await db.update(vehicleTransactions).set({ eligibilityDetails: JSON.stringify({ attestsInformationAccurate: true, notes: input.notes || null }), eligibilityStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "eligibility.self_attestation_saved", metadata: JSON.stringify({ hasNotes: Boolean(input.notes) }) });
+        return { success: true };
+      }),
+
+    saveInsurance: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), insurer: z.string().trim().min(2).max(120), policyLastFour: z.string().trim().regex(/^[A-Za-z0-9]{4}$/), coverageExpiresOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), insuranceReviewConsent: z.literal(true) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insurance review is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "insurance") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Insurance details can be saved when DreamCarz opens the insurance stage." });
+        await db.update(vehicleTransactions).set({ insuranceDetails: JSON.stringify({ insurer: input.insurer, policyLastFour: input.policyLastFour, coverageExpiresOn: input.coverageExpiresOn }), insuranceStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "insurance_review", policyVersion: "insurance-review-v1", source: "transaction_flow" });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "insurance.details_saved", metadata: JSON.stringify({ insurer: input.insurer, policyLastFour: input.policyLastFour, coverageExpiresOn: input.coverageExpiresOn }) });
+        return { success: true };
+      }),
+
+    addAdditionalDriver: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), fullName: z.string().trim().min(2).max(160), email: z.string().trim().email().max(320).optional(), phone: z.string().trim().min(7).max(32).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Additional-driver setup is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "rental" || transaction.currentStep !== "additional_drivers") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Additional drivers may be added only during the rental additional-drivers stage." });
+        const inserted = await db.insert(transactionAdditionalDrivers).values({ transactionId: transaction.id, fullName: input.fullName, email: input.email || null, phone: input.phone || null, licenseStatus: "pending", identityStatus: "pending" });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "additional_driver.added", metadata: JSON.stringify({ driverId: Number(inserted[0].insertId) }) });
+        return { success: true, driverId: Number(inserted[0].insertId) };
+      }),
+
+    saveTradeIn: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), hasTradeIn: z.boolean(), vehicleDescription: z.string().trim().max(300).optional(), estimatedMileage: z.number().int().min(0).max(2_000_000).optional(), notes: z.string().trim().max(1_000).optional() }).refine(input => !input.hasTradeIn || Boolean(input.vehicleDescription), { message: "Describe the trade-in vehicle before saving." }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Trade-in setup is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "purchase" || transaction.currentStep !== "trade_in") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Trade-in details may be saved only during the purchase trade-in stage." });
+        await db.update(vehicleTransactions).set({ tradeInDetails: JSON.stringify({ hasTradeIn: input.hasTradeIn, vehicleDescription: input.vehicleDescription || null, estimatedMileage: input.estimatedMileage ?? null, notes: input.notes || null }) }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "purchase.trade_in_saved", metadata: JSON.stringify({ hasTradeIn: input.hasTradeIn }) });
+        return { success: true };
+      }),
+
+    savePurchasePaymentPath: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), paymentPath: z.enum(["cash", "finance"]), creditAuthorization: z.literal(true).optional() }).refine(input => input.paymentPath !== "finance" || input.creditAuthorization === true, { message: "Explicit authorization is required before DreamCarz can route a financing request to a configured provider or manual-review process." }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Purchase path setup is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "purchase" || !["payment_path", "financing"].includes(transaction.currentStep)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select cash or finance when DreamCarz opens the purchase-payment stage." });
+        const financingStatus = input.paymentPath === "finance" ? "provider_required" as const : "not_applicable" as const;
+        await db.update(vehicleTransactions).set({ purchasePaymentPath: input.paymentPath, financingStatus }).where(eq(vehicleTransactions.id, transaction.id));
+        if (input.paymentPath === "finance") await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "credit_authorization", policyVersion: "financing-authority-v1", source: "transaction_flow" });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "purchase.payment_path_saved", metadata: JSON.stringify({ paymentPath: input.paymentPath }) });
+        return { success: true, financingStatus };
+      }),
+
+    createAgreementTemplate: protectedProcedure
+      .input(z.object({ agreementType: z.enum(["rental", "purchase"]), version: z.string().trim().min(1).max(64), title: z.string().trim().min(3).max(160), content: z.string().trim().min(40).max(50_000), legalApprovalReference: z.string().trim().min(2).max(255), legallyApproved: z.literal(true), activate: z.boolean().default(true) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Agreement templates are temporarily unavailable." });
+        if (input.activate) await db.update(agreementTemplates).set({ isActive: false }).where(eq(agreementTemplates.agreementType, input.agreementType));
+        const result = await db.insert(agreementTemplates).values({ agreementType: input.agreementType, version: input.version, title: input.title, content: input.content, legalApprovalReference: input.legalApprovalReference, legalApprovedAt: new Date(), legalApprovedByUserId: ctx.user.id, isActive: input.activate });
+        return { success: true, templateId: Number(result[0].insertId) };
+      }),
+
+    listAgreementTemplates: protectedProcedure
+      .input(z.object({ agreementType: z.enum(["rental", "purchase"]).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return input?.agreementType
+          ? db.select().from(agreementTemplates).where(eq(agreementTemplates.agreementType, input.agreementType)).orderBy(desc(agreementTemplates.updatedAt))
+          : db.select().from(agreementTemplates).orderBy(desc(agreementTemplates.updatedAt));
+      }),
+
+    prepareNativeAgreement: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Agreement preparation is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "review") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the available transaction review stages before preparing an agreement." });
+        const agreementType = transaction.transactionType;
+        const templateRows = await db.select().from(agreementTemplates).where(and(eq(agreementTemplates.agreementType, agreementType), eq(agreementTemplates.isActive, true))).limit(1);
+        const template = templateRows[0];
+        if (!template?.legalApprovedAt || !template.legalApprovalReference) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A legally approved DreamCarz agreement template is required before signing can begin." });
+        const currentAgreements = await db.select().from(transactionAgreements).where(and(eq(transactionAgreements.transactionId, transaction.id), eq(transactionAgreements.templateId, template.id), eq(transactionAgreements.status, "awaiting_signature"))).limit(1);
+        if (currentAgreements[0]) return { success: true, agreementId: currentAgreements[0].id, resumed: true };
+        const contentSnapshot = renderAgreementContent(template.content, transaction);
+        const created = await db.insert(transactionAgreements).values({ transactionId: transaction.id, templateId: template.id, agreementType, version: template.version, status: "awaiting_signature", signingMethod: "native_attestation", contentSnapshot, sentAt: new Date() });
+        const agreementId = Number(created[0].insertId);
+        await db.update(vehicleTransactions).set({ status: "agreement_pending", currentStep: "agreement", agreementStatus: "awaiting_signature", agreementProvider: "dreamcarz_native" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "agreement.native_prepared", fromStatus: transaction.status, toStatus: "agreement_pending", metadata: JSON.stringify({ agreementId, templateId: template.id, version: template.version, legalApprovalReference: template.legalApprovalReference }) });
+        return { success: true, agreementId, resumed: false };
+      }),
+
+    getNativeAgreement: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Agreement records are temporarily unavailable." });
+        const transactionRows = await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        if (!transactionRows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const agreements = await db.select({ id: transactionAgreements.id, agreementType: transactionAgreements.agreementType, version: transactionAgreements.version, status: transactionAgreements.status, contentSnapshot: transactionAgreements.contentSnapshot, signerName: transactionAgreements.signerName, signerAcknowledgedAt: transactionAgreements.signerAcknowledgedAt, signedAt: transactionAgreements.signedAt })
+          .from(transactionAgreements).where(eq(transactionAgreements.transactionId, transactionRows[0].id)).orderBy(desc(transactionAgreements.createdAt)).limit(1);
+        return agreements[0] ?? null;
+      }),
+
+    signNativeAgreement: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), agreementId: z.number().int().positive(), signerName: z.string().trim().min(2).max(160), acknowledgesAgreement: z.literal(true), electronicSignatureConsent: z.literal(true) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Native signing is temporarily unavailable." });
+        const transactionRows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = transactionRows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const agreementRows = await db.select().from(transactionAgreements).where(and(eq(transactionAgreements.id, input.agreementId), eq(transactionAgreements.transactionId, transaction.id))).limit(1);
+        const agreement = agreementRows[0];
+        if (!agreement?.contentSnapshot || agreement.status !== "awaiting_signature") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This agreement is not available for signing." });
+        const signedAt = new Date();
+        const signatureHash = nativeSignatureHash({ agreementId: agreement.id, signerName: input.signerName, acknowledgedAt: signedAt, contentSnapshot: agreement.contentSnapshot });
+        const forwardedFor = ctx.req.headers["x-forwarded-for"];
+        const signerIpHash = typeof forwardedFor === "string" && forwardedFor ? createHash("sha256").update(forwardedFor.split(",")[0].trim()).digest("hex") : null;
+        const signatureArtifact = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeAgreementHtml(agreement.agreementType)} agreement</title></head><body><article><h1>DreamCarz ${escapeAgreementHtml(agreement.agreementType)} agreement</h1><pre style="white-space:pre-wrap;font-family:inherit">${escapeAgreementHtml(agreement.contentSnapshot)}</pre><hr><p>Signed by: ${escapeAgreementHtml(input.signerName)}</p><p>Signed at: ${signedAt.toISOString()}</p><p>Native signature record: ${signatureHash}</p></article></body></html>`;
+        const { key } = await storagePut(`transaction-agreements/${ctx.user.id}/${transaction.id}/${agreement.id}/native-signed-${Date.now()}.html`, Buffer.from(signatureArtifact, "utf8"), "text/html");
+        await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "electronic_signature", policyVersion: "dreamcarz-native-signing-v1", source: "native_signing" });
+        await db.update(transactionAgreements).set({ status: "signed", signerUserId: ctx.user.id, signerName: input.signerName, signerAcknowledgedAt: signedAt, signatureHash, signerIpHash, signedDocumentKey: key, signedAt }).where(eq(transactionAgreements.id, agreement.id));
+        await db.update(vehicleTransactions).set({ status: "manual_review", currentStep: "confirmation", agreementStatus: "signed" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "agreement.native_signed", fromStatus: transaction.status, toStatus: "manual_review", metadata: JSON.stringify({ agreementId: agreement.id, version: agreement.version, signatureHash }) });
+        return { success: true, signedAt };
+      }),
+
     saveStep: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32), currentStep: z.string().trim().min(2).max(64) }))
       .mutation(async ({ ctx, input }) => {
@@ -1084,7 +1277,23 @@ export const appRouter = router({
         if (!isTransactionStep(transaction.transactionType, input.currentStep)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This step is not valid for the selected transaction." });
         }
+        const nextStep = nextCustomerTransactionStep(transaction.transactionType, transaction.currentStep, transaction.purchasePaymentPath);
+        if (input.currentStep !== nextStep) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction can advance only to its next available customer stage." });
+        }
+        if (transaction.currentStep === "identity") {
+          const identityDocuments = await db.select({ id: transactionDocuments.id }).from(transactionDocuments)
+            .where(and(eq(transactionDocuments.transactionId, transaction.id), eq(transactionDocuments.documentType, "license_front"))).limit(1);
+          if (!identityDocuments[0]) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Upload a driver-license front record before continuing to eligibility." });
+        }
+        if (transaction.currentStep === "eligibility" && !transaction.eligibilityDetails) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save your eligibility attestation before continuing." });
+        if (transaction.currentStep === "insurance" && !transaction.insuranceDetails) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save the required limited insurance details before continuing." });
+        if (transaction.currentStep === "trade_in" && !transaction.tradeInDetails) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save your trade-in preference before continuing." });
+        if (transaction.currentStep === "payment_path" && transaction.purchasePaymentPath === "undecided") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select your cash or financing path before continuing." });
+        if (transaction.currentStep === "pricing" && !transaction.pricingSnapshot) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must record an approved transaction pricing summary before payment-method setup can begin." });
+        if (transaction.currentStep === "payment" && !["authorized", "paid"].includes(transaction.paymentStatus)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the provider-managed payment authorization before continuing to agreement review." });
         await db.update(vehicleTransactions).set({ currentStep: input.currentStep }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "transaction.step_advanced", metadata: JSON.stringify({ fromStep: transaction.currentStep, toStep: input.currentStep }) });
         return { success: true, currentStep: input.currentStep };
       }),
   }),
@@ -1383,6 +1592,21 @@ export const appRouter = router({
         const updates = Object.fromEntries(Object.entries(input).filter(([key, value]) => !["reference", "note"].includes(key) && value !== undefined));
         await db.update(vehicleTransactions).set(updates).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.review_states_updated", note: input.note || null, metadata: JSON.stringify(updates) });
+        return { success: true };
+      }),
+
+    setTransactionPricing: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), pricingSummary: z.string().trim().min(5).max(5_000) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction pricing is temporarily unavailable." });
+        const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);
+        const transaction = rows[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "pricing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Pricing may be recorded only while this transaction is in pricing review." });
+        await db.update(vehicleTransactions).set({ pricingSnapshot: input.pricingSummary }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.approved_summary_recorded", metadata: JSON.stringify({ summaryLength: input.pricingSummary.length }) });
         return { success: true };
       }),
 

@@ -107,20 +107,25 @@
 - [x] Restore the reference-aligned featured vehicle, membership value, support, and footer treatments using only approved DreamCarz copy.
 - [x] Test and visually compare the vehicle-first homepage redesign before publishing.
 - [x] Map the full vehicle application journey from interest through identity verification, payment, digital agreement, approval, and vehicle release.
-- [ ] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
+- [x] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
 - [ ] Integrate secure payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
-- [ ] Integrate digital rental agreement delivery and e-signature tracking using the supplied contract addendum as a reviewed draft source.
+- [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
 - [ ] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
 - [ ] Add tests and launch-readiness verification for the complete secure vehicle application workflow.
 - [x] Create a reusable verified customer profile that safely prevents unnecessary repeat collection while supporting risk-appropriate re-verification.
 - [x] Add separate lifecycle states for identity, license, eligibility, insurance, payment, agreement, vehicle condition, pickup, active rental, return, settlement, and purchase delivery.
 - [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
-- [ ] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
+- [x] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
 - [x] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
 - [ ] Configure Stripe customer, payment method, checkout, webhook, and identifier-only audit handling for DreamCarz transactions.
 - [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
-- [ ] Configure an electronic-signature provider for dynamically generated rental and purchase agreements with lifecycle callbacks.
+- [x] Remove the external electronic-signature provider dependency from the DreamCarz agreement plan in favor of a native signing workflow.
+- [x] Add native signature metadata, signer acknowledgement, and controlled agreement-version validation to the DreamCarz transaction model.
+- [x] Build the customer agreement review and native signing experience with private signed-record storage.
+- [x] Add administrator review of native agreement signatures and agreement versions without exposing private document contents publicly.
+- [x] Wire the rental journey from pricing into review and agreement with server-validated progression so native signing is reachable end to end.
+- [x] Add positive regression coverage for template activation, agreement preparation, customer signature capture, private artifact storage, and resulting audit evidence.
 - [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
 - [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.
 - [x] Add Coming Soon reserve actions to the applicable vehicle-level listings and preserve confirmed inventory labels.
@@ -172,3 +177,6 @@
 - [x] Add a protected customer back-office view of driver-license verification status and securely stored license-document records, without exposing sensitive documents publicly.
 - [x] Render transaction condition reports in the administrator detail view, including stage, review status, odometer, fuel, notes, and safe evidence metadata.
 - [x] Add a clear administrator payment-evidence view with provider, identifier-only payment references, current status, and related audit history without exposing secrets.
+- [x] Wire customer-visible progression into the remaining rental stages so the staged application collects required data without hidden manual step changes.
+- [x] Add regression coverage for an identity-record deletion request, resulting manual-review state, and privacy audit event.
+- [x] Expand and document concrete retention/deletion handling in the customer privacy controls and administrator manual-review flow.

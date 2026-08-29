@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -289,6 +289,11 @@ export const vehicleTransactions = mysqlTable("vehicle_transactions", {
   requestedEndDate: varchar("requestedEndDate", { length: 10 }),
   pickupLocation: varchar("pickupLocation", { length: 255 }),
   deliveryLocation: varchar("deliveryLocation", { length: 255 }),
+  eligibilityDetails: text("eligibilityDetails"),
+  insuranceDetails: text("insuranceDetails"),
+  tradeInDetails: text("tradeInDetails"),
+  purchasePaymentPath: mysqlEnum("purchasePaymentPath", ["not_applicable", "undecided", "cash", "finance"]).default("not_applicable").notNull(),
+  financingStatus: mysqlEnum("financingStatus", ["not_applicable", "not_started", "provider_required", "submitted", "approved", "manual_review", "declined"]).default("not_applicable").notNull(),
   pricingSnapshot: text("pricingSnapshot"),
   internalNote: text("internalNote"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -334,17 +339,39 @@ export const transactionAdditionalDrivers = mysqlTable("transaction_additional_d
 export const transactionAgreements = mysqlTable("transaction_agreements", {
   id: int("id").autoincrement().primaryKey(),
   transactionId: int("transactionId").notNull(),
+  templateId: int("templateId"),
   agreementType: mysqlEnum("agreementType", ["rental", "purchase", "addendum"]).notNull(),
   version: varchar("version", { length: 64 }).notNull(),
   provider: varchar("provider", { length: 64 }),
   providerEnvelopeId: varchar("providerEnvelopeId", { length: 160 }),
   status: mysqlEnum("status", ["draft", "awaiting_signature", "signed", "declined", "voided"]).default("draft").notNull(),
+  signingMethod: mysqlEnum("signingMethod", ["native_attestation", "external_provider"]).default("native_attestation").notNull(),
+  signerUserId: int("signerUserId"),
+  signerName: varchar("signerName", { length: 160 }),
+  signerAcknowledgedAt: timestamp("signerAcknowledgedAt"),
+  signatureHash: varchar("signatureHash", { length: 128 }),
+  signerIpHash: varchar("signerIpHash", { length: 128 }),
+  contentSnapshot: text("contentSnapshot"),
   signedDocumentKey: varchar("signedDocumentKey", { length: 512 }),
   sentAt: timestamp("sentAt"),
   signedAt: timestamp("signedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+export const agreementTemplates = mysqlTable("agreement_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  agreementType: mysqlEnum("agreementType", ["rental", "purchase"]).notNull(),
+  version: varchar("version", { length: 64 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  content: text("content").notNull(),
+  legalApprovalReference: varchar("legalApprovalReference", { length: 255 }),
+  legalApprovedAt: timestamp("legalApprovedAt"),
+  legalApprovedByUserId: int("legalApprovedByUserId"),
+  isActive: boolean("isActive").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("agreement_template_version_unique").on(table.agreementType, table.version)]);
 
 export const vehicleConditionReports = mysqlTable("vehicle_condition_reports", {
   id: int("id").autoincrement().primaryKey(),

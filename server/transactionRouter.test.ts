@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./db", () => ({ getDb: vi.fn() }));
+vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() }));
 
 import { getDb } from "./db";
+import { storagePut } from "./storage";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
+const mockedStoragePut = vi.mocked(storagePut);
 const customerContext = {
   user: { id: 77, name: "Transaction Customer", email: "customer@example.com", role: "user" },
   req: { headers: {} },
@@ -13,7 +16,7 @@ const customerContext = {
 };
 
 describe("transaction intake router", () => {
-  beforeEach(() => mockedGetDb.mockReset());
+  beforeEach(() => { mockedGetDb.mockReset(); mockedStoragePut.mockReset(); });
 
   it("rejects a Coming Soon or unsupported vehicle before creating a transaction", async () => {
     mockedGetDb.mockResolvedValue({} as never);
@@ -57,5 +60,100 @@ describe("transaction intake router", () => {
       contentType: "image/jpeg",
       base64: "A".repeat(100),
     })).rejects.toThrow("Explicit identity-document consent is required");
+  });
+
+  it("requires explicit financing authorization before accepting a purchase finance path", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.transactions.savePurchasePaymentPath({
+      reference: "DCP-2026-FINANCE",
+      paymentPath: "finance",
+    })).rejects.toThrow("Explicit authorization is required");
+  });
+
+  it("requires a description before accepting a claimed trade-in", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.transactions.saveTradeIn({
+      reference: "DCP-2026-TRADEIN",
+      hasTradeIn: true,
+    })).rejects.toThrow("Describe the trade-in vehicle");
+  });
+
+  it("routes an account-owned identity-record deletion request to manual review and creates a privacy audit event", async () => {
+    const transaction = { id: 99, status: "verification_pending" as const };
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    mockedGetDb.mockResolvedValue({
+      select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+      insert: vi.fn(() => ({ values: insertValues })),
+    } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.requestIdentityRecordDeletion({ reference: "DCR-2026-PRIVACY", reason: "I no longer need this application." })).resolves.toMatchObject({ success: true, status: "manual_review" });
+    expect(updateWhere).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "privacy.identity_record_deletion_requested", toStatus: "manual_review" }));
+  });
+
+  it("blocks customers from creating an approved native agreement template", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.transactions.createAgreementTemplate({
+      agreementType: "rental",
+      version: "rental-2026.1",
+      title: "DreamCarz Rental Agreement",
+      content: "Approved controlled agreement content that is long enough for validation.",
+      legalApprovalReference: "Counsel reference 2026-01",
+      legallyApproved: true,
+      activate: true,
+    })).rejects.toThrow("Administrator access is required");
+  });
+
+  it("requires explicit acknowledgement and electronic-signature consent before native signing", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.transactions.signNativeAgreement({
+      reference: "DCR-2026-SIGNATURE",
+      agreementId: 1,
+      signerName: "Transaction Customer",
+      acknowledgesAgreement: false,
+      electronicSignatureConsent: false,
+    } as never)).rejects.toThrow();
+  });
+
+  it("creates an active native template only from an administrator-confirmed legal approval", async () => {
+    const adminContext = { ...customerContext, user: { ...customerContext.user, role: "admin" } };
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 28 }]);
+    mockedGetDb.mockResolvedValue({ update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: insertValues })) } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.transactions.createAgreementTemplate({ agreementType: "rental", version: "rental-2026.1", title: "DreamCarz Rental Agreement", content: "Controlled agreement content long enough to satisfy native template validation.", legalApprovalReference: "Counsel memo 2026-01", legallyApproved: true, activate: true })).resolves.toMatchObject({ success: true, templateId: 28 });
+    expect(updateWhere).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ isActive: true, legalApprovalReference: "Counsel memo 2026-01" }));
+  });
+
+  it("prepares and signs a native agreement with a private artifact and immutable audit event", async () => {
+    const transaction = { id: 19, reference: "DCR-2026-NATIVE", transactionType: "rental" as const, vehicleName: "2024 Chevrolet Malibu", contactName: "Transaction Customer", status: "agreement_pending" as const, currentStep: "review" };
+    const template = { id: 4, agreementType: "rental" as const, version: "rental-2026.1", content: "Agreement for {{CUSTOMER_NAME}} and {{VEHICLE_NAME}}, reference {{TRANSACTION_REFERENCE}}.", legalApprovedAt: new Date(), legalApprovalReference: "Counsel memo 2026-01", isActive: true };
+    const selectPrepare = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([template]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) });
+    const preparedAgreement = { id: 71, transactionId: 19, contentSnapshot: "Agreement for Transaction Customer and 2024 Chevrolet Malibu, reference DCR-2026-NATIVE.", status: "awaiting_signature" as const, agreementType: "rental" as const, version: "rental-2026.1" };
+    const selectSign = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([preparedAgreement]) })) })) });
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 71 }]);
+    const db = { select: selectPrepare, update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: insertValues })) };
+    mockedGetDb.mockResolvedValue(db as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.prepareNativeAgreement({ reference: "DCR-2026-NATIVE" })).resolves.toMatchObject({ success: true, agreementId: 71, resumed: false });
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ contentSnapshot: expect.stringContaining("Transaction Customer"), signingMethod: "native_attestation" }));
+
+    mockedGetDb.mockResolvedValue({ ...db, select: selectSign } as never);
+    mockedStoragePut.mockResolvedValue({ key: "transaction-agreements/77/19/71/native-signed.html", url: "https://storage.example/signed.html" } as never);
+    await expect(caller.transactions.signNativeAgreement({ reference: "DCR-2026-NATIVE", agreementId: 71, signerName: "Transaction Customer", acknowledgesAgreement: true, electronicSignatureConsent: true })).resolves.toMatchObject({ success: true });
+    expect(mockedStoragePut).toHaveBeenCalledWith(expect.stringContaining("native-signed"), expect.any(Buffer), "text/html");
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "agreement.native_signed", toStatus: "manual_review" }));
   });
 });

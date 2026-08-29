@@ -8,6 +8,7 @@ import {
   initialTransactionLifecycle,
   isApprovedTransactionVehicle,
   isTransactionStep,
+  nextCustomerTransactionStep,
   transactionStepForStatus,
 } from "../shared/transactionLifecycle";
 
@@ -78,5 +79,16 @@ describe("transaction lifecycle contract", () => {
     expect(transactionStepForStatus("rental", "return_pending", "active_rental")).toBe("return");
     expect(transactionStepForStatus("rental", "settlement_pending", "return")).toBe("settlement");
     expect(transactionStepForStatus("purchase", "completed", "agreement")).toBe("delivery");
+  });
+
+  it("keeps customer progression ordered while routing purchase finance paths separately", () => {
+    expect(nextCustomerTransactionStep("rental", "identity")).toBe("eligibility");
+    expect(nextCustomerTransactionStep("rental", "insurance")).toBe("additional_drivers");
+    expect(nextCustomerTransactionStep("rental", "pricing")).toBe("payment");
+    expect(nextCustomerTransactionStep("rental", "payment")).toBe("review");
+    expect(nextCustomerTransactionStep("purchase", "trade_in")).toBe("payment_path");
+    expect(nextCustomerTransactionStep("purchase", "payment_path", "cash")).toBe("down_payment");
+    expect(nextCustomerTransactionStep("purchase", "payment_path", "finance")).toBe("financing");
+    expect(nextCustomerTransactionStep("purchase", "agreement")).toBeNull();
   });
 });

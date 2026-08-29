@@ -138,6 +138,27 @@ export function isTransactionStep(transactionType: TransactionType, value: strin
   return getTransactionSteps(transactionType).includes(value as never);
 }
 
+export function nextCustomerTransactionStep(transactionType: TransactionType, currentStep: string, purchasePaymentPath?: string | null) {
+  const rentalNext: Record<string, string> = {
+    contact_verification: "identity",
+    identity: "eligibility",
+    eligibility: "insurance",
+    insurance: "additional_drivers",
+    additional_drivers: "membership",
+    membership: "pricing",
+    pricing: "payment",
+    payment: "review",
+  };
+  const purchaseNext: Record<string, string> = {
+    identity: "trade_in",
+    trade_in: "payment_path",
+    payment_path: purchasePaymentPath === "finance" ? "financing" : "down_payment",
+    down_payment: "insurance",
+    insurance: "review",
+  };
+  return (transactionType === "rental" ? rentalNext : purchaseNext)[currentStep] ?? null;
+}
+
 export function canReuseProfileVerification(input: {
   identityStatus?: string | null;
   licenseStatus?: string | null;
