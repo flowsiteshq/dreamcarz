@@ -87,9 +87,9 @@
 - [x] Add the existing DreamCarz production database connection as Railway `DATABASE_URL` without replacing current records.
 - [x] Redeploy Railway and verify production account creation, direct sign-in, and My Account access.
 - [x] Run a labeled production account-creation verification and confirm the new account reaches My Account.
-- [ ] Diagnose why the Railway production hero and confirmed vehicle image requests fail.
-- [ ] Correct the Railway-compatible static asset delivery path for the Tesla hero and all confirmed vehicle visuals.
-- [ ] Verify production hero and vehicle images render on the live DreamCarz homepage and Fleet page before publishing.
+- [x] Diagnose why the Railway production hero and confirmed vehicle image requests fail.
+- [x] Correct the Railway-compatible static asset delivery path for the Tesla hero and all confirmed vehicle visuals.
+- [x] Verify production hero and vehicle images render on the live DreamCarz homepage and Fleet page before publishing.
 - [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
 - [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
 - [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.
