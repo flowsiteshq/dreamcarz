@@ -39,7 +39,7 @@ import { createHash } from "node:crypto";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
-import { createStripePaymentMethodSetup, getPaymentProviderStatus } from "./paymentProvider";
+import { cocardPaymentSetupBlocker, getPaymentProviderStatus } from "./paymentProvider";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
@@ -699,44 +699,36 @@ export const appRouter = router({
         if (transaction.currentStep !== "payment") {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must complete the preceding transaction review before collecting a payment method." });
         }
-        const returnUrl = process.env.STRIPE_PAYMENT_RETURN_URL;
+        if (!transaction.cocardProductSku) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must attach an approved CoCard Product Manager SKU before hosted checkout can begin." });
+        }
         const provider = getPaymentProviderStatus();
-        if (!provider.configured || !returnUrl) return { started: false as const, provider };
-        const callback = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}ref=${encodeURIComponent(transaction.reference)}`;
-        const paymentSetup = await createStripePaymentMethodSetup({
-          transactionReference: transaction.reference,
-          customerId: transaction.stripeCustomerId,
-          customerEmail: transaction.contactEmail,
-          customerName: transaction.contactName,
-          successUrl: callback,
-          cancelUrl: callback,
-        });
-        if (!paymentSetup.configured) return { started: false as const, provider: paymentSetup.provider };
-        await db.insert(transactionConsents).values({
-          transactionId: transaction.id,
-          userId: ctx.user.id,
-          consentType: "payment_authorization",
-          policyVersion: "payment-method-v1",
-          source: "stripe_checkout_setup",
-        });
-        await db.update(vehicleTransactions).set({
-          status: "payment_pending",
-          currentStep: "payment",
-          paymentStatus: "pending",
-          paymentProvider: "stripe_checkout",
-          stripeCustomerId: paymentSetup.customerId,
-          stripeCheckoutSessionId: paymentSetup.checkoutSessionId,
-        }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({
-          transactionId: transaction.id,
-          actorUserId: ctx.user.id,
-          actorType: "customer",
-          eventType: "payment.method_setup_started",
-          fromStatus: transaction.status,
-          toStatus: "payment_pending",
-          metadata: JSON.stringify({ provider: "stripe_checkout", checkoutSessionId: paymentSetup.checkoutSessionId }),
-        });
-        return { started: true as const, checkoutUrl: paymentSetup.url, provider: paymentSetup.provider };
+        const blocker = cocardPaymentSetupBlocker();
+        if (blocker || !provider.checkoutKey) return { started: false as const, provider, message: blocker ?? "CoCard checkout is not configured." };
+        await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "payment_authorization", policyVersion: "cocard-collect-checkout-v1", source: "cocard_collect_checkout" });
+        await db.update(vehicleTransactions).set({ paymentProvider: "cocard_gateway", paymentStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_requested", metadata: JSON.stringify({ provider: "cocard_gateway", productSku: transaction.cocardProductSku }) });
+        return { started: true as const, provider, checkoutKey: provider.checkoutKey, productSku: transaction.cocardProductSku, reference: transaction.reference };
+      }),
+
+    recordCoCardCheckoutReturn: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), gatewayTransactionId: z.string().trim().min(4).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway transaction identifier returned by CoCard."), customerVaultId: z.string().trim().min(2).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway customer-vault identifier returned by CoCard.").optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment reconciliation is temporarily unavailable." });
+        const transactions = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "payment") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction is not awaiting a payment authorization." });
+        if (transaction.paymentProviderTransactionId && transaction.paymentProviderTransactionId !== input.gatewayTransactionId) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A different CoCard transaction is already associated with this request. DreamCarz must review it manually." });
+        }
+        const providerEventId = `cocard:return:${transaction.id}:${input.gatewayTransactionId}`;
+        const duplicate = await db.select({ id: transactionEvents.id }).from(transactionEvents).where(eq(transactionEvents.providerEventId, providerEventId)).limit(1);
+        if (duplicate[0]) return { recorded: true as const, duplicate: true as const, paymentStatus: transaction.paymentStatus };
+        await db.update(vehicleTransactions).set({ paymentProvider: "cocard_gateway", paymentProviderTransactionId: input.gatewayTransactionId, paymentProviderCustomerVaultId: input.customerVaultId || transaction.paymentProviderCustomerVaultId, paymentStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_returned_pending_verification", fromStatus: transaction.status, toStatus: transaction.status, providerEventId, metadata: JSON.stringify({ provider: "cocard_gateway", gatewayTransactionId: input.gatewayTransactionId, customerVaultReturned: Boolean(input.customerVaultId) }) });
+        return { recorded: true as const, duplicate: false as const, paymentStatus: "pending" as const };
       }),
 
     activeTransactions: protectedProcedure.query(async ({ ctx }) => {
@@ -1600,7 +1592,7 @@ export const appRouter = router({
       }),
 
     setTransactionPricing: protectedProcedure
-      .input(z.object({ reference: z.string().trim().min(8).max(32), pricingSummary: z.string().trim().min(5).max(5_000) }))
+      .input(z.object({ reference: z.string().trim().min(8).max(32), pricingSummary: z.string().trim().min(5).max(5_000), cocardProductSku: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/, "Use the exact CoCard Product Manager SKU.").optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
@@ -1609,8 +1601,8 @@ export const appRouter = router({
         const transaction = rows[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (transaction.currentStep !== "pricing") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Pricing may be recorded only while this transaction is in pricing review." });
-        await db.update(vehicleTransactions).set({ pricingSnapshot: input.pricingSummary }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.approved_summary_recorded", metadata: JSON.stringify({ summaryLength: input.pricingSummary.length }) });
+        await db.update(vehicleTransactions).set({ pricingSnapshot: input.pricingSummary, cocardProductSku: input.cocardProductSku || null }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.approved_summary_recorded", metadata: JSON.stringify({ summaryLength: input.pricingSummary.length, cocardProductSkuRecorded: Boolean(input.cocardProductSku) }) });
         return { success: true };
       }),
 

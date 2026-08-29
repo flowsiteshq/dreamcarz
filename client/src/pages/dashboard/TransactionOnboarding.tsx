@@ -34,6 +34,8 @@ export default function TransactionOnboarding() {
   const [identityConsents, setIdentityConsents] = useState({ documents: false, selfie: false });
   const [conditionForm, setConditionForm] = useState<ConditionForm>(emptyCondition);
   const [conditionError, setConditionError] = useState("");
+  const [paymentReturnMessage, setPaymentReturnMessage] = useState("");
+  const cocardReturnAttempt = useRef("");
 
   const startTransaction = trpc.transactions.begin.useMutation({ onSuccess: result => setLocation(`/dashboard/transactions?ref=${encodeURIComponent(result.reference)}`) });
   const transactionQuery = trpc.transactions.get.useQuery({ reference }, { enabled: Boolean(user && reference), refetchOnWindowFocus: false });
@@ -60,6 +62,12 @@ export default function TransactionOnboarding() {
       setConditionError("");
     },
   });
+  const recordCoCardCheckoutReturn = trpc.transactions.recordCoCardCheckoutReturn.useMutation({
+    onSuccess: async () => {
+      await transactionQuery.refetch();
+      setPaymentReturnMessage("CoCard returned a gateway transaction reference. DreamCarz is verifying the authorization before this transaction can proceed.");
+    },
+  });
 
   useEffect(() => {
     if (!user || reference || !intent || !vehicleId || startTransaction.isPending) return;
@@ -68,6 +76,16 @@ export default function TransactionOnboarding() {
     launchAttempt.current = key;
     startTransaction.mutate({ transactionType: intent, vehicleId, membershipPlan: membershipPlan as "free" | "freedom" | "plus" | "pro" | "elite" | "silver" | "gold" | "black" | undefined });
   }, [intent, membershipPlan, reference, startTransaction, user, vehicleId]);
+
+  useEffect(() => {
+    const gatewayTransactionId = parameters.get("cocard_transaction");
+    const customerVaultId = parameters.get("cocard_vault") || undefined;
+    if (!user || !reference || !gatewayTransactionId || gatewayTransactionId.includes("(") || recordCoCardCheckoutReturn.isPending) return;
+    const key = `${reference}:${gatewayTransactionId}`;
+    if (cocardReturnAttempt.current === key) return;
+    cocardReturnAttempt.current = key;
+    recordCoCardCheckoutReturn.mutate({ reference, gatewayTransactionId, customerVaultId });
+  }, [parameters, recordCoCardCheckoutReturn, reference, user]);
 
   useEffect(() => {
     const profile = transactionQuery.data?.profile;

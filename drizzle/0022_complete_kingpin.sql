@@ -1,0 +1,1 @@
+ALTER TABLE `vehicle_transactions` ADD `cocardProductSku` varchar(128);

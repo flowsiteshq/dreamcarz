@@ -109,7 +109,7 @@
 - [x] Map the full vehicle application journey from interest through identity verification, payment, digital agreement, approval, and vehicle release.
 - [x] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
-- [ ] Integrate secure payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
+- [ ] Integrate secure CoCard gateway payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
 - [x] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
 - [ ] Add tests and launch-readiness verification for the complete secure vehicle application workflow.
@@ -118,7 +118,8 @@
 - [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
 - [x] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
 - [x] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
-- [ ] Configure Stripe customer, payment method, checkout, webhook, and identifier-only audit handling for DreamCarz transactions.
+- [ ] Remove the unused Stripe payment-provider implementation and replace it with a CoCard-compatible, configuration-gated payment adapter, callback model, and identifier-only audit handling.
+- [ ] Verify CoCard's supported hosted-payment/tokenization, authorization, recurring payment, and callback methods before activating the DreamCarz payment flow.
 - [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
 - [x] Remove the external electronic-signature provider dependency from the DreamCarz agreement plan in favor of a native signing workflow.
 - [x] Add native signature metadata, signer acknowledgement, and controlled agreement-version validation to the DreamCarz transaction model.

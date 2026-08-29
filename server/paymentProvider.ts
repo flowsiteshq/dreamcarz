@@ -1,36 +1,36 @@
-import Stripe from "stripe";
+export type CoCardPaymentProviderStatus = {
+  provider: "cocard_gateway";
+  enabled: boolean;
+  configured: boolean;
+  checkoutKey?: string;
+  checkoutScriptUrl: string;
+  mode: "manual_review" | "documentation_required" | "ready";
+};
 
-export function getPaymentProviderStatus() {
-  const enabled = process.env.STRIPE_PAYMENTS_ENABLED === "true";
-  const returnUrl = process.env.STRIPE_PAYMENT_RETURN_URL;
-  const configured = enabled && Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(returnUrl?.startsWith("https://"));
-  return { provider: "stripe_checkout" as const, enabled, configured, mode: configured ? "ready" as const : "manual_review" as const };
+/**
+ * CoCard Collect Checkout keeps customer card entry on the gateway page.
+ * DreamCarz only exposes its public checkout key after the merchant has
+ * intentionally configured a signed gateway callback; this module never
+ * accepts, logs, or stores payment card data.
+ */
+export function getPaymentProviderStatus(): CoCardPaymentProviderStatus {
+  const enabled = process.env.COCARD_PAYMENTS_ENABLED === "true";
+  const gatewayIntegrationApproved = process.env.COCARD_INTEGRATION_APPROVED === "true";
+  const checkoutKey = process.env.VITE_COCARD_CHECKOUT_KEY;
+  const webhookSigningKey = process.env.COCARD_WEBHOOK_SIGNING_KEY;
+  const configured = enabled && gatewayIntegrationApproved && Boolean(checkoutKey) && Boolean(webhookSigningKey);
+  return {
+    provider: "cocard_gateway",
+    enabled,
+    configured,
+    checkoutKey: configured ? checkoutKey : undefined,
+    checkoutScriptUrl: "https://secure.networkmerchants.com/token/CollectCheckout.js",
+    mode: configured ? "ready" : enabled ? "documentation_required" : "manual_review",
+  };
 }
 
-export async function createStripePaymentMethodSetup(input: {
-  transactionReference: string;
-  customerId?: string | null;
-  customerEmail?: string | null;
-  customerName?: string | null;
-  successUrl: string;
-  cancelUrl: string;
-}) {
+export function cocardPaymentSetupBlocker() {
   const provider = getPaymentProviderStatus();
-  if (!provider.configured) return { configured: false as const, provider };
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-  const customerId = input.customerId ?? (await stripe.customers.create({
-    email: input.customerEmail ?? undefined,
-    name: input.customerName ?? undefined,
-    metadata: { dreamcarz_transaction_reference: input.transactionReference },
-  }, { idempotencyKey: `dreamcarz-customer-${input.transactionReference}` })).id;
-  const session = await stripe.checkout.sessions.create({
-    mode: "setup",
-    customer: customerId,
-    payment_method_types: ["card"],
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
-    metadata: { dreamcarz_transaction_reference: input.transactionReference },
-  }, { idempotencyKey: `dreamcarz-payment-setup-${input.transactionReference}` });
-  if (!session.url) throw new Error("The payment provider returned an incomplete checkout session.");
-  return { configured: true as const, provider, customerId, checkoutSessionId: session.id, url: session.url };
+  if (provider.configured) return null;
+  return "CoCard Collect Checkout is not configured. DreamCarz cannot collect payment data or create an authorization until the approved checkout key, signed webhook, and merchant gateway configuration are in place.";
 }

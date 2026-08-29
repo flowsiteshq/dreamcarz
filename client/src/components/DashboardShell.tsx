@@ -11,6 +11,38 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadStripe } from "@stripe/stripe-js";
 
+declare global {
+  interface Window {
+    CollectCheckout?: {
+      redirectToCheckout: (options: {
+        lineItems: Array<{ sku: string; quantity: number }>;
+        type: "auth";
+        collectShippingInfo: boolean;
+        customerVault: { addCustomer: boolean };
+        successUrl: string;
+        cancelUrl: string;
+        receipt: { showReceipt: boolean; redirectToSuccessUrl: boolean };
+      }) => Promise<unknown>;
+    };
+  }
+}
+
+function loadCoCardCheckout(scriptUrl: string, checkoutKey: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (window.CollectCheckout) { resolve(); return; }
+    const existing = document.querySelector<HTMLScriptElement>('script[data-dreamcarz-cocard="true"]');
+    if (existing) { existing.addEventListener("load", () => resolve(), { once: true }); existing.addEventListener("error", () => reject(new Error("CoCard checkout failed to load.")), { once: true }); return; }
+    const script = document.createElement("script");
+    script.src = scriptUrl;
+    script.dataset.checkoutKey = checkoutKey;
+    script.dataset.dreamcarzCocard = "true";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("CoCard checkout failed to load."));
+    document.head.appendChild(script);
+  });
+}
+
 const sidebarLinks = [
   { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
   { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
@@ -66,27 +98,28 @@ function IdentityVerificationLauncher({ reference }: { reference: string }) {
 }
 
 function PaymentMethodSetupLauncher({ reference }: { reference: string }) {
-  const [authorized, setAuthorized] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [message, setMessage] = useState("");
   const provider = trpc.transactions.paymentProviderStatus.useQuery(undefined, { refetchOnWindowFocus: false });
   const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
   const start = trpc.transactions.startPaymentMethodSetup.useMutation();
-
-  if (!provider.data?.configured || transaction.data?.transaction.currentStep !== "payment") return null;
-
+  if (transaction.data?.transaction.currentStep !== "payment") return null;
+  const status = provider.data;
   const launch = async () => {
-    if (!authorized) { setMessage("Please authorize the stated future payment-method use before continuing to the payment provider."); return; }
+    if (!consent) { setMessage("Acknowledge the payment authorization before continuing to CoCard’s secure checkout."); return; }
     try {
       setMessage("");
       const response = await start.mutateAsync({ reference, futurePaymentConsent: true });
-      if (!response.started) { setMessage("Secure payment setup is not configured. Your transaction remains available for DreamCarz manual review."); return; }
-      window.location.assign(response.checkoutUrl);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Secure payment setup could not be started. Please contact DreamCarz support.");
-    }
+      if (!response.started) { setMessage(response.message); return; }
+      await loadCoCardCheckout(response.provider.checkoutScriptUrl, response.checkoutKey);
+      if (!window.CollectCheckout) { setMessage("CoCard checkout could not be prepared. Please contact DreamCarz support."); return; }
+      const query = new URLSearchParams({ ref: response.reference, cocard_transaction: "(TRANSACTION_ID)", cocard_vault: "(CUSTOMER_VAULT_ID)" });
+      const destination = `${window.location.origin}/dashboard/transactions?${query.toString()}`;
+      await window.CollectCheckout.redirectToCheckout({ lineItems: [{ sku: response.productSku, quantity: 1 }], type: "auth", collectShippingInfo: false, customerVault: { addCustomer: true }, successUrl: destination, cancelUrl: `${window.location.origin}/dashboard/transactions?ref=${encodeURIComponent(response.reference)}&cocard_cancelled=true`, receipt: { showReceipt: false, redirectToSuccessUrl: false } });
+    } catch (error) { setMessage(error instanceof Error ? error.message : "CoCard checkout could not be opened. Please contact DreamCarz support."); }
   };
-
-  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Configured payment provider</p><h2 className="mt-2 font-display text-xl font-bold">Add a payment method securely</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz does not receive or store your card number, security code, or expiry date. The payment provider collects the method securely. No transaction amount is shown or charged here; final rates, deposits, and authorization terms must be confirmed before any charge.</p><label className="mt-4 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={authorized} onChange={event => setAuthorized(event.target.checked)} className="mt-0.5 accent-black" />I authorize DreamCarz to save this payment method only for the payment use and terms I approve in the final transaction agreement. I understand this step does not itself charge a vehicle price or deposit.</label><button type="button" disabled={start.isPending} onClick={() => void launch()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Opening secure payment…" : "Continue to secure payment"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+  const ready = Boolean(status?.configured && transaction.data?.transaction.cocardProductSku);
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">CoCard payment authorization</p><h2 className="mt-2 font-display text-xl font-bold">Authorize through secure CoCard checkout.</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz does not receive or store your card number, security code, or expiry date. When available, the authorization takes place on CoCard’s hosted checkout page for the approved transaction item; payment status changes only after a verified gateway callback or server-side review.</p><p className="mt-3 text-xs font-semibold text-black">Gateway status: <span className="capitalize">{status?.mode?.replaceAll("_", " ") || "Checking configuration"}</span></p>{ready ? <><label className="mt-4 flex max-w-3xl gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} className="mt-0.5 accent-black" />I authorize DreamCarz to open CoCard’s secure checkout for this approved transaction. I understand no card data is entered into or stored by DreamCarz.</label><button type="button" disabled={!consent || start.isPending} onClick={() => void launch()} className="mt-4 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Preparing secure checkout…" : "Continue to CoCard checkout"}</button></> : <p className="mt-3 text-[11px] leading-5 text-gray-500">DreamCarz will notify you when the secure, gateway-approved payment method is available or provide a documented manual alternative.</p>}{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
 }
 
 function RentalConditionReportPanel({ reference }: { reference: string }) {
