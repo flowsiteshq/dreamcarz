@@ -10,7 +10,9 @@ type AuthMode = "signin" | "create";
 
 export default function Login() {
   const { isAuthenticated, loading } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const requestedNext = new URLSearchParams(location.split("?")[1] ?? "").get("next");
+  const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/dashboard";
   const utils = trpc.useUtils();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [name, setName] = useState("");
@@ -24,8 +26,8 @@ export default function Login() {
   const isSubmitting = login.isPending || register.isPending;
 
   useEffect(() => {
-    if (!loading && isAuthenticated) navigate("/dashboard");
-  }, [isAuthenticated, loading, navigate]);
+    if (!loading && isAuthenticated) navigate(safeNext);
+  }, [isAuthenticated, loading, navigate, safeNext]);
 
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
@@ -42,7 +44,7 @@ export default function Login() {
         : await register.mutateAsync({ name, email, password, acceptedTerms: true });
       utils.auth.me.setData(undefined, user);
       await utils.auth.me.invalidate();
-      navigate("/dashboard");
+      navigate(safeNext);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "We could not complete your request. Please try again.");
     }

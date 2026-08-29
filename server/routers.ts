@@ -10,24 +10,39 @@ import {
   commissions,
   rentalApplications,
   rentalApplicationDocuments,
+  customerProfiles,
   reservationRequests,
   vehicleInquiries,
+  vehicleTransactions,
+  transactionEvents,
+  transactionAgreements,
+  transactionConsents,
+  transactionDocuments,
   users,
   serviceReports,
   serviceReportPhotos,
   serviceReportReviewEvents,
   partnerLocations,
 } from "../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
 import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
 import { z } from "zod";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
+import {
+  APPROVED_TRANSACTION_VEHICLES,
+  canReuseProfileVerification,
+  initialTransactionLifecycle,
+  isApprovedTransactionVehicle,
+  isTransactionStep,
+  TRANSACTION_MEMBERSHIP_PLANS,
+  TRANSACTION_REFERENCE_PREFIX,
+} from "../shared/transactionLifecycle";
 
 export const appRouter = router({
   system: systemRouter,
@@ -474,6 +489,423 @@ export const appRouter = router({
         }
         await db.update(reservationRequests).set({ status: "canceled" }).where(eq(reservationRequests.id, input.id));
         return { success: true };
+      }),
+  }),
+
+  transactions: router({
+    begin: protectedProcedure
+      .input(z.object({
+        transactionType: z.enum(["rental", "purchase"]),
+        vehicleId: z.string().trim().min(2).max(96),
+        membershipPlan: z.enum(TRANSACTION_MEMBERSHIP_PLANS).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transactions are temporarily unavailable." });
+        if (!isApprovedTransactionVehicle(input.vehicleId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Select a confirmed DreamCarz inventory vehicle to begin a rental or purchase transaction." });
+        }
+
+        const existingTransactions = await db
+          .select()
+          .from(vehicleTransactions)
+          .where(and(
+            eq(vehicleTransactions.userId, ctx.user.id),
+            eq(vehicleTransactions.transactionType, input.transactionType),
+            eq(vehicleTransactions.vehicleId, input.vehicleId),
+          ));
+        const resumable = existingTransactions.find(transaction => !["completed", "canceled", "declined"].includes(transaction.status));
+        if (resumable) return { success: true, resumed: true, reference: resumable.reference, transactionType: resumable.transactionType };
+
+        let profiles = await db
+          .select()
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, ctx.user.id))
+          .limit(1);
+        if (!profiles[0]) {
+          await db.insert(customerProfiles).values({
+            userId: ctx.user.id,
+            fullName: ctx.user.name ?? null,
+            email: ctx.user.email ?? null,
+          });
+          profiles = await db
+            .select()
+            .from(customerProfiles)
+            .where(eq(customerProfiles.userId, ctx.user.id))
+            .limit(1);
+        }
+
+        const profile = profiles[0];
+        const withdrawnConsents = await db
+          .select({ id: transactionConsents.id })
+          .from(transactionConsents)
+          .where(and(eq(transactionConsents.userId, ctx.user.id), isNotNull(transactionConsents.withdrawnAt)));
+        const vehicle = APPROVED_TRANSACTION_VEHICLES[input.vehicleId];
+        const reference = `${TRANSACTION_REFERENCE_PREFIX[input.transactionType]}-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
+        const lifecycle = initialTransactionLifecycle(input.transactionType);
+        const profileComplete = Boolean(profile?.fullName && profile.phone && profile.addressLine1 && profile.city && profile.state && profile.postalCode && profile.dateOfBirth);
+        const profileVerificationReusable = canReuseProfileVerification({
+          identityStatus: profile?.identityStatus,
+          licenseStatus: profile?.licenseStatus,
+          verificationExpiresAt: profile?.verificationExpiresAt,
+          hasWithdrawnConsent: withdrawnConsents.length > 0,
+        });
+        const initialStatus = profileComplete
+          ? withdrawnConsents.length > 0 ? "manual_review" as const : "verification_pending" as const
+          : lifecycle.status;
+        const created = await db.insert(vehicleTransactions).values({
+          reference,
+          userId: ctx.user.id,
+          transactionType: input.transactionType,
+          vehicleId: input.vehicleId,
+          vehicleName: vehicle.vehicleName,
+          vehicleImage: vehicle.image,
+          membershipPlan: input.membershipPlan ?? null,
+          ...lifecycle,
+          status: initialStatus,
+          currentStep: profileComplete ? (input.transactionType === "rental" ? "contact_verification" : "identity") : lifecycle.currentStep,
+          contactName: profile?.fullName ?? ctx.user.name ?? null,
+          contactEmail: profile?.email ?? ctx.user.email ?? null,
+          contactPhone: profile?.phone ?? null,
+          addressLine1: profile?.addressLine1 ?? null,
+          addressLine2: profile?.addressLine2 ?? null,
+          city: profile?.city ?? null,
+          state: profile?.state ?? null,
+          postalCode: profile?.postalCode ?? null,
+          identityStatus: profileVerificationReusable ? "verified" : withdrawnConsents.length > 0 ? "manual_review" : "not_started",
+          licenseStatus: profileVerificationReusable ? "verified" : withdrawnConsents.length > 0 ? "manual_review" : "not_started",
+        });
+        const transactionId = Number(created[0].insertId);
+        await db.insert(transactionEvents).values({
+          transactionId,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "transaction.initiated",
+          toStatus: initialStatus,
+          metadata: JSON.stringify({ vehicleId: input.vehicleId, transactionType: input.transactionType, membershipPlan: input.membershipPlan ?? null, profileVerificationReused: profileVerificationReusable, manualReviewRequired: withdrawnConsents.length > 0 }),
+        });
+        return { success: true, resumed: false, reference, transactionType: input.transactionType };
+      }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(vehicleTransactions)
+        .where(eq(vehicleTransactions.userId, ctx.user.id))
+        .orderBy(desc(vehicleTransactions.updatedAt));
+    }),
+
+    backOffice: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Back-office records are temporarily unavailable." });
+      const [profiles, legacyLicenseDocuments, transactionLicenseDocuments, agreements] = await Promise.all([
+        db.select().from(customerProfiles).where(eq(customerProfiles.userId, ctx.user.id)).limit(1),
+        db.select({
+          id: rentalApplicationDocuments.id,
+          documentType: rentalApplicationDocuments.documentType,
+          originalFilename: rentalApplicationDocuments.originalFilename,
+          contentType: rentalApplicationDocuments.contentType,
+          reviewStatus: rentalApplicationDocuments.reviewStatus,
+          createdAt: rentalApplicationDocuments.createdAt,
+        }).from(rentalApplicationDocuments).where(eq(rentalApplicationDocuments.userId, ctx.user.id)).orderBy(desc(rentalApplicationDocuments.createdAt)),
+        db.select({
+          id: transactionDocuments.id,
+          documentType: transactionDocuments.documentType,
+          originalFilename: transactionDocuments.originalFilename,
+          contentType: transactionDocuments.contentType,
+          reviewStatus: transactionDocuments.status,
+          createdAt: transactionDocuments.createdAt,
+        }).from(transactionDocuments)
+          .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
+          .where(and(
+            eq(vehicleTransactions.userId, ctx.user.id),
+            inArray(transactionDocuments.documentType, ["license_front", "license_back"]),
+          ))
+          .orderBy(desc(transactionDocuments.createdAt)),
+        db.select({
+          id: transactionAgreements.id,
+          reference: vehicleTransactions.reference,
+          vehicleName: vehicleTransactions.vehicleName,
+          agreementType: transactionAgreements.agreementType,
+          version: transactionAgreements.version,
+          status: transactionAgreements.status,
+          signedAt: transactionAgreements.signedAt,
+          createdAt: transactionAgreements.createdAt,
+          signedDocumentKey: transactionAgreements.signedDocumentKey,
+        }).from(transactionAgreements)
+          .innerJoin(vehicleTransactions, eq(transactionAgreements.transactionId, vehicleTransactions.id))
+          .where(eq(vehicleTransactions.userId, ctx.user.id))
+          .orderBy(desc(transactionAgreements.createdAt)),
+      ]);
+      return {
+        profile: profiles[0] ?? null,
+        licenseDocuments: [
+          ...legacyLicenseDocuments.map(document => ({ ...document, recordSource: "legacy_license_document" as const })),
+          ...transactionLicenseDocuments.map(document => ({ ...document, recordSource: "transaction_license_document" as const })),
+        ],
+        agreements: agreements.map(({ signedDocumentKey, ...agreement }) => ({ ...agreement, hasSignedDocument: Boolean(signedDocumentKey) })),
+      };
+    }),
+
+    getRecordLink: protectedProcedure
+      .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "agreement"]), id: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
+        if (input.recordType === "legacy_license_document") {
+          const documents = await db.select({ storageKey: rentalApplicationDocuments.storageKey })
+            .from(rentalApplicationDocuments)
+            .where(and(eq(rentalApplicationDocuments.id, input.id), eq(rentalApplicationDocuments.userId, ctx.user.id)))
+            .limit(1);
+          if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Driver-license record not found." });
+          return { url: await storageGetSignedUrl(documents[0].storageKey) };
+        }
+        if (input.recordType === "transaction_license_document") {
+          const documents = await db.select({ storageKey: transactionDocuments.storageKey })
+            .from(transactionDocuments)
+            .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
+            .where(and(eq(transactionDocuments.id, input.id), eq(vehicleTransactions.userId, ctx.user.id)))
+            .limit(1);
+          if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Driver-license record not found." });
+          return { url: await storageGetSignedUrl(documents[0].storageKey) };
+        }
+        const agreements = await db.select({ signedDocumentKey: transactionAgreements.signedDocumentKey })
+          .from(transactionAgreements)
+          .innerJoin(vehicleTransactions, eq(transactionAgreements.transactionId, vehicleTransactions.id))
+          .where(and(eq(transactionAgreements.id, input.id), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const agreement = agreements[0];
+        if (!agreement) throw new TRPCError({ code: "NOT_FOUND", message: "Agreement record not found." });
+        if (!agreement.signedDocumentKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A signed agreement file is not available yet." });
+        return { url: await storageGetSignedUrl(agreement.signedDocumentKey) };
+      }),
+
+    uploadIdentityDocument: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        documentType: z.enum(["license_front", "license_back", "live_selfie"]),
+        filename: z.string().trim().min(1).max(120),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z.string().min(100).max(8_400_000),
+        identityDocumentConsent: z.literal(true).optional(),
+        biometricConsent: z.literal(true).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure document capture is temporarily unavailable." });
+        const transactions = await db.select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (["completed", "canceled", "declined"].includes(transaction.status)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This closed transaction cannot accept documents." });
+        }
+        const isSelfie = input.documentType === "live_selfie";
+        if (isSelfie ? input.biometricConsent !== true : input.identityDocumentConsent !== true) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: isSelfie ? "Explicit identity and biometric consent is required before a live selfie can be processed." : "Explicit identity-document consent is required before a driver-license image can be processed." });
+        }
+        const rawBytes = Buffer.from(input.base64, "base64");
+        if (rawBytes.length > 6 * 1024 * 1024) {
+          throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Each identity document must be 6 MB or smaller." });
+        }
+        const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
+        const { key } = await storagePut(
+          `transaction-documents/${ctx.user.id}/${transaction.id}/${input.documentType}_${Date.now()}.${extension}`,
+          rawBytes,
+          input.contentType,
+        );
+        const inserted = await db.insert(transactionDocuments).values({
+          transactionId: transaction.id,
+          userId: ctx.user.id,
+          documentType: input.documentType,
+          storageKey: key,
+          originalFilename: input.filename,
+          contentType: input.contentType,
+          status: "pending",
+        });
+        await db.insert(transactionConsents).values({
+          transactionId: transaction.id,
+          userId: ctx.user.id,
+          consentType: isSelfie ? "identity_biometric" : "identity_document",
+          policyVersion: "transaction-identity-v1",
+          source: "transaction_identity_upload",
+        });
+        await db.update(vehicleTransactions).set({
+          status: "verification_pending",
+          currentStep: "identity",
+          identityStatus: "pending",
+          licenseStatus: isSelfie ? transaction.licenseStatus : "pending",
+          identityProvider: "manual_review_pending",
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: isSelfie ? "identity.selfie_uploaded" : "identity.license_uploaded",
+          fromStatus: transaction.status,
+          toStatus: "verification_pending",
+          metadata: JSON.stringify({ documentType: input.documentType, documentId: Number(inserted[0].insertId) }),
+        });
+        return { success: true, documentId: Number(inserted[0].insertId), status: "pending" as const };
+      }),
+
+    withdrawIdentityConsent: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        consentType: z.enum(["identity_document", "identity_biometric"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Consent controls are temporarily unavailable." });
+        const transactions = await db.select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const withdrawnAt = new Date();
+        await db.update(transactionConsents).set({ withdrawnAt }).where(and(
+          eq(transactionConsents.transactionId, transaction.id),
+          eq(transactionConsents.userId, ctx.user.id),
+          eq(transactionConsents.consentType, input.consentType),
+        ));
+        await db.update(customerProfiles).set({
+          profileStatus: "manual_review",
+          identityStatus: "manual_review",
+          licenseStatus: "manual_review",
+        }).where(eq(customerProfiles.userId, ctx.user.id));
+        await db.update(vehicleTransactions).set({
+          status: "manual_review",
+          currentStep: "identity",
+          identityStatus: "manual_review",
+          licenseStatus: "manual_review",
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "identity.consent_withdrawn",
+          fromStatus: transaction.status,
+          toStatus: "manual_review",
+          metadata: JSON.stringify({ consentType: input.consentType }),
+        });
+        return { success: true, status: "manual_review" as const };
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transactions are temporarily unavailable." });
+        const transactions = await db
+          .select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const profiles = await db
+          .select()
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, ctx.user.id))
+          .limit(1);
+        return { transaction, profile: profiles[0] ?? null };
+      }),
+
+    saveProfile: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        fullName: z.string().trim().min(2).max(160),
+        phone: z.string().trim().min(7).max(32),
+        addressLine1: z.string().trim().min(2).max(255),
+        addressLine2: z.string().trim().max(255).optional(),
+        city: z.string().trim().min(2).max(100),
+        state: z.string().trim().min(2).max(64),
+        postalCode: z.string().trim().min(3).max(24),
+        dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transactions are temporarily unavailable." });
+        const transactions = await db
+          .select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (["completed", "canceled", "declined"].includes(transaction.status)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This closed transaction cannot be changed." });
+        }
+
+        const values = {
+          fullName: input.fullName,
+          email: ctx.user.email ?? null,
+          phone: input.phone,
+          addressLine1: input.addressLine1,
+          addressLine2: input.addressLine2 ?? null,
+          city: input.city,
+          state: input.state,
+          postalCode: input.postalCode,
+          dateOfBirth: input.dateOfBirth,
+          profileStatus: "ready_for_verification" as const,
+        };
+        const existingProfile = await db
+          .select({ id: customerProfiles.id })
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, ctx.user.id))
+          .limit(1);
+        if (existingProfile[0]) {
+          await db.update(customerProfiles).set(values).where(eq(customerProfiles.id, existingProfile[0].id));
+        } else {
+          await db.insert(customerProfiles).values({ userId: ctx.user.id, ...values });
+        }
+        await db.update(users).set({ name: input.fullName }).where(eq(users.id, ctx.user.id));
+        const nextStep = transaction.transactionType === "rental" ? "contact_verification" : "identity";
+        await db.update(vehicleTransactions).set({
+          status: "verification_pending",
+          currentStep: nextStep,
+          contactName: input.fullName,
+          contactEmail: ctx.user.email ?? null,
+          contactPhone: input.phone,
+          addressLine1: input.addressLine1,
+          addressLine2: input.addressLine2 ?? null,
+          city: input.city,
+          state: input.state,
+          postalCode: input.postalCode,
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "profile.saved",
+          fromStatus: transaction.status,
+          toStatus: "verification_pending",
+        });
+        return { success: true, nextStep };
+      }),
+
+    saveStep: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), currentStep: z.string().trim().min(2).max(64) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transactions are temporarily unavailable." });
+        const transactions = await db
+          .select()
+          .from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1);
+        const transaction = transactions[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (!isTransactionStep(transaction.transactionType, input.currentStep)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This step is not valid for the selected transaction." });
+        }
+        await db.update(vehicleTransactions).set({ currentStep: input.currentStep }).where(eq(vehicleTransactions.id, transaction.id));
+        return { success: true, currentStep: input.currentStep };
       }),
   }),
 

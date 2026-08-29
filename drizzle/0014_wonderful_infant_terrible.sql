@@ -1,0 +1,1 @@
+ALTER TABLE `transaction_documents` MODIFY `documentType` enum('license_front','license_back','live_selfie','insurance_card','additional_driver_license','trade_in_document','condition_photo','agreement_copy','other') NOT NULL;

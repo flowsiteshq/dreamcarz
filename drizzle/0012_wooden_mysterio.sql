@@ -1,0 +1,2 @@
+ALTER TABLE `vehicle_transactions` ADD `activeRentalStatus` enum('not_applicable','pending','active','paused','ended','incident_review') DEFAULT 'not_applicable' NOT NULL;--> statement-breakpoint
+ALTER TABLE `vehicle_transactions` ADD `deliveryStatus` enum('not_applicable','pending','scheduled','verified','completed','missed') DEFAULT 'not_applicable' NOT NULL;

@@ -7,8 +7,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ArrowLeft, BookmarkPlus, CalendarDays, CarFront, CheckCircle2, Mail, Phone, ShoppingBag, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export type InventoryVehicle = {
   id: string;
@@ -34,6 +35,9 @@ type VehicleExperienceDialogProps = {
 const inputClass = "h-11 w-full border border-gray-200 bg-white px-3 text-sm text-black outline-none ring-0 placeholder:text-gray-400 focus:border-black";
 
 export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenChange, initialView = "overview" }: VehicleExperienceDialogProps) {
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+  const handledInitialAction = useRef(false);
   const [view, setView] = useState<ViewState>("overview");
   const [submittedInquiryType, setSubmittedInquiryType] = useState<"rental" | "purchase" | "reserve" | null>(null);
   const [form, setForm] = useState({
@@ -59,8 +63,25 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
   const isReserve = view === "reserve";
   const isComingSoon = vehicle.availability === "coming-soon";
 
+  const beginTransaction = (transactionType: "rental" | "purchase") => {
+    const plan = membershipPlan?.name.toLowerCase();
+    const destination = `/dashboard/transactions?intent=${transactionType}&vehicle=${encodeURIComponent(vehicle.id)}${plan ? `&plan=${encodeURIComponent(plan)}` : ""}`;
+    onOpenChange(false);
+    navigate(isAuthenticated ? destination : `/login?next=${encodeURIComponent(destination)}`);
+  };
+
   useEffect(() => {
-    if (open) setView(initialView);
+    if (!open) {
+      handledInitialAction.current = false;
+      setView("overview");
+      return;
+    }
+    if ((initialView === "rental" || initialView === "purchase") && !handledInitialAction.current) {
+      handledInitialAction.current = true;
+      beginTransaction(initialView);
+      return;
+    }
+    setView(initialView === "reserve" ? "reserve" : "overview");
   }, [initialView, open]);
 
   const resetAndClose = (nextOpen: boolean) => {
@@ -110,13 +131,13 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
                 </div>
               </div>
               <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                {isComingSoon ? <button type="button" onClick={() => setView("reserve")} className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition-transform duration-150 active:scale-[0.97]"><BookmarkPlus size={16} /> Reserve your vehicle</button> : <><button type="button" onClick={() => setView("rental")} className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition-transform duration-150 active:scale-[0.97]"><CalendarDays size={16} /> Rent this vehicle</button><button type="button" onClick={() => setView("purchase")} className="inline-flex h-12 items-center justify-center gap-2 border border-black bg-transparent px-5 text-sm font-semibold text-black transition-colors hover:bg-white"><ShoppingBag size={16} /> Buy this vehicle</button></>}
+                {isComingSoon ? <button type="button" onClick={() => setView("reserve")} className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition-transform duration-150 active:scale-[0.97]"><BookmarkPlus size={16} /> Reserve your vehicle</button> : <><button type="button" onClick={() => beginTransaction("rental")} className="inline-flex h-12 items-center justify-center gap-2 bg-black px-5 text-sm font-semibold text-white transition-transform duration-150 active:scale-[0.97]"><CalendarDays size={16} /> Start rental application</button><button type="button" onClick={() => beginTransaction("purchase")} className="inline-flex h-12 items-center justify-center gap-2 border border-black bg-transparent px-5 text-sm font-semibold text-black transition-colors hover:bg-white"><ShoppingBag size={16} /> Start purchase application</button></>}
               </div>
             </div>
           </div>
         )}
 
-        {(isRental || isPurchase || isReserve) && (
+        {isReserve && (
           <div className="grid min-h-[720px] lg:grid-cols-[0.78fr_1.22fr]">
             <aside className="hidden bg-black px-10 py-14 text-white lg:block">
               <button type="button" onClick={() => setView("overview")} className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"><ArrowLeft size={15} /> Back to vehicle</button>

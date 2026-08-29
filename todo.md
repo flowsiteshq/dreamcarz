@@ -92,13 +92,13 @@
 - [x] Verify production hero and vehicle images render on the live DreamCarz homepage and Fleet page before publishing.
 - [ ] Extract and verify monthly membership, vehicle-entry, rental, and purchase pricing from the user-provided pricing source.
 - [x] Design a clear membership-plus-vehicle pricing page that separates recurring membership from per-vehicle access costs.
-- [ ] Connect pricing-plan selection to the corresponding vehicle Rent and Buy workflows without hiding required costs.
-- [ ] Test and visually verify the pricing-to-vehicle flow before publishing.
+- [x] Connect pricing-plan selection to the corresponding vehicle Rent and Buy workflows without hiding required costs.
+- [x] Test and visually verify the pricing-to-vehicle flow before publishing.
 - [ ] Obtain the verified vehicle-entry, rental, and purchase pricing matrix before displaying vehicle-specific amounts.
-- [ ] Preserve selected membership and vehicle-access package context through Fleet, Vehicle Detail, Rent, and Buy flows.
-- [ ] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
-- [ ] Extend selected-plan context into the dedicated public Vehicle Detail route and its rental and purchase request forms.
-- [ ] Submit clearly labeled production pricing-context rental and purchase QA requests, confirm persistence, and remove the QA records.
+- [x] Preserve selected membership and vehicle-access package context through Fleet, Vehicle Detail, Rent, and Buy flows.
+- [x] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
+- [x] Extend selected-plan context into the dedicated public Vehicle Detail route and its rental and purchase request forms.
+- [x] Submit clearly labeled production pricing-context rental and purchase QA requests, confirm persistence, and remove the QA records.
 - [x] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
 - [x] Investigate non-token repository or deployment publication paths for the saved Pricing page release.
 - [x] Push the saved Pricing and vehicle-access release to GitHub main using the newly provided authorized credential.
@@ -106,6 +106,21 @@
 - [x] Add clear Rent a Car, Buy a Car, membership, pricing, and inventory action paths to the redesigned hero and entry cards.
 - [x] Restore the reference-aligned featured vehicle, membership value, support, and footer treatments using only approved DreamCarz copy.
 - [x] Test and visually compare the vehicle-first homepage redesign before publishing.
+- [x] Map the full vehicle application journey from interest through identity verification, payment, digital agreement, approval, and vehicle release.
+- [ ] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
+- [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
+- [ ] Integrate secure payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
+- [ ] Integrate digital rental agreement delivery and e-signature tracking using the supplied contract addendum as a reviewed draft source.
+- [ ] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
+- [ ] Add tests and launch-readiness verification for the complete secure vehicle application workflow.
+- [x] Create a reusable verified customer profile that safely prevents unnecessary repeat collection while supporting risk-appropriate re-verification.
+- [x] Add separate lifecycle states for identity, license, eligibility, insurance, payment, agreement, vehicle condition, pickup, active rental, return, settlement, and purchase delivery.
+- [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
+- [ ] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
+- [ ] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
+- [ ] Configure Stripe customer, payment method, checkout, webhook, and identifier-only audit handling for DreamCarz transactions.
+- [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
+- [ ] Configure an electronic-signature provider for dynamically generated rental and purchase agreements with lifecycle callbacks.
 - [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
 - [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.
 - [x] Add Coming Soon reserve actions to the applicable vehicle-level listings and preserve confirmed inventory labels.
@@ -153,3 +168,5 @@
 - [x] Explain each package’s intended vehicle class and documented review process without unsupported guarantees, fees, or program claims.
 - [x] Connect package actions to relevant confirmed inventory exploration and test the revised Membership experience.
 - [x] Commit and push the latest verified DreamCarz website and app release to GitHub main.
+- [x] Add a protected customer back-office view of each customer’s transaction agreements, agreement status, and signed-document access when available.
+- [x] Add a protected customer back-office view of driver-license verification status and securely stored license-document records, without exposing sensitive documents publicly.

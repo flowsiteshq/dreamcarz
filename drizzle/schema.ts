@@ -138,6 +138,37 @@ export const rentalApplicationDocuments = mysqlTable("rental_application_documen
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/**
+ * Reusable, account-bound profile for transactional onboarding. This stores
+ * necessary contact and verification outcomes, never payment credentials,
+ * facial templates, identity-document images, or provider client secrets.
+ */
+export const customerProfiles = mysqlTable("customer_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  fullName: varchar("fullName", { length: 160 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 32 }),
+  phoneVerifiedAt: timestamp("phoneVerifiedAt"),
+  emailVerifiedAt: timestamp("emailVerifiedAt"),
+  addressLine1: varchar("addressLine1", { length: 255 }),
+  addressLine2: varchar("addressLine2", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 64 }),
+  postalCode: varchar("postalCode", { length: 24 }),
+  dateOfBirth: varchar("dateOfBirth", { length: 10 }),
+  identityStatus: mysqlEnum("identityStatus", ["not_started", "pending", "verified", "requires_input", "manual_review", "redacted"]).default("not_started").notNull(),
+  licenseStatus: mysqlEnum("licenseStatus", ["not_started", "pending", "verified", "expired", "manual_review", "failed"]).default("not_started").notNull(),
+  identityProvider: varchar("identityProvider", { length: 64 }),
+  identityProviderSessionId: varchar("identityProviderSessionId", { length: 160 }),
+  identityVerifiedAt: timestamp("identityVerifiedAt"),
+  licenseVerifiedAt: timestamp("licenseVerifiedAt"),
+  verificationExpiresAt: timestamp("verificationExpiresAt"),
+  profileStatus: mysqlEnum("profileStatus", ["incomplete", "ready_for_verification", "verified", "manual_review", "restricted"]).default("incomplete").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── Vehicle Reservation Requests ────────────────────────────────────────────
 
 export const reservationRequests = mysqlTable("reservation_requests", {
@@ -189,6 +220,154 @@ export const vehicleInquiries = mysqlTable("vehicle_inquiries", {
   reviewedAt: timestamp("reviewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ── Transactional Rental & Purchase Lifecycle ──────────────────────────────
+
+/**
+ * A durable customer transaction created when a member selects Rent or Buy.
+ * Provider values are opaque identifiers only; card data, biometrics, client
+ * secrets, and raw webhook payloads must never be stored in DreamCarz.
+ */
+export const vehicleTransactions = mysqlTable("vehicle_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 32 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  transactionType: mysqlEnum("transactionType", ["rental", "purchase"]).notNull(),
+  vehicleId: varchar("vehicleId", { length: 96 }).notNull(),
+  vehicleName: varchar("vehicleName", { length: 160 }).notNull(),
+  vehicleImage: varchar("vehicleImage", { length: 512 }),
+  membershipPlan: varchar("membershipPlan", { length: 64 }),
+  status: mysqlEnum("status", [
+    "initiated",
+    "profile_incomplete",
+    "verification_pending",
+    "manual_review",
+    "eligibility_review",
+    "payment_pending",
+    "agreement_pending",
+    "ready_for_pickup",
+    "active_rental",
+    "return_pending",
+    "settlement_pending",
+    "completed",
+    "canceled",
+    "declined",
+  ]).default("initiated").notNull(),
+  currentStep: varchar("currentStep", { length: 64 }).default("vehicle").notNull(),
+  contactName: varchar("contactName", { length: 160 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactPhone: varchar("contactPhone", { length: 32 }),
+  addressLine1: varchar("addressLine1", { length: 255 }),
+  addressLine2: varchar("addressLine2", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 64 }),
+  postalCode: varchar("postalCode", { length: 24 }),
+  identityStatus: mysqlEnum("identityStatus", ["not_started", "pending", "verified", "requires_input", "manual_review", "redacted"]).default("not_started").notNull(),
+  licenseStatus: mysqlEnum("licenseStatus", ["not_started", "pending", "verified", "expired", "manual_review", "failed"]).default("not_started").notNull(),
+  eligibilityStatus: mysqlEnum("eligibilityStatus", ["not_started", "pending", "cleared", "manual_review", "ineligible"]).default("not_started").notNull(),
+  insuranceStatus: mysqlEnum("insuranceStatus", ["not_required", "pending", "verified", "manual_review", "rejected"]).default("pending").notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["not_required", "pending", "authorized", "paid", "failed", "refunded", "manual_review"]).default("pending").notNull(),
+  agreementStatus: mysqlEnum("agreementStatus", ["not_required", "draft", "awaiting_signature", "signed", "declined", "voided"]).default("draft").notNull(),
+  conditionStatus: mysqlEnum("conditionStatus", ["not_started", "pickup_complete", "return_complete", "review_required"]).default("not_started").notNull(),
+  pickupStatus: mysqlEnum("pickupStatus", ["not_applicable", "pending", "verified", "completed", "missed"]).default("pending").notNull(),
+  activeRentalStatus: mysqlEnum("activeRentalStatus", ["not_applicable", "pending", "active", "paused", "ended", "incident_review"]).default("not_applicable").notNull(),
+  returnStatus: mysqlEnum("returnStatus", ["not_applicable", "pending", "in_progress", "inspected", "complete"]).default("not_applicable").notNull(),
+  settlementStatus: mysqlEnum("settlementStatus", ["not_applicable", "pending", "complete", "adjustment_required", "disputed"]).default("not_applicable").notNull(),
+  deliveryStatus: mysqlEnum("deliveryStatus", ["not_applicable", "pending", "scheduled", "verified", "completed", "missed"]).default("not_applicable").notNull(),
+  identityProvider: varchar("identityProvider", { length: 64 }),
+  identitySessionId: varchar("identitySessionId", { length: 160 }),
+  paymentProvider: varchar("paymentProvider", { length: 64 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 160 }),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 160 }),
+  agreementProvider: varchar("agreementProvider", { length: 64 }),
+  agreementEnvelopeId: varchar("agreementEnvelopeId", { length: 160 }),
+  requestedStartDate: varchar("requestedStartDate", { length: 10 }),
+  requestedEndDate: varchar("requestedEndDate", { length: 10 }),
+  pickupLocation: varchar("pickupLocation", { length: 255 }),
+  deliveryLocation: varchar("deliveryLocation", { length: 255 }),
+  pricingSnapshot: text("pricingSnapshot"),
+  internalNote: text("internalNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const transactionConsents = mysqlTable("transaction_consents", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  userId: int("userId").notNull(),
+  consentType: mysqlEnum("consentType", ["identity_biometric", "identity_document", "insurance_review", "payment_authorization", "credit_authorization", "electronic_signature", "communications"]).notNull(),
+  policyVersion: varchar("policyVersion", { length: 64 }).notNull(),
+  acceptedAt: timestamp("acceptedAt").defaultNow().notNull(),
+  withdrawnAt: timestamp("withdrawnAt"),
+  source: varchar("source", { length: 64 }).default("transaction_flow").notNull(),
+});
+
+export const transactionDocuments = mysqlTable("transaction_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  userId: int("userId").notNull(),
+  documentType: mysqlEnum("documentType", ["license_front", "license_back", "live_selfie", "insurance_card", "additional_driver_license", "trade_in_document", "condition_photo", "agreement_copy", "other"]).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  originalFilename: varchar("originalFilename", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "rejected", "redacted"]).default("pending").notNull(),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const transactionAdditionalDrivers = mysqlTable("transaction_additional_drivers", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 32 }),
+  licenseStatus: mysqlEnum("licenseStatus", ["not_started", "pending", "verified", "manual_review", "rejected"]).default("not_started").notNull(),
+  identityStatus: mysqlEnum("identityStatus", ["not_started", "pending", "verified", "manual_review", "rejected"]).default("not_started").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const transactionAgreements = mysqlTable("transaction_agreements", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  agreementType: mysqlEnum("agreementType", ["rental", "purchase", "addendum"]).notNull(),
+  version: varchar("version", { length: 64 }).notNull(),
+  provider: varchar("provider", { length: 64 }),
+  providerEnvelopeId: varchar("providerEnvelopeId", { length: 160 }),
+  status: mysqlEnum("status", ["draft", "awaiting_signature", "signed", "declined", "voided"]).default("draft").notNull(),
+  signedDocumentKey: varchar("signedDocumentKey", { length: 512 }),
+  sentAt: timestamp("sentAt"),
+  signedAt: timestamp("signedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const vehicleConditionReports = mysqlTable("vehicle_condition_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  stage: mysqlEnum("stage", ["pickup", "return"]).notNull(),
+  completedByUserId: int("completedByUserId"),
+  odometerReading: int("odometerReading"),
+  fuelLevel: varchar("fuelLevel", { length: 32 }),
+  notes: text("notes"),
+  photoKeys: text("photoKeys"),
+  status: mysqlEnum("status", ["draft", "submitted", "reviewed", "disputed"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const transactionEvents = mysqlTable("transaction_events", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  actorUserId: int("actorUserId"),
+  actorType: mysqlEnum("actorType", ["customer", "admin", "system", "provider"]).notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 64 }),
+  toStatus: varchar("toStatus", { length: 64 }),
+  note: text("note"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ── Service & Incident Reports ─────────────────────────────────────────────
@@ -255,8 +434,16 @@ export type Referral = typeof referrals.$inferSelect;
 export type Commission = typeof commissions.$inferSelect;
 export type RentalApplication = typeof rentalApplications.$inferSelect;
 export type RentalApplicationDocument = typeof rentalApplicationDocuments.$inferSelect;
+export type CustomerProfile = typeof customerProfiles.$inferSelect;
 export type ReservationRequest = typeof reservationRequests.$inferSelect;
 export type VehicleInquiry = typeof vehicleInquiries.$inferSelect;
+export type VehicleTransaction = typeof vehicleTransactions.$inferSelect;
+export type TransactionConsent = typeof transactionConsents.$inferSelect;
+export type TransactionDocument = typeof transactionDocuments.$inferSelect;
+export type TransactionAdditionalDriver = typeof transactionAdditionalDrivers.$inferSelect;
+export type TransactionAgreement = typeof transactionAgreements.$inferSelect;
+export type VehicleConditionReport = typeof vehicleConditionReports.$inferSelect;
+export type TransactionEvent = typeof transactionEvents.$inferSelect;
 export type ServiceReport = typeof serviceReports.$inferSelect;
 export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
 export type ServiceReportReviewEvent = typeof serviceReportReviewEvents.$inferSelect;

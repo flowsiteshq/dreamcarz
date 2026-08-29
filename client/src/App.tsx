@@ -35,6 +35,7 @@ import Opportunity from "./pages/Opportunity";
 import DriveNetwork from "./pages/dashboard/DriveNetwork";
 import RentalOnboarding from "./pages/dashboard/RentalOnboarding";
 import AdminOperations from "./pages/dashboard/AdminOperations";
+import TransactionOnboarding from "./pages/dashboard/TransactionOnboarding";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -79,6 +80,7 @@ function Router() {
       <Route path="/opportunity" component={Opportunity} />
       <Route path="/dashboard/drive-network" component={DriveNetwork} />
       <Route path="/dashboard/rental-setup" component={RentalOnboarding} />
+      <Route path="/dashboard/transactions" component={TransactionOnboarding} />
       <Route path="/dashboard/operations" component={AdminOperations} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
