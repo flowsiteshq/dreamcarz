@@ -118,8 +118,8 @@
 - [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
 - [x] Provide explicit applicant consent, retention, deletion, and manual-review fallback controls for identity and biometric checks.
 - [x] Build an administrator exception queue with a transaction timeline, agreement, payment, condition, and audit evidence views.
-- [ ] Remove the unused Stripe payment-provider implementation and replace it with a CoCard-compatible, configuration-gated payment adapter, callback model, and identifier-only audit handling.
-- [ ] Verify CoCard's supported hosted-payment/tokenization, authorization, recurring payment, and callback methods before activating the DreamCarz payment flow.
+- [x] Remove the unused Stripe payment-provider implementation and replace it with a CoCard-compatible, configuration-gated payment adapter, callback model, and identifier-only audit handling.
+- [x] Verify CoCard's supported hosted-payment/tokenization, authorization, recurring payment, and callback methods before activating the DreamCarz payment flow.
 - [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
 - [x] Remove the external electronic-signature provider dependency from the DreamCarz agreement plan in favor of a native signing workflow.
 - [x] Add native signature metadata, signer acknowledgement, and controlled agreement-version validation to the DreamCarz transaction model.

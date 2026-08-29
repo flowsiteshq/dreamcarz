@@ -39,7 +39,7 @@ import { createHash } from "node:crypto";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
-import { cocardPaymentSetupBlocker, getPaymentProviderStatus } from "./paymentProvider";
+import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
@@ -726,9 +726,23 @@ export const appRouter = router({
         const providerEventId = `cocard:return:${transaction.id}:${input.gatewayTransactionId}`;
         const duplicate = await db.select({ id: transactionEvents.id }).from(transactionEvents).where(eq(transactionEvents.providerEventId, providerEventId)).limit(1);
         if (duplicate[0]) return { recorded: true as const, duplicate: true as const, paymentStatus: transaction.paymentStatus };
-        await db.update(vehicleTransactions).set({ paymentProvider: "cocard_gateway", paymentProviderTransactionId: input.gatewayTransactionId, paymentProviderCustomerVaultId: input.customerVaultId || transaction.paymentProviderCustomerVaultId, paymentStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_returned_pending_verification", fromStatus: transaction.status, toStatus: transaction.status, providerEventId, metadata: JSON.stringify({ provider: "cocard_gateway", gatewayTransactionId: input.gatewayTransactionId, customerVaultReturned: Boolean(input.customerVaultId) }) });
-        return { recorded: true as const, duplicate: false as const, paymentStatus: "pending" as const };
+        const verification = await verifyCoCardCheckoutReturn(input.gatewayTransactionId);
+        if (!verification.verified) {
+          await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_return_verification_pending", fromStatus: transaction.status, toStatus: transaction.status, providerEventId, metadata: JSON.stringify({ provider: "cocard_gateway", gatewayTransactionId: input.gatewayTransactionId }) });
+          return { recorded: false as const, duplicate: false as const, paymentStatus: "pending" as const, verificationPending: true as const };
+        }
+        const nextStatus = verification.paymentStatus === "authorized" || verification.paymentStatus === "paid" ? "agreement_pending" as const : "payment_pending" as const;
+        await db.update(vehicleTransactions).set({
+          paymentProvider: "cocard_gateway",
+          paymentProviderTransactionId: verification.gatewayTransactionId,
+          paymentProviderAuthorizationId: verification.authorizationCode || null,
+          paymentProviderCustomerVaultId: verification.customerVaultId || null,
+          paymentStatus: verification.paymentStatus,
+          status: nextStatus,
+          currentStep: verification.paymentStatus === "authorized" || verification.paymentStatus === "paid" ? "review" : "payment",
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_return_verified", fromStatus: transaction.status, toStatus: nextStatus, providerEventId, metadata: JSON.stringify({ provider: "cocard_gateway", gatewayTransactionId: verification.gatewayTransactionId, paymentStatus: verification.paymentStatus, customerVaultVerified: Boolean(verification.customerVaultId) }) });
+        return { recorded: true as const, duplicate: false as const, paymentStatus: verification.paymentStatus, verificationPending: false as const };
       }),
 
     activeTransactions: protectedProcedure.query(async ({ ctx }) => {
