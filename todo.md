@@ -99,6 +99,11 @@
 - [ ] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
 - [ ] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
 - [ ] Investigate non-token repository or deployment publication paths for the saved Pricing page release.
+- [ ] Push the saved Pricing and vehicle-access release to GitHub main using the newly provided authorized credential.
+- [x] Rebuild the DreamCarz homepage around the supplied vehicle-first reference layout and hierarchy.
+- [x] Add clear Rent a Car, Buy a Car, membership, pricing, and inventory action paths to the redesigned hero and entry cards.
+- [x] Restore the reference-aligned featured vehicle, membership value, support, and footer treatments using only approved DreamCarz copy.
+- [x] Test and visually compare the vehicle-first homepage redesign before publishing.
 - [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
 - [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.
 - [x] Add Coming Soon reserve actions to the applicable vehicle-level listings and preserve confirmed inventory labels.

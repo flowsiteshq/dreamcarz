@@ -11,9 +11,12 @@ describe("DreamCarz ecosystem process content", () => {
     const opportunity = source("client/src/pages/Opportunity.tsx");
     const navigation = source("client/src/components/Navigation.tsx");
 
-    for (const term of ["Member", "Associate", "Fleet Partner", "Join", "Drive", "Build", "Use"]) {
+    for (const term of ["Member", "Associate", "Fleet Partner"]) {
       expect(`${home}\n${opportunity}`).toContain(term);
     }
+    expect(home).toContain("Rent a vehicle");
+    expect(home).toContain("Buy a vehicle");
+    expect(home).toContain("Explore pricing");
     expect(navigation).toContain('label: "Associate Path"');
     expect(navigation).toContain('label: "Fleet Partners"');
   });
@@ -41,7 +44,7 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain('color: "Black"');
     expect(home).toContain('color: "White"');
     expect(home).toContain("Rent or buy");
-    expect(home).toContain("Find my path");
+    expect(home).toContain('aria-label="Find your vehicle path"');
   });
 
   it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
@@ -162,15 +165,15 @@ describe("DreamCarz ecosystem process content", () => {
     const app = source("client/src/App.tsx");
 
     for (const destination of [
-      'href="/fleet"',
-      'href="/membership"',
-      'href: "/opportunity"',
+      'href="/fleet?intent=rent"',
+      'href="/fleet?intent=buy"',
+      'href="/pricing"',
       'href="/contact"',
-      'navigate("/fleet")',
-      'navigate("/opportunity")',
-      'navigate("/membership")',
+      'navigate("/fleet?intent=rent")',
+      'navigate("/fleet?intent=buy")',
+      'navigate("/pricing")',
       'navigate(isAuthenticated ? "/dashboard" : "/login")',
-      "/vehicle?id=${vehicle.id}",
+      '`/vehicle?id=${vehicle.id}`',
     ]) {
       expect(home).toContain(destination);
     }
