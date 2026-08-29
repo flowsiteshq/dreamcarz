@@ -4,6 +4,7 @@ import {
   canTransitionTransaction,
   canReuseProfileVerification,
   CUSTOMER_PROFILE_REVERIFICATION_RULES,
+  hasVehicleReleaseReadiness,
   getTransactionSteps,
   initialTransactionLifecycle,
   isApprovedTransactionVehicle,
@@ -90,5 +91,12 @@ describe("transaction lifecycle contract", () => {
     expect(nextCustomerTransactionStep("purchase", "payment_path", "cash")).toBe("down_payment");
     expect(nextCustomerTransactionStep("purchase", "payment_path", "finance")).toBe("financing");
     expect(nextCustomerTransactionStep("purchase", "agreement")).toBeNull();
+  });
+
+  it("requires every operational verification before a vehicle can be released", () => {
+    const ready = { identityStatus: "verified", licenseStatus: "verified", eligibilityStatus: "cleared", insuranceStatus: "verified", paymentStatus: "authorized", agreementStatus: "signed" };
+    expect(hasVehicleReleaseReadiness(ready)).toBe(true);
+    expect(hasVehicleReleaseReadiness({ ...ready, paymentStatus: "pending" })).toBe(false);
+    expect(hasVehicleReleaseReadiness({ ...ready, agreementStatus: "awaiting_signature" })).toBe(false);
   });
 });

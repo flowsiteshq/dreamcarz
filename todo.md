@@ -111,7 +111,7 @@
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
 - [ ] Integrate secure payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
-- [ ] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
+- [x] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
 - [ ] Add tests and launch-readiness verification for the complete secure vehicle application workflow.
 - [x] Create a reusable verified customer profile that safely prevents unnecessary repeat collection while supporting risk-appropriate re-verification.
 - [x] Add separate lifecycle states for identity, license, eligibility, insurance, payment, agreement, vehicle condition, pickup, active rental, return, settlement, and purchase delivery.

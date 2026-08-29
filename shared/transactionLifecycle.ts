@@ -47,6 +47,22 @@ export function canTransitionTransaction(from: string, to: string) {
   return allowedTransactionTransitions[from as TransactionStatus].includes(to as TransactionStatus);
 }
 
+export function hasVehicleReleaseReadiness(input: {
+  identityStatus: string;
+  licenseStatus: string;
+  eligibilityStatus: string;
+  insuranceStatus: string;
+  paymentStatus: string;
+  agreementStatus: string;
+}) {
+  return input.identityStatus === "verified"
+    && input.licenseStatus === "verified"
+    && input.eligibilityStatus === "cleared"
+    && input.insuranceStatus === "verified"
+    && ["authorized", "paid"].includes(input.paymentStatus)
+    && input.agreementStatus === "signed";
+}
+
 export const RENTAL_TRANSACTION_STEPS = [
   "vehicle",
   "profile",

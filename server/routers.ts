@@ -43,6 +43,7 @@ import { createStripePaymentMethodSetup, getPaymentProviderStatus } from "./paym
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
+  hasVehicleReleaseReadiness,
   initialTransactionLifecycle,
   isApprovedTransactionVehicle,
   isTransactionStep,
@@ -1562,6 +1563,9 @@ export const appRouter = router({
         const transaction = rows[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (!canTransitionTransaction(transaction.status, input.nextStatus)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "That transaction status change is not allowed from the current lifecycle stage." });
+        if (input.nextStatus === "ready_for_pickup" && !hasVehicleReleaseReadiness(transaction)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Identity, license, eligibility, insurance, payment authorization, and a signed agreement must all be verified before vehicle release." });
+        }
         await db.update(vehicleTransactions).set({ status: input.nextStatus, currentStep: transactionStepForStatus(transaction.transactionType, input.nextStatus, transaction.currentStep) }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.status_changed", fromStatus: transaction.status, toStatus: input.nextStatus, note: input.note || null });
         return { success: true };
