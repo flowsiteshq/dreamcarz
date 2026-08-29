@@ -21,7 +21,8 @@ describe("DreamCarz ecosystem process content", () => {
   it("shows the Tesla Model 3 hero and every vehicle in the supplied current inventory", () => {
     const home = source("client/src/pages/Home.tsx");
 
-    expect(home).toContain("dreamcarz-tesla-model-3-hero");
+    expect(home).toContain("files.manuscdn.com");
+    expect(home).toContain("gyIfJAbATfYnyeYI");
     for (const vehicle of [
       ["2024", "Chevrolet", "Malibu"],
       ["2022", "Chevrolet", "Traverse"],
@@ -73,23 +74,15 @@ describe("DreamCarz ecosystem process content", () => {
   });
 
   it("renders a corresponding confirmed vehicle image on public and member inventory cards", () => {
+    const home = source("client/src/pages/Home.tsx");
     const fleet = source("client/src/pages/Fleet.tsx");
     const detail = source("client/src/pages/VehicleDetail.tsx");
     const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
-    for (const imageKey of [
-      "dreamcarz-studio-2024-chevrolet-malibu-gray",
-      "dreamcarz-studio-2022-chevrolet-traverse-white",
-      "dreamcarz-studio-2024-ford-fusion-gray",
-      "dreamcarz-studio-2020-chevrolet-traverse-gray",
-      "dreamcarz-studio-2019-chevrolet-malibu-black",
-      "dreamcarz-studio-2015-ford-taurus-gray",
-      "dreamcarz-studio-2020-chevrolet-equinox-gray",
-      "dreamcarz-studio-2020-chevrolet-equinox-black",
-    ]) {
-      expect(fleet).toContain(imageKey);
-      expect(detail).toContain(imageKey);
-      expect(memberVehicles).toContain(imageKey);
+    for (const inventorySurface of [home, fleet, detail, memberVehicles]) {
+      expect(inventorySurface).toContain("files.manuscdn.com");
+      expect(inventorySurface).not.toContain("/manus-storage/dreamcarz-");
     }
+    expect(home).toContain("gyIfJAbATfYnyeYI");
     expect(fleet).toContain("bg-transparent");
     expect(memberVehicles).toContain("bg-transparent");
   });

@@ -6,14 +6,14 @@ import { VehicleExperienceDialog } from "@/components/VehicleExperienceDialog";
 import { useState } from "react";
 
 const confirmedInventory = [
-  { id: "2024-chevrolet-malibu-gray", year: 2024, make: "Chevrolet", model: "Malibu", color: "Gray", type: "Sedan", access: "mid-range", image: "/manus-storage/dreamcarz-studio-2024-chevrolet-malibu-gray_0bd4e28f.png" },
-  { id: "2022-chevrolet-traverse-white", year: 2022, make: "Chevrolet", model: "Traverse", color: "White", type: "SUV", access: "elite", image: "/manus-storage/dreamcarz-studio-2022-chevrolet-traverse-white_d645f2d2.png" },
-  { id: "2024-ford-fusion-gray", year: 2024, make: "Ford", model: "Fusion", color: "Gray", type: "Sedan", access: "mid-range", image: "/manus-storage/dreamcarz-studio-2024-ford-fusion-gray_2089712d.png" },
-  { id: "2020-chevrolet-traverse-gray", year: 2020, make: "Chevrolet", model: "Traverse", color: "Gray", type: "SUV", access: "mid-range", image: "/manus-storage/dreamcarz-studio-2020-chevrolet-traverse-gray_2787506d.png" },
-  { id: "2019-chevrolet-malibu-black", year: 2019, make: "Chevrolet", model: "Malibu", color: "Black", type: "Sedan", access: "entry", image: "/manus-storage/dreamcarz-studio-2019-chevrolet-malibu-black_7c058f70.png" },
-  { id: "2015-ford-taurus-gray", year: 2015, make: "Ford", model: "Taurus", color: "Gray", type: "Sedan", access: "entry", image: "/manus-storage/dreamcarz-studio-2015-ford-taurus-gray_529b5b07.png" },
-  { id: "2020-chevrolet-equinox-gray", year: 2020, make: "Chevrolet", model: "Equinox", color: "Gray", type: "SUV", access: "entry", image: "/manus-storage/dreamcarz-studio-2020-chevrolet-equinox-gray_be9e6d4f.png" },
-  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", access: "entry", image: "/manus-storage/dreamcarz-studio-2020-chevrolet-equinox-black_9ced45ba.png" },
+  { id: "2024-chevrolet-malibu-gray", year: 2024, make: "Chevrolet", model: "Malibu", color: "Gray", type: "Sedan", access: "mid-range", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/ogLykrxMFWpmsTbU.png" },
+  { id: "2022-chevrolet-traverse-white", year: 2022, make: "Chevrolet", model: "Traverse", color: "White", type: "SUV", access: "elite", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/uLwJSHBxRyWslZQQ.png" },
+  { id: "2024-ford-fusion-gray", year: 2024, make: "Ford", model: "Fusion", color: "Gray", type: "Sedan", access: "mid-range", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/qRKjtXjkrFUfxMqh.png" },
+  { id: "2020-chevrolet-traverse-gray", year: 2020, make: "Chevrolet", model: "Traverse", color: "Gray", type: "SUV", access: "mid-range", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/mFFrLJBzyJWqricP.png" },
+  { id: "2019-chevrolet-malibu-black", year: 2019, make: "Chevrolet", model: "Malibu", color: "Black", type: "Sedan", access: "entry", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
+  { id: "2015-ford-taurus-gray", year: 2015, make: "Ford", model: "Taurus", color: "Gray", type: "Sedan", access: "entry", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/BDcxxQLQxENUVvqj.png" },
+  { id: "2020-chevrolet-equinox-gray", year: 2020, make: "Chevrolet", model: "Equinox", color: "Gray", type: "SUV", access: "entry", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/QuCANehFYgQjJKfm.png" },
+  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", access: "entry", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
 ] as const;
 
 const filters = ["All", "Sedan", "SUV"] as const;
