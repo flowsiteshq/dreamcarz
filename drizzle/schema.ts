@@ -171,7 +171,7 @@ export const vehicleInquiries = mysqlTable("vehicle_inquiries", {
   id: int("id").autoincrement().primaryKey(),
   reference: varchar("reference", { length: 24 }).notNull().unique(),
   userId: int("userId"),
-  inquiryType: mysqlEnum("inquiryType", ["rental", "purchase"]).notNull(),
+  inquiryType: mysqlEnum("inquiryType", ["rental", "purchase", "reserve"]).notNull(),
   vehicleId: varchar("vehicleId", { length: 96 }).notNull(),
   vehicleName: varchar("vehicleName", { length: 160 }).notNull(),
   contactName: varchar("contactName", { length: 160 }).notNull(),

@@ -65,9 +65,12 @@ describe("DreamCarz ecosystem process content", () => {
     ]) {
       expect(inventoryContent).toContain(vehicle);
     }
-    for (const unsupportedVehicle of ["Porsche", "Lamborghini", "Ferrari", "Range Rover", "Mercedes", "Audi", "Honda Civic", "Toyota Camry", "Nissan Altima", "Hyundai Tucson", "Kia Sportage", "Ford Escape", "Rivian", "Cadillac Escalade", "McLaren"]) {
+    for (const unsupportedVehicle of ["Porsche", "Lamborghini", "Ferrari", "Range Rover", "Audi", "Honda Civic", "Hyundai Tucson", "Kia Sportage", "Ford Escape", "Rivian", "Cadillac Escalade", "McLaren"]) {
       expect(inventoryContent).not.toContain(unsupportedVehicle);
     }
+    expect(inventoryContent).toContain('availability: "coming-soon"');
+    expect(inventoryContent).toContain("Coming Soon · reserve your vehicle");
+    expect(inventoryContent).toContain("Reserve your vehicle");
     const reservations = source("client/src/pages/dashboard/Reservations.tsx");
     expect(reservations).toContain("confirmedVehicleNames.has(reservation.vehicleName)");
     expect(reservations).not.toContain("estimatedWeeklyFee}/week");

@@ -26,5 +26,6 @@ describe("vehicle inquiry rules", () => {
   it("keeps rental and purchase references distinct", () => {
     expect(vehicleInquiryReferencePrefix("rental")).toBe("VR");
     expect(vehicleInquiryReferencePrefix("purchase")).toBe("VP");
+    expect(vehicleInquiryReferencePrefix("reserve")).toBe("VS");
   });
 });

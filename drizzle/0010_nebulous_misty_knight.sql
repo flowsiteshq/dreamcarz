@@ -1,0 +1,1 @@
+ALTER TABLE `vehicle_inquiries` MODIFY COLUMN `inquiryType` enum('rental','purchase','reserve') NOT NULL;

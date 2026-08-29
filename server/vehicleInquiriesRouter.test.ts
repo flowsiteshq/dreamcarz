@@ -71,6 +71,32 @@ describe("vehicle inquiry router", () => {
     }));
   });
 
+  it("persists a Coming Soon reserve request with a reserve-specific reference", async () => {
+    const values = vi.fn().mockResolvedValue({ affectedRows: 1 });
+    mockedGetDb.mockResolvedValue({ insert: vi.fn(() => ({ values })) } as never);
+
+    const caller = appRouter.createCaller(visitorContext as never);
+    const result = await caller.vehicleInquiries.create({
+      ...baseInquiry,
+      inquiryType: "reserve",
+      vehicleId: "coming-soon-2024-tesla-model-3",
+      vehicleName: "2024 Tesla Model 3",
+      notes: "Reserve request for a Coming Soon vehicle.",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.inquiryType).toBe("reserve");
+    expect(result.reference).toMatch(/^VS-\d{4}-[A-Z0-9]{7}$/);
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      inquiryType: "reserve",
+      vehicleId: "coming-soon-2024-tesla-model-3",
+      requestedStartDate: null,
+      requestedEndDate: null,
+      pickupLocation: null,
+      status: "submitted",
+    }));
+  });
+
   it("rejects a rental request when required timing or pickup information is missing", async () => {
     mockedGetDb.mockResolvedValue({ insert: vi.fn() } as never);
     const caller = appRouter.createCaller(visitorContext as never);

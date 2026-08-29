@@ -1,6 +1,6 @@
 import { hasValidReservationDateRange } from "./reservationRequest";
 
-export type VehicleInquiryType = "rental" | "purchase";
+export type VehicleInquiryType = "rental" | "purchase" | "reserve";
 
 export function hasCompleteRentalInquiry(input: {
   requestedStartDate?: string;
@@ -16,5 +16,7 @@ export function hasCompleteRentalInquiry(input: {
 }
 
 export function vehicleInquiryReferencePrefix(type: VehicleInquiryType) {
-  return type === "rental" ? "VR" : "VP";
+  if (type === "rental") return "VR";
+  if (type === "purchase") return "VP";
+  return "VS";
 }

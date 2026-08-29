@@ -480,7 +480,7 @@ export const appRouter = router({
   vehicleInquiries: router({
     create: publicProcedure
       .input(z.object({
-        inquiryType: z.enum(["rental", "purchase"]),
+        inquiryType: z.enum(["rental", "purchase", "reserve"]),
         vehicleId: z.string().trim().min(2).max(96),
         vehicleName: z.string().trim().min(2).max(160),
         contactName: z.string().trim().min(2).max(160),

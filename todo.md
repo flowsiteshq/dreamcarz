@@ -98,6 +98,11 @@
 - [ ] Preserve selected membership and vehicle-access package context through Fleet, Vehicle Detail, Rent, and Buy flows.
 - [ ] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
 - [ ] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
+- [ ] Investigate non-token repository or deployment publication paths for the saved Pricing page release.
+- [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
+- [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.
+- [x] Add Coming Soon reserve actions to the applicable vehicle-level listings and preserve confirmed inventory labels.
+- [x] Test and visually verify level-specific inventory and reserve paths before publishing.
 - [x] Create and integrate a Nano Banana Tesla Model 3 hero visual for the DreamCarz homepage.
 - [x] Add the supplied eight-vehicle current inventory with year, model, color, and a truthful rental-or-sale availability treatment.
 - [x] Add coverage and visually verify the upgraded homepage hero and inventory experience before publishing.
