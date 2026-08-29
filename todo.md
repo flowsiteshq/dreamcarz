@@ -97,9 +97,11 @@
 - [ ] Obtain the verified vehicle-entry, rental, and purchase pricing matrix before displaying vehicle-specific amounts.
 - [ ] Preserve selected membership and vehicle-access package context through Fleet, Vehicle Detail, Rent, and Buy flows.
 - [ ] Run end-to-end browser QA from Pricing into filtered inventory and both Rent and Buy workflows.
-- [ ] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
-- [ ] Investigate non-token repository or deployment publication paths for the saved Pricing page release.
-- [ ] Push the saved Pricing and vehicle-access release to GitHub main using the newly provided authorized credential.
+- [ ] Extend selected-plan context into the dedicated public Vehicle Detail route and its rental and purchase request forms.
+- [ ] Submit clearly labeled production pricing-context rental and purchase QA requests, confirm persistence, and remove the QA records.
+- [x] Publish the completed Pricing page and membership-context vehicle selection experience to GitHub and Railway for live review.
+- [x] Investigate non-token repository or deployment publication paths for the saved Pricing page release.
+- [x] Push the saved Pricing and vehicle-access release to GitHub main using the newly provided authorized credential.
 - [x] Rebuild the DreamCarz homepage around the supplied vehicle-first reference layout and hierarchy.
 - [x] Add clear Rent a Car, Buy a Car, membership, pricing, and inventory action paths to the redesigned hero and entry cards.
 - [x] Restore the reference-aligned featured vehicle, membership value, support, and footer treatments using only approved DreamCarz copy.
