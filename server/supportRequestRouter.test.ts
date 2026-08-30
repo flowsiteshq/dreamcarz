@@ -31,6 +31,14 @@ describe("DreamCarz support requests", () => {
     expect(eventValues).toHaveBeenCalledWith(expect.objectContaining({ supportRequestId: 44, actorUserId: 51, eventType: "support_request.submitted", toStatus: "submitted" }));
   });
 
+  it("rejects likely payment-card numbers, passwords, and driver-license numbers before a customer support message is stored", async () => {
+    const caller = appRouter.createCaller(callerContext as never);
+    await expect(caller.supportRequests.create({ category: "payment", urgency: "standard", subject: "Payment detail", description: "My card number is 4111 1111 1111 1111 and needs review." })).rejects.toThrow("remove payment-card numbers");
+    await expect(caller.supportRequests.create({ category: "account", urgency: "standard", subject: "Sign-in detail", description: "My password: secret-value cannot complete the sign-in process." })).rejects.toThrow("remove payment-card numbers");
+    await expect(caller.supportRequests.addFollowUp({ supportRequestId: 44, message: "My driver license number: A1234567 is attached to the request." })).rejects.toThrow("remove payment-card numbers");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("returns member support history without internal notes or assignment information", async () => {
     const select = vi.fn()
       .mockReturnValueOnce(selectResult([{ id: 44, reference: "SP-2026-TEST123", userId: 51, category: "general", urgency: "standard", status: "under_review", subject: "Question", description: "A member question", relatedTransactionId: null, assignedToUserId: 7, customerUpdate: "A private update", internalNote: "Staff-only", createdAt: new Date(), updatedAt: new Date(), resolvedAt: null }]))

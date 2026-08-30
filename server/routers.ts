@@ -116,6 +116,20 @@ function hasFutureRecordedInsuranceCoverage(insuranceDetails: string | null | un
   }
 }
 
+function containsRestrictedSupportContent(value: string) {
+  const digitsOnly = value.replace(/[^0-9]/g, "");
+  const likelyCardNumber = /\d{13,19}/.test(digitsOnly);
+  const likelyPassword = /\b(?:password|passcode|pin)\b\s*(?:is|:|=)\s*\S+/i.test(value);
+  const likelyLicenseNumber = /\b(?:driver'?s?\s*licen[cs]e|dl)\s*(?:number|no\.?|#|:|=)\s*(?::|=)?\s*[a-z0-9-]{4,}/i.test(value);
+  return likelyCardNumber || likelyPassword || likelyLicenseNumber;
+}
+
+function assertSafeSupportContent(value: string) {
+  if (containsRestrictedSupportContent(value)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Please remove payment-card numbers, passwords, and driver-license numbers before sending this support message." });
+  }
+}
+
 async function recordVehiclePassportActivity(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   input: { vehiclePassportId: number; actorUserId: number; eventType: string; metadata?: Record<string, string> },
@@ -2389,6 +2403,7 @@ export const appRouter = router({
       description: z.string().trim().min(10).max(4_000),
       relatedTransactionReference: z.string().trim().max(48).optional(),
     })).mutation(async ({ ctx, input }) => {
+      assertSafeSupportContent(`${input.subject}\n${input.description}`);
       const requestLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "support_request", String(ctx.user.id)), limit: 6, windowMs: 15 * 60_000 });
       if (!requestLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before sending another support request." });
       const db = await getDb();
@@ -2405,6 +2420,7 @@ export const appRouter = router({
       supportRequestId: z.number().int().positive(),
       message: z.string().trim().min(10).max(2_000),
     })).mutation(async ({ ctx, input }) => {
+      assertSafeSupportContent(input.message);
       const followUpLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "support_request_follow_up", String(ctx.user.id)), limit: 6, windowMs: 15 * 60_000 });
       if (!followUpLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before adding another support follow-up." });
       const db = await getDb();

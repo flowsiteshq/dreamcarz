@@ -256,6 +256,7 @@
 - [x] Replace the static Support message form with account-owned support requests and administrator review controls, without response-time promises or unconfigured live chat.
 - [x] Allow a customer to add a private follow-up only to an account-owned open support request, retaining the message solely in the protected support history.
 - [x] Show customer-authored private support follow-ups only in the authorized DreamCarz support queue, never on public or cross-account surfaces.
+- [x] Reject likely payment-card numbers, passwords, and driver-license numbers before customer support requests or follow-ups are stored.
 - [x] Add automatic opt-out-aware in-app notices for rental extension, handoff, and settlement decisions while leaving email, SMS, and push unconfigured.
 - [x] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.
 - [x] Add an account-scoped DreamCarz concierge guidance endpoint that uses only safe membership, transaction-status, and confirmed-inventory context without storing chat content.
