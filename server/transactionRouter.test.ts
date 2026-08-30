@@ -225,9 +225,18 @@ describe("transaction intake router", () => {
     mockedGetDb.mockResolvedValue({ update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: insertValues })) } as never);
     const caller = appRouter.createCaller(adminContext as never);
 
-    await expect(caller.transactions.createAgreementTemplate({ agreementType: "rental", version: "rental-2026.1", title: "DreamCarz Rental Agreement", content: "Controlled agreement content long enough to satisfy native template validation.", legalApprovalReference: "Counsel memo 2026-01", legallyApproved: true, activate: true })).resolves.toMatchObject({ success: true, templateId: 28 });
+    await expect(caller.transactions.createAgreementTemplate({ agreementType: "rental", version: "rental-2026.1", title: "DreamCarz Rental Agreement", content: "Controlled agreement content long enough to satisfy native template validation.", jurisdiction: "Maryland", legalApprovalReference: "Counsel memo 2026-01", legalReviewNotes: "Counsel-reviewed Maryland disclosure checklist.", legallyApproved: true, activate: true })).resolves.toMatchObject({ success: true, templateId: 28 });
     expect(updateWhere).toHaveBeenCalledTimes(1);
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ isActive: true, legalApprovalReference: "Counsel memo 2026-01" }));
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ isActive: true, jurisdiction: "Maryland", legalApprovalReference: "Counsel memo 2026-01", legalReviewNotes: "Counsel-reviewed Maryland disclosure checklist." }));
+  });
+
+  it("returns jurisdiction and counsel-review metadata only through the administrator template list", async () => {
+    const adminContext = { ...customerContext, user: { ...customerContext.user, role: "admin" } };
+    const templates = [{ id: 28, agreementType: "rental", version: "rental-2026.1", title: "DreamCarz Rental Agreement", jurisdiction: "Maryland", legalReviewNotes: "Counsel-reviewed Maryland disclosure checklist.", isActive: true }];
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(templates) })) })) } as never);
+
+    await expect(appRouter.createCaller(adminContext as never).transactions.listAgreementTemplates()).resolves.toEqual(templates);
+    await expect(appRouter.createCaller(customerContext as never).transactions.listAgreementTemplates()).rejects.toThrow("Administrator access is required");
   });
 
   it("prepares and signs a native agreement with a private artifact and immutable audit event", async () => {

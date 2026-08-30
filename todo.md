@@ -135,6 +135,9 @@
 - [x] Add administrator review of native agreement signatures and agreement versions without exposing private document contents publicly.
 - [x] Wire the rental journey from pricing into review and agreement with server-validated progression so native signing is reachable end to end.
 - [x] Add positive regression coverage for template activation, agreement preparation, customer signature capture, private artifact storage, and resulting audit evidence.
+- [x] Add Maryland jurisdiction and counsel-review metadata to native agreement governance without treating a template as legally sufficient or activating draft language.
+- [x] Add and apply an additive agreement-template jurisdiction migration, then validate create/list behavior with jurisdiction and counsel-review metadata.
+- [ ] Add administrator list coverage and live rendering verification for agreement-template jurisdiction and counsel-review metadata.
 - [x] Complete server-enforced customer progression from saved profile into contact verification for rentals and identity verification for purchases.
 - [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
 - [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.

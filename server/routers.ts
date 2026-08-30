@@ -2011,13 +2011,13 @@ export const appRouter = router({
       }),
 
     createAgreementTemplate: protectedProcedure
-      .input(z.object({ agreementType: z.enum(["rental", "purchase"]), version: z.string().trim().min(1).max(64), title: z.string().trim().min(3).max(160), content: z.string().trim().min(40).max(50_000), legalApprovalReference: z.string().trim().min(2).max(255), legallyApproved: z.literal(true), activate: z.boolean().default(true) }))
+      .input(z.object({ agreementType: z.enum(["rental", "purchase"]), version: z.string().trim().min(1).max(64), title: z.string().trim().min(3).max(160), content: z.string().trim().min(40).max(50_000), jurisdiction: z.string().trim().min(2).max(80).default("Maryland"), legalApprovalReference: z.string().trim().min(2).max(255), legalReviewNotes: z.string().trim().max(3_000).optional(), legallyApproved: z.literal(true), activate: z.boolean().default(true) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Agreement templates are temporarily unavailable." });
         if (input.activate) await db.update(agreementTemplates).set({ isActive: false }).where(eq(agreementTemplates.agreementType, input.agreementType));
-        const result = await db.insert(agreementTemplates).values({ agreementType: input.agreementType, version: input.version, title: input.title, content: input.content, legalApprovalReference: input.legalApprovalReference, legalApprovedAt: new Date(), legalApprovedByUserId: ctx.user.id, isActive: input.activate });
+        const result = await db.insert(agreementTemplates).values({ agreementType: input.agreementType, version: input.version, title: input.title, content: input.content, jurisdiction: input.jurisdiction, legalApprovalReference: input.legalApprovalReference, legalReviewNotes: input.legalReviewNotes || null, legalApprovedAt: new Date(), legalApprovedByUserId: ctx.user.id, isActive: input.activate });
         return { success: true, templateId: Number(result[0].insertId) };
       }),
 
