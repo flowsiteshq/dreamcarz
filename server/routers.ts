@@ -1487,7 +1487,7 @@ export const appRouter = router({
     backOffice: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Back-office records are temporarily unavailable." });
-      const [profiles, legacyLicenseDocuments, transactionLicenseDocuments, agreements] = await Promise.all([
+      const [profiles, legacyLicenseDocuments, transactionLicenseDocuments, insuranceDocuments, agreements] = await Promise.all([
         db.select().from(customerProfiles).where(eq(customerProfiles.userId, ctx.user.id)).limit(1),
         db.select({
           id: rentalApplicationDocuments.id,
@@ -1512,6 +1512,16 @@ export const appRouter = router({
           ))
           .orderBy(desc(transactionDocuments.createdAt)),
         db.select({
+          id: transactionDocuments.id,
+          originalFilename: transactionDocuments.originalFilename,
+          contentType: transactionDocuments.contentType,
+          reviewStatus: transactionDocuments.status,
+          createdAt: transactionDocuments.createdAt,
+        }).from(transactionDocuments)
+          .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
+          .where(and(eq(vehicleTransactions.userId, ctx.user.id), eq(transactionDocuments.documentType, "insurance_card")))
+          .orderBy(desc(transactionDocuments.createdAt)),
+        db.select({
           id: transactionAgreements.id,
           reference: vehicleTransactions.reference,
           vehicleName: vehicleTransactions.vehicleName,
@@ -1532,12 +1542,13 @@ export const appRouter = router({
           ...legacyLicenseDocuments.map(document => ({ ...document, recordSource: "legacy_license_document" as const })),
           ...transactionLicenseDocuments.map(document => ({ ...document, recordSource: "transaction_license_document" as const })),
         ],
+        insuranceDocuments: insuranceDocuments.map(document => ({ ...document, recordSource: "transaction_insurance_document" as const })),
         agreements: agreements.map(({ signedDocumentKey, ...agreement }) => ({ ...agreement, hasSignedDocument: Boolean(signedDocumentKey) })),
       };
     }),
 
     getRecordLink: protectedProcedure
-      .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "agreement"]), id: z.number().int().positive() }))
+      .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "transaction_insurance_document", "agreement"]), id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
@@ -1549,13 +1560,17 @@ export const appRouter = router({
           if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Driver-license record not found." });
           return { url: await storageGetSignedUrl(documents[0].storageKey) };
         }
-        if (input.recordType === "transaction_license_document") {
+        if (input.recordType === "transaction_license_document" || input.recordType === "transaction_insurance_document") {
           const documents = await db.select({ storageKey: transactionDocuments.storageKey })
             .from(transactionDocuments)
             .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
-            .where(and(eq(transactionDocuments.id, input.id), eq(vehicleTransactions.userId, ctx.user.id)))
+            .where(and(
+              eq(transactionDocuments.id, input.id),
+              eq(vehicleTransactions.userId, ctx.user.id),
+              eq(transactionDocuments.documentType, input.recordType === "transaction_insurance_document" ? "insurance_card" : "license_front"),
+            ))
             .limit(1);
-          if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Driver-license record not found." });
+          if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: input.recordType === "transaction_insurance_document" ? "Insurance record not found." : "Driver-license record not found." });
           return { url: await storageGetSignedUrl(documents[0].storageKey) };
         }
         const agreements = await db.select({ signedDocumentKey: transactionAgreements.signedDocumentKey })
@@ -1837,6 +1852,35 @@ export const appRouter = router({
         await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "insurance_review", policyVersion: "insurance-review-v1", source: "transaction_flow" });
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "insurance.details_saved", metadata: JSON.stringify({ insurer: input.insurer, policyLastFour: input.policyLastFour, coverageExpiresOn: input.coverageExpiresOn }) });
         return { success: true };
+      }),
+
+    uploadInsuranceDocument: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        filename: z.string().trim().min(1).max(120),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
+        base64: z.string().min(100).max(8_400_000),
+        insuranceReviewConsent: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const documentLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "insurance_document_upload", String(ctx.user.id)), limit: 8, windowMs: 60 * 60 * 1000 });
+        if (!documentLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many insurance-document uploads. Please wait before trying again." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Insurance document capture is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "insurance") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Insurance proof can be uploaded when DreamCarz opens the insurance stage." });
+        if (["completed", "canceled", "declined"].includes(transaction.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "This closed transaction cannot accept insurance proof." });
+        const rawBytes = Buffer.from(input.base64, "base64");
+        if (rawBytes.length > 6 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Each insurance record must be 6 MB or smaller." });
+        const extension = input.contentType === "application/pdf" ? "pdf" : input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
+        const { key } = await storagePut(`transaction-documents/${ctx.user.id}/${transaction.id}/insurance_card_${Date.now()}.${extension}`, rawBytes, input.contentType);
+        const inserted = await db.insert(transactionDocuments).values({ transactionId: transaction.id, userId: ctx.user.id, documentType: "insurance_card", storageKey: key, originalFilename: input.filename, contentType: input.contentType, status: "pending" });
+        await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "insurance_review", policyVersion: "insurance-review-v1", source: "transaction_insurance_upload" });
+        await db.update(vehicleTransactions).set({ insuranceStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "insurance.proof_uploaded", metadata: JSON.stringify({ documentId: Number(inserted[0].insertId), contentType: input.contentType }) });
+        return { success: true, documentId: Number(inserted[0].insertId), status: "pending" as const };
       }),
 
     addAdditionalDriver: protectedProcedure

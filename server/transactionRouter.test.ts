@@ -73,6 +73,41 @@ describe("transaction intake router", () => {
     })).rejects.toThrow("Explicit identity-document consent is required");
   });
 
+  it("stores consented proof of insurance as a private pending record only during the insurance stage", async () => {
+    const transaction = { id: 43, status: "verification_pending" as const, currentStep: "insurance" as const };
+    const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) }));
+    const insert = vi.fn(() => ({ values: vi.fn().mockResolvedValue([{ insertId: 904 }]) }));
+    const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) }));
+    mockedGetDb.mockResolvedValue({ select, insert, update } as never);
+    mockedStoragePut.mockResolvedValue({ key: "transaction-documents/77/43/insurance_card_private.pdf", url: "/manus-storage/private" } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.uploadInsuranceDocument({
+      reference: "DCR-2026-INSURANCE",
+      filename: "insurance-card.pdf",
+      contentType: "application/pdf",
+      base64: "A".repeat(100),
+      insuranceReviewConsent: true,
+    })).resolves.toMatchObject({ success: true, documentId: 904, status: "pending" });
+
+    expect(mockedStoragePut).toHaveBeenCalledWith(expect.stringContaining("transaction-documents/77/43/insurance_card_"), expect.any(Buffer), "application/pdf");
+    expect(insert).toHaveBeenCalledTimes(3);
+  });
+
+  it("blocks proof-of-insurance upload outside the account-owned insurance stage", async () => {
+    const transaction = { id: 44, status: "verification_pending" as const, currentStep: "review" as const };
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })) } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.uploadInsuranceDocument({
+      reference: "DCR-2026-NOT-INSURANCE",
+      filename: "insurance-card.pdf",
+      contentType: "application/pdf",
+      base64: "A".repeat(100),
+      insuranceReviewConsent: true,
+    })).rejects.toThrow("Insurance proof can be uploaded when DreamCarz opens the insurance stage");
+  });
+
   it("requires explicit financing authorization before accepting a purchase finance path", async () => {
     const caller = appRouter.createCaller(customerContext as never);
     await expect(caller.transactions.savePurchasePaymentPath({
