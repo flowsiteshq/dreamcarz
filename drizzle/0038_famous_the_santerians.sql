@@ -1,0 +1,1 @@
+ALTER TABLE `vehicle_operational_inspections` ADD `reviewNote` text;

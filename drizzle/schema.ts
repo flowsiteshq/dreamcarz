@@ -341,6 +341,7 @@ export const vehicleOperationalInspections = mysqlTable("vehicle_operational_ins
   tireCondition: varchar("tireCondition", { length: 80 }),
   cleanliness: varchar("cleanliness", { length: 80 }),
   damageNotes: text("damageNotes"),
+  reviewNote: text("reviewNote"),
   photoKeys: text("photoKeys"),
   inspectedByUserId: int("inspectedByUserId"),
   reviewedByUserId: int("reviewedByUserId"),
