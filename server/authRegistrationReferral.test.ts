@@ -29,7 +29,7 @@ describe("DreamCarz registration referral attribution", () => {
   it("creates a pending immutable referral link only for a validated Associate code at registration", async () => {
     const referralProfile = { userId: 404, referralCode: "DC-PARTNER" };
     const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([referralProfile]) })) })) }));
-    const referralInsert = vi.fn().mockResolvedValue(undefined);
+    const referralInsert = vi.fn().mockResolvedValueOnce([{ insertId: 88 }]).mockResolvedValueOnce(undefined);
     mockedGetDb.mockResolvedValue({ select, insert: vi.fn(() => ({ values: referralInsert })) } as never);
     mockedRegister.mockResolvedValue({ id: 505, name: "New Member", email: "new.member@example.test", loginMethod: "password", role: "user" } as never);
     mockedCreateSession.mockResolvedValue({ token: "session-token" } as never);
@@ -38,6 +38,7 @@ describe("DreamCarz registration referral attribution", () => {
 
     await expect(caller.auth.register({ name: "New Member", email: "new.member@example.test", password: "DreamCarz!2026", acceptedTerms: true, referralCode: referralProfile.referralCode })).resolves.toMatchObject({ id: 505, email: "new.member@example.test" });
     expect(referralInsert).toHaveBeenCalledWith({ referrerId: referralProfile.userId, referredId: 505, status: "pending" });
+    expect(referralInsert).toHaveBeenCalledWith({ referralId: 88, referrerUserId: referralProfile.userId, referredUserId: 505, eventType: "account_registered" });
     expect(response.cookie).toHaveBeenCalled();
   });
 

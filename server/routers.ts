@@ -56,6 +56,7 @@ import {
   rentalExtensionRequests,
   transactionSettlements,
   transactionAdjustments,
+  referralConversionEvents,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -145,7 +146,8 @@ export const appRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists. Please sign in instead." });
         }
         if (referrer && db && referrer.userId !== user.id) {
-          await db.insert(referrals).values({ referrerId: referrer.userId, referredId: user.id, status: "pending" });
+          const createdReferral = await db.insert(referrals).values({ referrerId: referrer.userId, referredId: user.id, status: "pending" });
+          await db.insert(referralConversionEvents).values({ referralId: Number(createdReferral[0].insertId), referrerUserId: referrer.userId, referredUserId: user.id, eventType: "account_registered" });
         }
         const session = await createDirectSession(user.id);
         ctx.res.cookie(DIRECT_SESSION_COOKIE, session.token, {
@@ -924,6 +926,11 @@ export const appRouter = router({
           toStatus: initialStatus,
           metadata: JSON.stringify({ vehicleId: input.vehicleId, transactionType: input.transactionType, membershipPlan: activeMembership?.plan.code ?? input.membershipPlan ?? null, membershipEffects, profileVerificationReused: profileVerificationReusable, manualReviewRequired: withdrawnConsents.length > 0 }),
         });
+        const referral = (await db.select({ id: referrals.id, referrerId: referrals.referrerId, status: referrals.status }).from(referrals).where(eq(referrals.referredId, ctx.user.id)).limit(1))[0];
+        if (referral) {
+          await db.insert(referralConversionEvents).values({ referralId: referral.id, referrerUserId: referral.referrerId, referredUserId: ctx.user.id, eventType: input.transactionType === "rental" ? "rental_started" : "purchase_started", sourceTransactionId: transactionId });
+          if (referral.status === "pending") await db.update(referrals).set({ status: "active" }).where(eq(referrals.id, referral.id));
+        }
         return { success: true, resumed: false, reference, transactionType: input.transactionType };
       }),
 
@@ -2324,8 +2331,11 @@ export const appRouter = router({
       const profile = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
       const leads = await db.select().from(associateLeads).where(eq(associateLeads.associateUserId, ctx.user.id)).orderBy(desc(associateLeads.updatedAt));
       const referralsForAssociate = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id)).orderBy(desc(referrals.createdAt));
-      const commissionRecords = await db.select().from(commissions).where(eq(commissions.userId, ctx.user.id)).orderBy(desc(commissions.month));
-      return { profile, leads, referrals: referralsForAssociate, commissionRecords, roles };
+      const [commissionRecords, conversionEvents] = await Promise.all([
+        db.select().from(commissions).where(eq(commissions.userId, ctx.user.id)).orderBy(desc(commissions.month)),
+        db.select({ id: referralConversionEvents.id, referralId: referralConversionEvents.referralId, eventType: referralConversionEvents.eventType, createdAt: referralConversionEvents.createdAt }).from(referralConversionEvents).where(eq(referralConversionEvents.referrerUserId, ctx.user.id)).orderBy(desc(referralConversionEvents.createdAt)),
+      ]);
+      return { profile, leads, referrals: referralsForAssociate, commissionRecords, conversionEvents, roles };
     }),
     ensureProfile: protectedProcedure.mutation(async ({ ctx }) => {
       const db = await getDb();

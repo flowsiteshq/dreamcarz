@@ -288,6 +288,13 @@
       "when": 1788092080550,
       "tag": "0040_nostalgic_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1788092875024,
+      "tag": "0041_wild_northstar",
+      "breakpoints": true
     }
   ]
 }

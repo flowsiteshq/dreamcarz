@@ -443,6 +443,17 @@ export const referrals = mysqlTable("referrals", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Non-financial milestone history for an Associate's own referral relationships. */
+export const referralConversionEvents = mysqlTable("referral_conversion_events", {
+  id: int("id").autoincrement().primaryKey(),
+  referralId: int("referralId").notNull(),
+  referrerUserId: int("referrerUserId").notNull(),
+  referredUserId: int("referredUserId").notNull(),
+  eventType: mysqlEnum("eventType", ["account_registered", "rental_started", "purchase_started"]).notNull(),
+  sourceTransactionId: int("sourceTransactionId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("referral_conversion_transaction_unique").on(table.referralId, table.eventType, table.sourceTransactionId)]);
+
 export const commissions = mysqlTable("commissions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 const cocardQueryKey = process.env.COCARD_QUERY_SECURITY_KEY;
+const runLiveCoCardProbe = process.env.COCARD_LIVE_CREDENTIAL_TEST === "true";
 
 describe("CoCard Query API credential", () => {
-  it.skipIf(!cocardQueryKey)("authenticates a harmless impossible transaction lookup", async () => {
+  it.skipIf(!cocardQueryKey || !runLiveCoCardProbe)("authenticates a harmless impossible transaction lookup", async () => {
     const body = new URLSearchParams({
       security_key: cocardQueryKey!,
       transaction_id: "0",
