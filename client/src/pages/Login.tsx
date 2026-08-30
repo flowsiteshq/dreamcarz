@@ -10,8 +10,8 @@ type AuthMode = "signin" | "create";
 
 export default function Login() {
   const { isAuthenticated, loading } = useAuth();
-  const [location, navigate] = useLocation();
-  const queryParams = new URLSearchParams(location.split("?")[1] ?? "");
+  const [, navigate] = useLocation();
+  const queryParams = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
   const requestedNext = queryParams.get("next");
   const referralCode = queryParams.get("ref")?.trim().toUpperCase() || undefined;
   const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/dashboard";

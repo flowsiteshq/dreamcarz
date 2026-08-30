@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadStripe } from "@stripe/stripe-js";
+import { SettlementStatementPanel } from "@/components/SettlementStatementPanel";
 
 declare global {
   interface Window {
@@ -270,7 +271,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const [aiInput, setAiInput] = useState("");
   const [aiFocused, setAiFocused] = useState(false);
   const utils = trpc.useUtils();
-  const transactionReference = new URLSearchParams(location.split("?")[1] ?? "").get("ref");
+  const transactionReference = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("ref");
   const withdrawal = trpc.transactions.withdrawIdentityConsent.useMutation({
     onSuccess: async () => {
       if (!transactionReference) return;
@@ -440,6 +441,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
           {location.startsWith("/dashboard/transactions") && transactionReference && <TransactionDetailsPanel reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <TransactionStepAdvance reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <NativeAgreementPanel reference={transactionReference} />}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <SettlementStatementPanel reference={transactionReference} />}
         </main>
         <AIConcierge />
       </div>

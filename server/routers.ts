@@ -955,6 +955,85 @@ export const appRouter = router({
       };
     }),
 
+    getSettlementStatement: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
+        const transaction = (await db.select({
+          id: vehicleTransactions.id,
+          reference: vehicleTransactions.reference,
+          transactionType: vehicleTransactions.transactionType,
+          vehicleName: vehicleTransactions.vehicleName,
+          status: vehicleTransactions.status,
+          returnStatus: vehicleTransactions.returnStatus,
+          settlementStatus: vehicleTransactions.settlementStatus,
+        }).from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "NOT_FOUND", message: "Rental transaction not found." });
+
+        const settlement = (await db.select({
+          id: transactionSettlements.id,
+          status: transactionSettlements.status,
+          currency: transactionSettlements.currency,
+          approvedSubtotalCents: transactionSettlements.approvedSubtotalCents,
+          depositAppliedCents: transactionSettlements.depositAppliedCents,
+          adjustmentsCents: transactionSettlements.adjustmentsCents,
+          finalAmountCents: transactionSettlements.finalAmountCents,
+          summary: transactionSettlements.summary,
+          settledAt: transactionSettlements.settledAt,
+          updatedAt: transactionSettlements.updatedAt,
+        }).from(transactionSettlements).where(eq(transactionSettlements.transactionId, transaction.id)).limit(1))[0];
+        const safeTransaction = {
+          reference: transaction.reference,
+          vehicleName: transaction.vehicleName,
+          status: transaction.status,
+          returnStatus: transaction.returnStatus,
+          settlementStatus: transaction.settlementStatus,
+        };
+        if (!settlement) return { transaction: safeTransaction, statement: null };
+
+        const isFinalized = settlement.status === "settled" || settlement.status === "disputed" || settlement.status === "waived";
+        if (!isFinalized) {
+          return { transaction: safeTransaction, statement: { status: settlement.status, updatedAt: settlement.updatedAt, isFinalized: false as const } };
+        }
+        const adjustments = await db.select({
+          adjustmentType: transactionAdjustments.adjustmentType,
+          status: transactionAdjustments.status,
+          amountCents: transactionAdjustments.amountCents,
+          description: transactionAdjustments.description,
+          reviewedAt: transactionAdjustments.reviewedAt,
+        }).from(transactionAdjustments).where(and(
+          eq(transactionAdjustments.settlementId, settlement.id),
+          inArray(transactionAdjustments.status, ["approved", "disputed"]),
+        )).orderBy(desc(transactionAdjustments.createdAt));
+
+        return {
+          transaction: safeTransaction,
+          statement: {
+            status: settlement.status,
+            currency: settlement.currency,
+            approvedSubtotalCents: settlement.approvedSubtotalCents,
+            depositAppliedCents: settlement.depositAppliedCents,
+            adjustmentsCents: settlement.adjustmentsCents,
+            finalAmountCents: settlement.finalAmountCents,
+            summary: settlement.summary,
+            settledAt: settlement.settledAt,
+            updatedAt: settlement.updatedAt,
+            isFinalized: true as const,
+            adjustments: adjustments.map(item => ({
+              adjustmentType: item.adjustmentType,
+              status: item.status,
+              amountCents: item.amountCents,
+              description: item.description,
+              reviewedAt: item.reviewedAt,
+            })),
+          },
+        };
+      }),
+
     saveRentalSchedule: protectedProcedure
       .input(z.object({
         reference: z.string().trim().min(8).max(32),

@@ -325,4 +325,39 @@ describe("transaction intake router", () => {
     mockedGetDb.mockResolvedValue({ select: unknownTargetSelect } as never);
     await expect(caller.operations.requestLinkedTransaction({ reference: source.reference, linkType: "swap", targetVehicleId: "coming-soon-vehicle" })).rejects.toThrow("Choose a confirmed DreamCarz inventory vehicle");
   });
+
+  it("returns a finalized account-owned settlement statement without receipt, evidence, provider, or reviewer identifiers", async () => {
+    const transaction = { id: 522, reference: "DCR-2026-STATEMENT", transactionType: "rental" as const, vehicleName: "2020 Chevrolet Equinox", status: "settlement_pending" as const, returnStatus: "complete" as const, settlementStatus: "complete" as const };
+    const settlement = { id: 64, status: "settled" as const, currency: "USD", approvedSubtotalCents: 40000, depositAppliedCents: 25000, adjustmentsCents: 1500, finalAmountCents: 16500, summary: "Reviewed return record.", settledAt: new Date("2026-09-08T12:00:00Z"), updatedAt: new Date("2026-09-08T12:00:00Z"), receiptStorageKey: "private-receipt-key", reviewedByUserId: 1 };
+    const adjustment = { adjustmentType: "toll" as const, status: "approved" as const, amountCents: 1500, description: "Reviewed toll record.", reviewedAt: new Date("2026-09-08T11:00:00Z"), evidenceStorageKey: "private-evidence-key", reviewedByUserId: 1 };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([settlement]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([adjustment]) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    const result = await caller.transactions.getSettlementStatement({ reference: transaction.reference });
+
+    expect(result).toMatchObject({ transaction: { reference: transaction.reference, vehicleName: transaction.vehicleName }, statement: { isFinalized: true, status: "settled", finalAmountCents: 16500, adjustments: [{ adjustmentType: "toll", amountCents: 1500 }] } });
+    expect(JSON.stringify(result)).not.toContain("private-receipt-key");
+    expect(JSON.stringify(result)).not.toContain("private-evidence-key");
+    expect(JSON.stringify(result)).not.toContain("reviewedByUserId");
+  });
+
+  it("withholds monetary and itemized data while an account-owned return settlement remains under review", async () => {
+    const transaction = { id: 523, reference: "DCR-2026-REVIEW", transactionType: "rental" as const, vehicleName: "2020 Chevrolet Traverse", status: "settlement_pending" as const, returnStatus: "inspected" as const, settlementStatus: "pending" as const };
+    const settlement = { id: 65, status: "under_review" as const, currency: "USD", approvedSubtotalCents: 40000, depositAppliedCents: 25000, adjustmentsCents: 1500, finalAmountCents: 16500, summary: "Private review note.", updatedAt: new Date("2026-09-08T12:00:00Z") };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([settlement]) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    const result = await caller.transactions.getSettlementStatement({ reference: transaction.reference });
+
+    expect(result).toEqual({ transaction: { reference: transaction.reference, vehicleName: transaction.vehicleName, status: "settlement_pending", returnStatus: "inspected", settlementStatus: "pending" }, statement: { status: "under_review", updatedAt: settlement.updatedAt, isFinalized: false } });
+    expect(JSON.stringify(result)).not.toContain("16500");
+    expect(JSON.stringify(result)).not.toContain("Private review note");
+  });
 });

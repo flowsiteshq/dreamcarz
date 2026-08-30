@@ -27,8 +27,9 @@ function RentalScheduleStage({ form, error, saving, onChange, onSubmit }: { form
 
 export default function TransactionOnboarding() {
   const { user } = useAuth();
-  const [location, setLocation] = useLocation();
-  const parameters = useMemo(() => new URLSearchParams(location.split("?")[1] ?? ""), [location]);
+  const [, setLocation] = useLocation();
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  const parameters = useMemo(() => new URLSearchParams(search), [search]);
   const reference = parameters.get("ref") ?? "";
   const intent = parameters.get("intent") === "purchase" ? "purchase" : parameters.get("intent") === "rental" ? "rental" : null;
   const vehicleId = parameters.get("vehicle") ?? "";
