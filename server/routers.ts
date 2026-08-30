@@ -41,6 +41,8 @@ import {
   vehicleOperationalInspections,
   vehicleMaintenanceRecords,
   vehicleIncidentRecords,
+  fleetPartnerProfiles,
+  fleetPartnerVehicleAssignments,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -1711,6 +1713,26 @@ export const appRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await db.update(partnerLocations).set({ isActive: partnerActivationValue(input.isActive) }).where(eq(partnerLocations.id, input.id));
       return { success: true };
+    }),
+  }),
+
+  fleetPartner: router({
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet Partner data is temporarily unavailable." });
+      const profile = (await db.select().from(fleetPartnerProfiles).where(eq(fleetPartnerProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
+      const vehicleAssignments = await db.select().from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, ctx.user.id), eq(fleetPartnerVehicleAssignments.accessStatus, "active")));
+      const passportIds = vehicleAssignments.map(item => item.vehiclePassportId);
+      const vehicles = passportIds.length ? await db.select().from(vehiclePassports).where(inArray(vehiclePassports.id, passportIds)) : [];
+      const vehicleNames = vehicles.map(vehicle => vehicle.vehicleName);
+      const maintenance = passportIds.length ? await db.select().from(vehicleMaintenanceRecords).where(inArray(vehicleMaintenanceRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleMaintenanceRecords.createdAt)) : [];
+      const inspections = passportIds.length ? await db.select().from(vehicleOperationalInspections).where(inArray(vehicleOperationalInspections.vehiclePassportId, passportIds)).orderBy(desc(vehicleOperationalInspections.createdAt)) : [];
+      const incidents = passportIds.length ? await db.select().from(vehicleIncidentRecords).where(inArray(vehicleIncidentRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleIncidentRecords.createdAt)) : [];
+      const activeTransactions = vehicleNames.length ? await db.select({ reference: vehicleTransactions.reference, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, activeRentalStatus: vehicleTransactions.activeRentalStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))).orderBy(desc(vehicleTransactions.updatedAt)) : [];
+      return { profile, roles, vehicles, maintenance, inspections, incidents, activeTransactions };
     }),
   }),
 

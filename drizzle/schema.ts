@@ -658,6 +658,28 @@ export const transactionEvents = mysqlTable("transaction_events", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Partner access is explicit and account-bound; public marketing pages do not create fleet operations access. */
+export const fleetPartnerProfiles = mysqlTable("fleet_partner_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  businessName: varchar("businessName", { length: 160 }),
+  status: mysqlEnum("status", ["pending", "active", "suspended", "inactive"]).default("pending").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const fleetPartnerVehicleAssignments = mysqlTable("fleet_partner_vehicle_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerUserId: int("partnerUserId").notNull(),
+  vehiclePassportId: int("vehiclePassportId").notNull(),
+  accessStatus: mysqlEnum("accessStatus", ["active", "paused", "ended"]).default("active").notNull(),
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("partner_passport_assignment_unique").on(table.partnerUserId, table.vehiclePassportId)]);
+
 // ── Service & Incident Reports ─────────────────────────────────────────────
 
 export const serviceReports = mysqlTable("service_reports", {
@@ -732,6 +754,8 @@ export type TransactionAdditionalDriver = typeof transactionAdditionalDrivers.$i
 export type TransactionAgreement = typeof transactionAgreements.$inferSelect;
 export type VehicleConditionReport = typeof vehicleConditionReports.$inferSelect;
 export type TransactionEvent = typeof transactionEvents.$inferSelect;
+export type FleetPartnerProfile = typeof fleetPartnerProfiles.$inferSelect;
+export type FleetPartnerVehicleAssignment = typeof fleetPartnerVehicleAssignments.$inferSelect;
 export type ServiceReport = typeof serviceReports.$inferSelect;
 export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
 export type ServiceReportReviewEvent = typeof serviceReportReviewEvents.$inferSelect;

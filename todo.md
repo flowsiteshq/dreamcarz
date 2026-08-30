@@ -203,6 +203,7 @@
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
 - [x] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
 - [ ] Build a role-isolated Fleet Partner portal with authorized vehicle operations, reservations, utilization, maintenance, inspections, damage, documents, performance, and payout views.
+- [ ] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [ ] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [ ] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
