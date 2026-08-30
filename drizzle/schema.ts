@@ -151,6 +151,63 @@ export const walletLedgerEntries = mysqlTable("wallet_ledger_entries", {
   reversedAt: timestamp("reversedAt"),
 });
 
+// ── DreamCarz OS rental and purchase transaction engine ────────────────────
+
+/** Planned journey details remain outside the core transaction so saved requests can change safely. */
+export const transactionSchedules = mysqlTable("transaction_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull().unique(),
+  requestedStartAt: timestamp("requestedStartAt"),
+  requestedEndAt: timestamp("requestedEndAt"),
+  pickupMethod: mysqlEnum("pickupMethod", ["not_selected", "pickup", "delivery"]).default("not_selected").notNull(),
+  pickupLocation: varchar("pickupLocation", { length: 255 }),
+  deliveryAddress: text("deliveryAddress"),
+  customerNotes: text("customerNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** A quote is an immutable review artifact, not an automatic calculation or a promise of final terms. */
+export const transactionQuotes = mysqlTable("transaction_quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  version: int("version").notNull(),
+  status: mysqlEnum("status", ["draft", "approved", "superseded", "expired", "declined"]).default("draft").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  totalDueNowCents: int("totalDueNowCents"),
+  conditionalTotalCents: int("conditionalTotalCents"),
+  validUntil: timestamp("validUntil"),
+  approvedByUserId: int("approvedByUserId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("transaction_quote_version_unique").on(table.transactionId, table.version)]);
+
+export const transactionQuoteLines = mysqlTable("transaction_quote_lines", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionQuoteId: int("transactionQuoteId").notNull(),
+  lineType: mysqlEnum("lineType", ["base_rental", "membership_discount", "tax", "fee", "protection", "deposit_authorization", "credit", "purchase_price", "trade_in_credit", "down_payment", "other"]).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  amountCents: int("amountCents").notNull(),
+  isConditional: boolean("isConditional").default(false).notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/** Links preserve the originating rental when a customer requests a purchase or vehicle swap. */
+export const transactionLinks = mysqlTable("transaction_links", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceTransactionId: int("sourceTransactionId").notNull(),
+  targetTransactionId: int("targetTransactionId").notNull(),
+  linkType: mysqlEnum("linkType", ["rent_to_buy", "swap"]).notNull(),
+  status: mysqlEnum("status", ["requested", "under_review", "approved", "declined", "completed", "canceled"]).default("requested").notNull(),
+  requestedByUserId: int("requestedByUserId").notNull(),
+  reviewedByUserId: int("reviewedByUserId"),
+  reviewNote: text("reviewNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [uniqueIndex("transaction_link_unique").on(table.sourceTransactionId, table.targetTransactionId, table.linkType)]);
+
 // ── Drive Network Referral Tracking ──────────────────────────────────────────
 
 export const referralProfiles = mysqlTable("referral_profiles", {

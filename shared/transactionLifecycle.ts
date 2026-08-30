@@ -65,6 +65,7 @@ export function hasVehicleReleaseReadiness(input: {
 
 export const RENTAL_TRANSACTION_STEPS = [
   "vehicle",
+  "dates",
   "profile",
   "contact_verification",
   "identity",
@@ -156,6 +157,8 @@ export function isTransactionStep(transactionType: TransactionType, value: strin
 
 export function nextCustomerTransactionStep(transactionType: TransactionType, currentStep: string, purchasePaymentPath?: string | null) {
   const rentalNext: Record<string, string> = {
+    dates: "profile",
+    profile: "contact_verification",
     contact_verification: "identity",
     identity: "eligibility",
     eligibility: "insurance",
@@ -166,6 +169,7 @@ export function nextCustomerTransactionStep(transactionType: TransactionType, cu
     payment: "review",
   };
   const purchaseNext: Record<string, string> = {
+    profile: "identity",
     identity: "trade_in",
     trade_in: "payment_path",
     payment_path: purchasePaymentPath === "finance" ? "financing" : "down_payment",
@@ -191,7 +195,7 @@ export function canReuseProfileVerification(input: {
 
 export function initialTransactionLifecycle(transactionType: TransactionType) {
   return transactionType === "rental"
-    ? { status: "profile_incomplete" as const, currentStep: "profile", insuranceStatus: "pending" as const, paymentStatus: "pending" as const, agreementStatus: "draft" as const, pickupStatus: "pending" as const, activeRentalStatus: "pending" as const, returnStatus: "pending" as const, settlementStatus: "pending" as const, deliveryStatus: "not_applicable" as const }
+    ? { status: "profile_incomplete" as const, currentStep: "dates", insuranceStatus: "pending" as const, paymentStatus: "pending" as const, agreementStatus: "draft" as const, pickupStatus: "pending" as const, activeRentalStatus: "pending" as const, returnStatus: "pending" as const, settlementStatus: "pending" as const, deliveryStatus: "not_applicable" as const }
     : { status: "profile_incomplete" as const, currentStep: "profile", insuranceStatus: "pending" as const, paymentStatus: "pending" as const, agreementStatus: "draft" as const, pickupStatus: "not_applicable" as const, activeRentalStatus: "not_applicable" as const, returnStatus: "not_applicable" as const, settlementStatus: "not_applicable" as const, deliveryStatus: "pending" as const };
 }
 

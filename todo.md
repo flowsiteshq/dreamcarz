@@ -127,6 +127,7 @@
 - [x] Add administrator review of native agreement signatures and agreement versions without exposing private document contents publicly.
 - [x] Wire the rental journey from pricing into review and agreement with server-validated progression so native signing is reachable end to end.
 - [x] Add positive regression coverage for template activation, agreement preparation, customer signature capture, private artifact storage, and resulting audit evidence.
+- [x] Complete server-enforced customer progression from saved profile into contact verification for rentals and identity verification for purchases.
 - [x] Define confirmed and Coming Soon representative vehicles for each Entry, Mid-Range, and Elite access level.
 - [x] Create labeled Coming Soon vehicle visuals for access-level gaps without representing them as current inventory.
 - [x] Add Coming Soon reserve actions to the applicable vehicle-level listings and preserve confirmed inventory labels.
@@ -207,6 +208,6 @@
 - [ ] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
 - [ ] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.
-- [ ] Replace static authenticated member-tier and membership-tenure labels with authorized live DreamCarz ID membership data or a neutral incomplete-profile state.
+- [x] Replace static authenticated member-tier and membership-tenure labels with authorized live DreamCarz ID membership data or a neutral incomplete-profile state.
 - [ ] Apply active membership benefits to authorized transaction eligibility, pricing, deposits, credits, delivery benefits, and upgrade rules after approved benefit configurations are defined.
 - [ ] Expand RBAC, immutable audit coverage, access controls, encryption/storage safeguards, rate limits, and production monitoring across all new DreamCarz OS modules.

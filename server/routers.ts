@@ -33,6 +33,10 @@ import {
   walletAccounts,
   walletLedgerEntries,
   transactionEligibilityAssessments,
+  transactionSchedules,
+  transactionQuotes,
+  transactionQuoteLines,
+  transactionLinks,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -44,6 +48,7 @@ import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
 import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
+import { DREAMCARZ_ROLES, effectiveDreamCarzRoles } from "../shared/dreamcarzRoles";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
@@ -240,6 +245,48 @@ export const appRouter = router({
         const reference = `${DREAMCARZ_LEDGER_REFERENCE_PREFIX}-${new Date().getFullYear()}-${nanoid(10).toUpperCase()}`;
         await db.insert(walletLedgerEntries).values({ reference, walletAccountId: account.id, userId: input.userId, transactionId: input.transactionId ?? null, entryType: input.entryType, amountCents: input.amountCents, description: input.description, providerReference: input.providerReference ?? null, status: input.status, createdByUserId: ctx.user.id, postedAt: input.status === "posted" ? new Date() : null });
         return { success: true, reference };
+      }),
+  }),
+
+  roles: router({
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { roles: effectiveDreamCarzRoles(ctx.user.role, []) };
+      const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
+      return { roles: effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role)) };
+    }),
+    listForUser: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(userRoleAssignments).where(eq(userRoleAssignments.userId, input.userId)).orderBy(desc(userRoleAssignments.assignedAt));
+      }),
+    assign: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
+        const existing = await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role))).limit(1);
+        if (existing[0]) {
+          await db.update(userRoleAssignments).set({ revokedAt: null, assignedByUserId: ctx.user.id, assignedAt: new Date() }).where(eq(userRoleAssignments.id, existing[0].id));
+          return { success: true, restored: Boolean(existing[0].revokedAt) };
+        }
+        await db.insert(userRoleAssignments).values({ userId: input.userId, role: input.role, assignedByUserId: ctx.user.id });
+        return { success: true, restored: false };
+      }),
+    revoke: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
+        const assignment = (await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role), isNull(userRoleAssignments.revokedAt))).limit(1))[0];
+        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Active role assignment not found." });
+        await db.update(userRoleAssignments).set({ revokedAt: new Date() }).where(eq(userRoleAssignments.id, assignment.id));
+        return { success: true };
       }),
   }),
 
@@ -709,7 +756,7 @@ export const appRouter = router({
           membershipPlan: input.membershipPlan ?? null,
           ...lifecycle,
           status: initialStatus,
-          currentStep: profileComplete ? (input.transactionType === "rental" ? "contact_verification" : "identity") : lifecycle.currentStep,
+          currentStep: input.transactionType === "rental" ? "dates" : profileComplete ? "identity" : lifecycle.currentStep,
           contactName: profile?.fullName ?? ctx.user.name ?? null,
           contactEmail: profile?.email ?? ctx.user.email ?? null,
           contactPhone: profile?.phone ?? null,
@@ -747,6 +794,36 @@ export const appRouter = router({
         .where(eq(vehicleTransactions.userId, ctx.user.id))
         .orderBy(desc(vehicleTransactions.updatedAt));
     }),
+
+    saveRentalSchedule: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        requestedStartAt: z.coerce.date(),
+        requestedEndAt: z.coerce.date(),
+        pickupMethod: z.enum(["pickup", "delivery"]),
+        pickupLocation: z.string().trim().min(2).max(255).optional(),
+        deliveryAddress: z.string().trim().min(8).max(1_000).optional(),
+        customerNotes: z.string().trim().max(1_000).optional(),
+      }).superRefine((value, context) => {
+        if (value.requestedEndAt <= value.requestedStartAt) context.addIssue({ code: z.ZodIssueCode.custom, path: ["requestedEndAt"], message: "Return time must be after pickup time." });
+        if (value.pickupMethod === "pickup" && !value.pickupLocation) context.addIssue({ code: z.ZodIssueCode.custom, path: ["pickupLocation"], message: "Select a DreamCarz pickup location." });
+        if (value.pickupMethod === "delivery" && !value.deliveryAddress) context.addIssue({ code: z.ZodIssueCode.custom, path: ["deliveryAddress"], message: "Provide the requested delivery address." });
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Rental scheduling is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Rental dates are available only for rental transactions." });
+        if (transaction.currentStep !== "dates") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Rental dates can be updated when the saved transaction is at the dates stage." });
+        const values = { requestedStartAt: input.requestedStartAt, requestedEndAt: input.requestedEndAt, pickupMethod: input.pickupMethod, pickupLocation: input.pickupMethod === "pickup" ? input.pickupLocation ?? null : null, deliveryAddress: input.pickupMethod === "delivery" ? input.deliveryAddress ?? null : null, customerNotes: input.customerNotes ?? null };
+        const existing = (await db.select({ id: transactionSchedules.id }).from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
+        if (existing) await db.update(transactionSchedules).set(values).where(eq(transactionSchedules.id, existing.id));
+        else await db.insert(transactionSchedules).values({ transactionId: transaction.id, ...values });
+        await db.update(vehicleTransactions).set({ currentStep: "profile", status: "profile_incomplete" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "rental.schedule_saved", fromStatus: transaction.status, toStatus: "profile_incomplete", metadata: JSON.stringify({ pickupMethod: input.pickupMethod, requestedStartAt: input.requestedStartAt.toISOString(), requestedEndAt: input.requestedEndAt.toISOString() }) });
+        return { success: true, nextStep: "profile" as const };
+      }),
 
     identityProviderStatus: protectedProcedure.query(() => getIdentityProviderStatus()),
 
@@ -1172,7 +1249,12 @@ export const appRouter = router({
           .from(customerProfiles)
           .where(eq(customerProfiles.userId, ctx.user.id))
           .limit(1);
-        return { transaction, profile: profiles[0] ?? null };
+        const [schedules, quotes, links] = await Promise.all([
+          db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1),
+          db.select().from(transactionQuotes).where(eq(transactionQuotes.transactionId, transaction.id)).orderBy(desc(transactionQuotes.version)),
+          db.select().from(transactionLinks).where(and(eq(transactionLinks.sourceTransactionId, transaction.id), eq(transactionLinks.requestedByUserId, ctx.user.id))).orderBy(desc(transactionLinks.createdAt)),
+        ]);
+        return { transaction, profile: profiles[0] ?? null, schedule: schedules[0] ?? null, quotes, links };
       }),
 
     saveProfile: protectedProcedure

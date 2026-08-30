@@ -83,6 +83,8 @@ describe("transaction lifecycle contract", () => {
   });
 
   it("keeps customer progression ordered while routing purchase finance paths separately", () => {
+    expect(nextCustomerTransactionStep("rental", "profile")).toBe("contact_verification");
+    expect(nextCustomerTransactionStep("purchase", "profile")).toBe("identity");
     expect(nextCustomerTransactionStep("rental", "identity")).toBe("eligibility");
     expect(nextCustomerTransactionStep("rental", "insurance")).toBe("additional_drivers");
     expect(nextCustomerTransactionStep("rental", "pricing")).toBe("payment");
