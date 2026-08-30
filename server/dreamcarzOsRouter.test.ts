@@ -126,4 +126,34 @@ describe("DreamCarz OS foundation router", () => {
     expect(updateWhere).toHaveBeenCalledTimes(2);
     expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "eligibility.review_recorded", toStatus: "cleared" }));
   });
+
+  it("limits eligibility policy creation to administrators and records unseeded policies as drafts", async () => {
+    const customerCaller = appRouter.createCaller(customerContext as never);
+    await expect(customerCaller.operations.eligibilityPolicies.create({ code: "RENTAL-MD", name: "Rental review", version: "2026.1", scope: "all_rentals", ruleConfiguration: '{"requiredChecks":["license_validity"]}' })).rejects.toThrow("Administrator access is required");
+
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 94 }]);
+    mockedGetDb.mockResolvedValue({ insert: vi.fn(() => ({ values: insertValues })) } as never);
+    const adminCaller = appRouter.createCaller(adminContext as never);
+    await expect(adminCaller.operations.eligibilityPolicies.create({ code: "RENTAL-MD", name: "Rental review", version: "2026.1", scope: "all_rentals", ruleConfiguration: '{"requiredChecks":["license_validity"]}' })).resolves.toEqual({ success: true, eligibilityPolicyId: 94 });
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ code: "RENTAL-MD", createdByUserId: adminContext.user.id }));
+  });
+
+  it("snapshots an active administrator-selected policy during manual eligibility review without automatic approval", async () => {
+    const transaction = { id: 91, eligibilityStatus: "pending" as const, vehicleId: "2024-chevrolet-malibu-gray" };
+    const policy = { id: 14, code: "RENTAL-MD", name: "Rental review", version: "2026.1", status: "active" as const, scope: "all_rentals" as const, vehicleId: null, approvalReference: "POLICY-14", ruleConfiguration: '{"requiredChecks":["license_validity"]}' };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([policy]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) });
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
+    mockedGetDb.mockResolvedValue({ select, update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: insertValues })) } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.reviewEligibility({ reference: "DCR-2026-POLICY", status: "manual_review", decisionReason: "Supporting records require further review.", eligibilityPolicyId: policy.id })).resolves.toEqual({ success: true, eligibilityStatus: "manual_review" });
+    const serializedCalls = JSON.stringify(insertValues.mock.calls);
+    expect(serializedCalls).toContain("RENTAL-MD");
+    expect(serializedCalls).toContain("administrator_review");
+    expect(serializedCalls).toContain("manual_review");
+  });
 });

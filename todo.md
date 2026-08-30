@@ -193,6 +193,7 @@
 - [x] Evolve the reusable customer profile into DreamCarz ID with protected identity, verification, membership, account-standing, transaction-history, agreement, payment-reference, and wallet views.
 - [ ] Build a provider-based identity and driver-verification layer with explicit consent, license front/back support, manual-review states, retention controls, and no homemade facial-recognition claims.
 - [ ] Build server-enforced rental eligibility rules for license validity, age, insurance, vehicle class, additional drivers, manual review, and future MVR-provider integration.
+- [x] Add administrator-controlled, unseeded eligibility policy records that can be versioned and attached to manual transaction reviews without automated approvals.
 - [ ] Complete separated rental, purchase, rent-to-buy, and swap workflows that reuse DreamCarz ID and never claim unavailable pricing or financing approvals.
 - [ ] Add configurable membership benefits that affect permitted vehicle access, discounts, deposits, credits, delivery benefits, and upgrade eligibility through transaction rules.
 - [x] Build an auditable DreamCarz wallet ledger for credits, refunds, deposits/holds, membership and referral credits, receipts, and transaction history without silent balance changes.

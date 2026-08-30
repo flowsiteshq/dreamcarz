@@ -123,6 +123,36 @@ export const transactionEligibilityAssessments = mysqlTable("transaction_eligibi
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Administrator-controlled policy versions document eligibility checks; they never auto-approve a transaction. */
+export const eligibilityPolicies = mysqlTable("eligibility_policies", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  version: varchar("version", { length: 64 }).notNull(),
+  scope: mysqlEnum("scope", ["all_rentals", "entry", "mid_range", "elite", "specific_vehicle"]).default("all_rentals").notNull(),
+  vehicleId: varchar("vehicleId", { length: 96 }),
+  status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(),
+  ruleConfiguration: text("ruleConfiguration").notNull(),
+  approvalReference: varchar("approvalReference", { length: 255 }),
+  createdByUserId: int("createdByUserId").notNull(),
+  activatedByUserId: int("activatedByUserId"),
+  activatedAt: timestamp("activatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const eligibilityPolicyEvents = mysqlTable("eligibility_policy_events", {
+  id: int("id").autoincrement().primaryKey(),
+  eligibilityPolicyId: int("eligibilityPolicyId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 32 }),
+  toStatus: varchar("toStatus", { length: 32 }),
+  note: text("note"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /** One wallet per customer; all value movement is represented by append-only ledger entries. */
 export const walletAccounts = mysqlTable("wallet_accounts", {
   id: int("id").autoincrement().primaryKey(),

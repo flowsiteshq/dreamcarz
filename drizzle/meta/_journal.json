@@ -246,6 +246,20 @@
       "when": 1788087502842,
       "tag": "0034_rich_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1788089284630,
+      "tag": "0035_zippy_doomsday",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1788089336668,
+      "tag": "0036_perfect_invaders",
+      "breakpoints": true
     }
   ]
 }

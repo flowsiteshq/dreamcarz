@@ -34,6 +34,8 @@ import {
   walletAccounts,
   walletLedgerEntries,
   transactionEligibilityAssessments,
+  eligibilityPolicies,
+  eligibilityPolicyEvents,
   transactionSchedules,
   transactionQuotes,
   transactionQuoteLines,
@@ -2397,6 +2399,73 @@ export const appRouter = router({
       }),
     }),
 
+    eligibilityPolicies: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const [policies, events] = await Promise.all([
+          db.select().from(eligibilityPolicies).orderBy(desc(eligibilityPolicies.updatedAt)),
+          db.select().from(eligibilityPolicyEvents).orderBy(desc(eligibilityPolicyEvents.createdAt)),
+        ]);
+        return policies.map(policy => ({ ...policy, history: events.filter(event => event.eligibilityPolicyId === policy.id) }));
+      }),
+
+      create: protectedProcedure.input(z.object({
+        code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,64}$/, "Use 3–64 uppercase letters, numbers, hyphens, or underscores."),
+        name: z.string().trim().min(3).max(160),
+        version: z.string().trim().min(1).max(64),
+        scope: z.enum(["all_rentals", "entry", "mid_range", "elite", "specific_vehicle"]),
+        vehicleId: z.string().trim().max(96).optional(),
+        ruleConfiguration: z.string().trim().min(2).max(12_000).refine(value => {
+          try { return typeof JSON.parse(value) === "object" && JSON.parse(value) !== null; } catch { return false; }
+        }, "Enter a valid JSON configuration object."),
+        approvalReference: z.string().trim().max(255).optional(),
+        note: z.string().trim().max(1_000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.scope === "specific_vehicle" && (!input.vehicleId || !isApprovedTransactionVehicle(input.vehicleId))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A specific-vehicle policy must reference confirmed DreamCarz inventory." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility policy controls are temporarily unavailable." });
+        const created = await db.insert(eligibilityPolicies).values({
+          code: input.code,
+          name: input.name,
+          version: input.version,
+          scope: input.scope,
+          vehicleId: input.scope === "specific_vehicle" ? input.vehicleId! : null,
+          ruleConfiguration: input.ruleConfiguration,
+          approvalReference: input.approvalReference || null,
+          createdByUserId: ctx.user.id,
+        });
+        const eligibilityPolicyId = Number(created[0].insertId);
+        await db.insert(eligibilityPolicyEvents).values({ eligibilityPolicyId, actorUserId: ctx.user.id, eventType: "eligibility_policy_created", toStatus: "draft", note: input.note || null, metadata: JSON.stringify({ scope: input.scope, vehicleId: input.scope === "specific_vehicle" ? input.vehicleId : null, ruleConfigurationLength: input.ruleConfiguration.length }) });
+        return { success: true, eligibilityPolicyId };
+      }),
+
+      setStatus: protectedProcedure.input(z.object({
+        eligibilityPolicyId: z.number().int().positive(),
+        nextStatus: z.enum(["draft", "active", "retired"]),
+        note: z.string().trim().min(3).max(1_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility policy controls are temporarily unavailable." });
+        const policy = (await db.select().from(eligibilityPolicies).where(eq(eligibilityPolicies.id, input.eligibilityPolicyId)).limit(1))[0];
+        if (!policy) throw new TRPCError({ code: "NOT_FOUND", message: "Eligibility policy not found." });
+        if (policy.status === "retired") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Retired eligibility policies cannot be changed." });
+        if (policy.status === input.nextStatus) return { success: true, unchanged: true };
+        await db.update(eligibilityPolicies).set({
+          status: input.nextStatus,
+          activatedByUserId: input.nextStatus === "active" ? ctx.user.id : policy.activatedByUserId,
+          activatedAt: input.nextStatus === "active" ? new Date() : policy.activatedAt,
+        }).where(eq(eligibilityPolicies.id, policy.id));
+        await db.insert(eligibilityPolicyEvents).values({ eligibilityPolicyId: policy.id, actorUserId: ctx.user.id, eventType: `eligibility_policy_${input.nextStatus}`, fromStatus: policy.status, toStatus: input.nextStatus, note: input.note });
+        return { success: true, unchanged: false };
+      }),
+    }),
+
     transactionConsole: protectedProcedure
       .input(z.object({ query: z.string().trim().max(120).optional() }).optional())
       .query(async ({ ctx, input }) => {
@@ -2806,22 +2875,26 @@ export const appRouter = router({
       }),
 
     reviewEligibility: protectedProcedure
-      .input(z.object({ reference: z.string().trim().min(8).max(32), status: z.enum(["cleared", "manual_review", "unable_to_proceed"]), decisionReason: z.string().trim().min(3).max(2_000), ruleSnapshot: z.string().trim().max(10_000).optional() }))
+      .input(z.object({ reference: z.string().trim().min(8).max(32), status: z.enum(["cleared", "manual_review", "unable_to_proceed"]), decisionReason: z.string().trim().min(3).max(2_000), ruleSnapshot: z.string().trim().max(10_000).optional(), eligibilityPolicyId: z.number().int().positive().optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility records are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const policy = input.eligibilityPolicyId ? (await db.select().from(eligibilityPolicies).where(eq(eligibilityPolicies.id, input.eligibilityPolicyId)).limit(1))[0] : null;
+        if (input.eligibilityPolicyId && (!policy || policy.status !== "active")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy or complete this review without a policy snapshot." });
+        if (policy?.scope === "specific_vehicle" && policy.vehicleId !== transaction.vehicleId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This eligibility policy does not apply to the selected transaction vehicle." });
+        const policySnapshot = policy ? JSON.stringify({ policy: { id: policy.id, code: policy.code, name: policy.name, version: policy.version, scope: policy.scope, vehicleId: policy.vehicleId, approvalReference: policy.approvalReference }, ruleConfiguration: policy.ruleConfiguration, evaluation: "administrator_review" }) : input.ruleSnapshot ?? JSON.stringify({ version: "dreamcarz-eligibility-v1", source: "manual" });
         const assessment = (await db.select().from(transactionEligibilityAssessments).where(eq(transactionEligibilityAssessments.transactionId, transaction.id)).limit(1))[0];
         const vehicleEligibilityStatus = input.status === "unable_to_proceed" ? "ineligible" as const : input.status;
         await db.update(vehicleTransactions).set({ eligibilityStatus: vehicleEligibilityStatus }).where(eq(vehicleTransactions.id, transaction.id));
         if (assessment) {
-          await db.update(transactionEligibilityAssessments).set({ status: input.status, decisionReason: input.decisionReason, ruleSnapshot: input.ruleSnapshot ?? assessment.ruleSnapshot, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(transactionEligibilityAssessments.id, assessment.id));
+          await db.update(transactionEligibilityAssessments).set({ status: input.status, decisionReason: input.decisionReason, ruleSnapshot: policySnapshot, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(transactionEligibilityAssessments.id, assessment.id));
         } else {
-          await db.insert(transactionEligibilityAssessments).values({ transactionId: transaction.id, status: input.status, decisionReason: input.decisionReason, ruleSnapshot: input.ruleSnapshot ?? JSON.stringify({ version: "dreamcarz-eligibility-v1", source: "manual" }), reviewedByUserId: ctx.user.id, reviewedAt: new Date() });
+          await db.insert(transactionEligibilityAssessments).values({ transactionId: transaction.id, status: input.status, decisionReason: input.decisionReason, ruleSnapshot: policySnapshot, reviewedByUserId: ctx.user.id, reviewedAt: new Date() });
         }
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "eligibility.review_recorded", fromStatus: transaction.eligibilityStatus, toStatus: vehicleEligibilityStatus, note: input.decisionReason, metadata: JSON.stringify({ assessmentStatus: input.status }) });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "eligibility.review_recorded", fromStatus: transaction.eligibilityStatus, toStatus: vehicleEligibilityStatus, note: input.decisionReason, metadata: JSON.stringify({ assessmentStatus: input.status, eligibilityPolicyId: policy?.id ?? null }) });
         return { success: true, eligibilityStatus: vehicleEligibilityStatus };
       }),
 
