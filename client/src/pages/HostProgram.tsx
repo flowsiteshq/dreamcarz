@@ -5,10 +5,10 @@ import { DollarSign, Users, TrendingUp, Car, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 
 const benefits = [
-  { icon:<DollarSign size={22}/>, title:"List Your Vehicle", desc:"Place your car on the Dream Carz platform and earn from qualifying transactions." },
-  { icon:<Users size={22}/>, title:"Members Become Customers", desc:"Connect with an established Dream Carz member base designed to become your customer pool." },
-  { icon:<TrendingUp size={22}/>, title:"High Transaction Payout", desc:"Earn per qualifying transaction while building a long-term vehicle-income strategy." },
-  { icon:<Car size={22}/>, title:"Grow Your Fleet", desc:"Use qualifying Credit Free approval pathways to support responsible fleet growth and long-term wealth building." },
+  { icon:<Car size={22}/>, title:"Vehicle Review", desc:"Submit a vehicle for DreamCarz operational review before any fleet assignment is activated." },
+  { icon:<Users size={22}/>, title:"Partner Operations", desc:"Approved Fleet Partners receive access only to assigned-vehicle operations and records." },
+  { icon:<TrendingUp size={22}/>, title:"Readiness Workflow", desc:"Coordinate inspections, maintenance requests, incidents, and handoffs through an authorized operating workflow." },
+  { icon:<DollarSign size={22}/>, title:"Terms Reviewed First", desc:"Commercial terms, payment timing, and any partner compensation are documented in an approved agreement—not public estimates." },
 ];
 
 export default function HostProgram() {
@@ -19,9 +19,9 @@ export default function HostProgram() {
       <section className="pt-28 pb-16 bg-section">
         <div className="container">
           <div className="section-label mb-3 reveal">Host Program</div>
-          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>You Own the Car.<br />We Bring the Business.</h1>
-          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Own. List. Earn. List your vehicle, turn Dream Carz members into customers, and build a long-term vehicle-income strategy.</p>
-          <Link href="/membership" className="btn-primary reveal delay-300">Become a Host <ChevronRight size={16} /></Link>
+          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Bring Your Vehicle<br />Into a Structured Network.</h1>
+          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>DreamCarz reviews fleet suitability, operating readiness, and partnership terms before assigning vehicle access or activating a partner workspace.</p>
+          <Link href="/contact" className="btn-primary reveal delay-300">Start a partner review <ChevronRight size={16} /></Link>
         </div>
       </section>
       <section className="py-16">
@@ -39,10 +39,10 @@ export default function HostProgram() {
       </section>
       <section className="py-16 bg-section">
         <div className="container text-center reveal">
-          <div className="section-label mb-3">Platform Fees</div>
-          <h2 className="font-display text-4xl font-bold text-black mb-4" style={{ fontFamily: "var(--font-display)" }}>Lower Fees at Higher Tiers</h2>
+          <div className="section-label mb-3">Partner process</div>
+          <h2 className="font-display text-4xl font-bold text-black mb-4" style={{ fontFamily: "var(--font-display)" }}>A Controlled Operating Path</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-2xl mx-auto mt-8">
-            {[{tier:"Freedom",fee:"$79/wk"},{tier:"Plus",fee:"$69/wk"},{tier:"Pro",fee:"$59/wk"},{tier:"Elite",fee:"$49/wk"}].map((t,i) => (
+            {[{tier:"1",fee:"Vehicle review"},{tier:"2",fee:"Partner terms"},{tier:"3",fee:"Assignment"},{tier:"4",fee:"Portal access"}].map((t,i) => (
               <div key={i} className={`rounded-2xl p-5 text-center ${i===3?"bg-black text-white":"bg-white border border-gray-200"}`}>
                 <div className={`text-sm font-semibold mb-1 ${i===3?"text-gray-400":"text-gray-500"}`} style={{ fontFamily: "var(--font-sans)" }}>{t.tier}</div>
                 <div className={`font-mono text-2xl font-bold ${i===3?"text-white":"text-black"}`}>{t.fee}</div>

@@ -63,6 +63,8 @@ function Router() {
       <Route path="/calculator" component={Calculator} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/host" component={HostProgram} />
+      <Route path="/fleet-partners" component={HostProgram} />
+      <Route path="/fleet-partner" component={HostProgram} />
       <Route path="/how-it-works" component={HowItWorks} />
       <Route path="/agent" component={Agent} />
       <Route path="/login" component={Login} />
