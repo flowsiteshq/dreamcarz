@@ -20,5 +20,6 @@ describe("operations access control", () => {
     } as never);
 
     await expect(caller.operations.getQueue()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.operations.launchReadiness()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

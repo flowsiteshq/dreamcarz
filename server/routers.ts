@@ -2508,6 +2508,83 @@ export const appRouter = router({
   }),
 
   operations: router({
+    launchReadiness: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Launch readiness is temporarily unavailable." });
+
+      const [transactions, approvedQuotes, activeTemplates] = await Promise.all([
+        db.select({ status: vehicleTransactions.status, paymentStatus: vehicleTransactions.paymentStatus, identityStatus: vehicleTransactions.identityStatus, agreementStatus: vehicleTransactions.agreementStatus })
+          .from(vehicleTransactions),
+        db.select({ id: transactionQuotes.id }).from(transactionQuotes).where(eq(transactionQuotes.status, "approved")),
+        db.select({ id: agreementTemplates.id }).from(agreementTemplates).where(eq(agreementTemplates.isActive, true)),
+      ]);
+      const payment = getPaymentProviderStatus();
+      const stripeIdentity = getIdentityProviderStatus();
+      const awsFaceLiveness = getAwsFaceLivenessStatus();
+      const pendingIdentity = transactions.filter(transaction => ["pending", "manual_review", "needs_attention"].includes(transaction.identityStatus)).length;
+      const pendingPayment = transactions.filter(transaction => ["pending", "required", "failed"].includes(transaction.paymentStatus)).length;
+      const pendingAgreement = transactions.filter(transaction => ["pending", "prepared", "needs_attention"].includes(transaction.agreementStatus)).length;
+
+      const checks = [
+        {
+          key: "pricing",
+          label: "Approved transaction pricing",
+          state: approvedQuotes.length ? "attention" : "blocker",
+          detail: approvedQuotes.length
+            ? `${approvedQuotes.length} approved quote${approvedQuotes.length === 1 ? " is" : "s are"} recorded. Vehicle-level rates still require DreamCarz approval and a CoCard product mapping before checkout.`
+            : "No approved quotes are recorded. Customer checkout must remain unavailable until DreamCarz approves vehicle-level pricing and product mappings.",
+        },
+        {
+          key: "payment",
+          label: "Hosted payment verification",
+          state: payment.configured ? "attention" : "blocker",
+          detail: payment.configured
+            ? `${pendingPayment} transaction${pendingPayment === 1 ? " is" : "s are"} awaiting payment-related review. Signed webhook delivery and a harmless end-to-end hosted-checkout test remain required.`
+            : "CoCard hosted checkout is not fully configured for launch. No payment collection should be enabled.",
+        },
+        {
+          key: "identity",
+          label: "Identity and liveness verification",
+          state: awsFaceLiveness.configured || stripeIdentity.configured ? "attention" : "blocker",
+          detail: awsFaceLiveness.configured
+            ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS customer verification requires consent and a manual-review decision.`
+            : "Provider liveness verification is not customer-active. The private document and manual-review path remains available.",
+        },
+        {
+          key: "agreement",
+          label: "Counsel-approved agreement templates",
+          state: activeTemplates.length ? "attention" : "blocker",
+          detail: activeTemplates.length
+            ? `${activeTemplates.length} active agreement template${activeTemplates.length === 1 ? " is" : "s are"} recorded. Confirm Maryland counsel approval for the exact language, entity, and retention process before launch.`
+            : "No active counsel-approved agreement template is recorded. Native signing must remain unavailable until counsel approval is documented.",
+        },
+        {
+          key: "transaction_reviews",
+          label: "Open transaction review",
+          state: pendingAgreement || pendingIdentity ? "attention" : "ready",
+          detail: `${transactions.length} transaction${transactions.length === 1 ? " is" : "s are"} recorded; ${pendingIdentity} need identity review and ${pendingAgreement} need agreement review. This is an operational count, not an approval decision.`,
+        },
+      ] as const;
+
+      return {
+        generatedAt: new Date(),
+        checks,
+        summary: {
+          transactionCount: transactions.length,
+          approvedQuoteCount: approvedQuotes.length,
+          pendingIdentityCount: pendingIdentity,
+          pendingPaymentCount: pendingPayment,
+          pendingAgreementCount: pendingAgreement,
+          awsFaceLiveness: {
+            serverCredentialsConfigured: awsFaceLiveness.serverCredentialsConfigured,
+            browserCredentialBrokerConfigured: awsFaceLiveness.browserCredentialBrokerConfigured,
+            enabled: awsFaceLiveness.enabled,
+          },
+        },
+      };
+    }),
+
     getQueue: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
       const db = await getDb();

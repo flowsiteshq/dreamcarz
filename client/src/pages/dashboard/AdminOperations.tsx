@@ -15,6 +15,7 @@ import { EligibilityPolicyManager } from "@/components/EligibilityPolicyManager"
 import { EligibilityReviewControl } from "@/components/EligibilityReviewControl";
 import { SupportRequestQueue } from "@/components/SupportRequestQueue";
 import { ReturnProcessingQueue } from "@/components/ReturnProcessingQueue";
+import { LaunchReadiness } from "@/components/LaunchReadiness";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -128,6 +129,8 @@ export default function AdminOperations() {
         </section>
 
         <NativeAgreementTemplateManager />
+
+        <LaunchReadiness />
 
         <VehiclePassportManager />
 

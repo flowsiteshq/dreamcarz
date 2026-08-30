@@ -117,6 +117,7 @@
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
 - [x] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
 - [ ] Add tests and launch-readiness verification for the complete secure vehicle application workflow.
+- [x] Add an administrator-only launch-readiness view that reports actual provider, agreement, pricing, and transaction blockers without claiming launch approval.
 - [x] Create a reusable verified customer profile that safely prevents unnecessary repeat collection while supporting risk-appropriate re-verification.
 - [x] Add separate lifecycle states for identity, license, eligibility, insurance, payment, agreement, vehicle condition, pickup, active rental, return, settlement, and purchase delivery.
 - [x] Route Rent and Buy actions into guided transactional onboarding rather than the current basic inquiry form.
