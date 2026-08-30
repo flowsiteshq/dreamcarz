@@ -66,6 +66,7 @@ import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shar
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
+import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
@@ -111,6 +112,8 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
+        const registrationLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "register", input.email), limit: 5, windowMs: 15 * 60_000 });
+        if (!registrationLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before trying to create another account." });
         const db = await getDb();
         const referrer = input.referralCode && db ? (await db.select().from(referralProfiles).where(eq(referralProfiles.referralCode, input.referralCode)).limit(1))[0] : undefined;
         if (input.referralCode && !referrer) throw new TRPCError({ code: "BAD_REQUEST", message: "That Associate referral code is not active." });
@@ -131,6 +134,8 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().trim().email().max(320), password: z.string().min(1).max(128) }))
       .mutation(async ({ ctx, input }) => {
+        const loginLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "login", input.email), limit: 8, windowMs: 15 * 60_000 });
+        if (!loginLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many sign-in attempts. Please wait and try again." });
         const user = await loginDirectAccount(input.email, input.password);
         if (!user) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect email or password." });
