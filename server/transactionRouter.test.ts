@@ -121,6 +121,28 @@ describe("transaction intake router", () => {
     })).rejects.toThrow("required front, rear, driver side, passenger side, interior, odometer condition photo views");
   });
 
+  it("records a complete customer return inspection as submitted for human review and moves the rental to return pending", async () => {
+    const transaction = { id: 84, transactionType: "rental" as const, status: "active_rental" as const, currentStep: "active_rental" as const };
+    const evidence = ["front", "rear", "driver_side", "passenger_side", "interior", "odometer"].map((view, index) => ({ id: index + 1, view, storageKey: `private/condition/${view}.jpg` }));
+    const conditionValues = vi.fn().mockResolvedValue(undefined);
+    const eventValues = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(evidence) })) });
+    mockedGetDb.mockResolvedValue({
+      select,
+      insert: vi.fn().mockReturnValueOnce({ values: conditionValues }).mockReturnValueOnce({ values: eventValues }),
+      update: vi.fn(() => ({ set: updateSet })),
+    } as never);
+
+    await expect(appRouter.createCaller(customerContext as never).transactions.submitConditionReport({ reference: "DCR-2026-RETURN", stage: "return", odometerReading: 12042, fuelLevel: "Full", notes: "Vehicle returned for review." })).resolves.toMatchObject({ success: true });
+
+    expect(conditionValues).toHaveBeenCalledWith(expect.objectContaining({ transactionId: 84, stage: "return", status: "submitted", odometerReading: 12042 }));
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ status: "return_pending", currentStep: "return", conditionStatus: "return_complete" }));
+    expect(eventValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "condition.return_report_submitted", fromStatus: "active_rental", toStatus: "return_pending" }));
+  });
+
   it("routes an account-owned identity-record deletion request to manual review and creates a privacy audit event", async () => {
     const transaction = { id: 99, status: "verification_pending" as const };
     const updateWhere = vi.fn().mockResolvedValue(undefined);
