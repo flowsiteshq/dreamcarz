@@ -2524,6 +2524,19 @@ export const appRouter = router({
         return db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
       }),
 
+      operationalHistory: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport history is temporarily unavailable." });
+        const passport = (await db.select({ id: vehiclePassports.id, vehicleId: vehiclePassports.vehicleId, vehicleName: vehiclePassports.vehicleName, readinessStatus: vehiclePassports.readinessStatus, currentOdometer: vehiclePassports.currentOdometer, fuelOrChargeLevel: vehiclePassports.fuelOrChargeLevel, updatedAt: vehiclePassports.updatedAt }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
+        if (!passport) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+        const [inspections, maintenance] = await Promise.all([
+          db.select({ id: vehicleOperationalInspections.id, transactionId: vehicleOperationalInspections.transactionId, stage: vehicleOperationalInspections.stage, status: vehicleOperationalInspections.status, odometerReading: vehicleOperationalInspections.odometerReading, fuelOrChargeLevel: vehicleOperationalInspections.fuelOrChargeLevel, tireCondition: vehicleOperationalInspections.tireCondition, cleanliness: vehicleOperationalInspections.cleanliness, damageNotes: vehicleOperationalInspections.damageNotes, hasEvidence: isNotNull(vehicleOperationalInspections.photoKeys), inspectedAt: vehicleOperationalInspections.inspectedAt, reviewedAt: vehicleOperationalInspections.reviewedAt, createdAt: vehicleOperationalInspections.createdAt }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.vehiclePassportId, passport.id)).orderBy(desc(vehicleOperationalInspections.createdAt)).limit(40),
+          db.select({ id: vehicleMaintenanceRecords.id, maintenanceType: vehicleMaintenanceRecords.maintenanceType, status: vehicleMaintenanceRecords.status, dueAt: vehicleMaintenanceRecords.dueAt, completedAt: vehicleMaintenanceRecords.completedAt, odometerAtService: vehicleMaintenanceRecords.odometerAtService, vendorName: vehicleMaintenanceRecords.vendorName, workOrderReference: vehicleMaintenanceRecords.workOrderReference, notes: vehicleMaintenanceRecords.notes, hasInvoiceDocument: isNotNull(vehicleMaintenanceRecords.invoiceDocumentKey), createdAt: vehicleMaintenanceRecords.createdAt, updatedAt: vehicleMaintenanceRecords.updatedAt }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.vehiclePassportId, passport.id)).orderBy(desc(vehicleMaintenanceRecords.createdAt)).limit(40),
+        ]);
+        return { passport, inspections, maintenance };
+      }),
+
       save: protectedProcedure.input(z.object({
         vehicleId: z.string().trim().min(2).max(96),
         vehicleName: z.string().trim().min(2).max(180),
