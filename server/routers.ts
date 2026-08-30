@@ -1891,6 +1891,52 @@ export const appRouter = router({
       }),
     }),
 
+    handoffs: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return db.select({
+          reference: vehicleTransactions.reference,
+          transactionType: vehicleTransactions.transactionType,
+          status: vehicleTransactions.status,
+          vehicleName: vehicleTransactions.vehicleName,
+          customerName: vehicleTransactions.contactName,
+          requestedStartAt: transactionSchedules.requestedStartAt,
+          requestedEndAt: transactionSchedules.requestedEndAt,
+          pickupMethod: transactionSchedules.pickupMethod,
+          pickupLocation: transactionSchedules.pickupLocation,
+          deliveryAddress: transactionSchedules.deliveryAddress,
+          scheduledHandoffAt: transactionSchedules.scheduledHandoffAt,
+          assignedDriverName: transactionSchedules.assignedDriverName,
+          handoffStatus: transactionSchedules.handoffStatus,
+          handoffNotes: transactionSchedules.handoffNotes,
+        }).from(transactionSchedules).innerJoin(vehicleTransactions, eq(transactionSchedules.transactionId, vehicleTransactions.id)).orderBy(desc(transactionSchedules.requestedStartAt));
+      }),
+
+      update: protectedProcedure.input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        scheduledHandoffAt: z.coerce.date().optional(),
+        assignedDriverName: z.string().trim().min(2).max(160).optional(),
+        handoffStatus: z.enum(["scheduled", "en_route", "arrived", "customer_verified", "completed", "missed", "cancelled"]),
+        handoffNotes: z.string().trim().max(1_000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Handoff operations are temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
+        if (!schedule) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save customer schedule details before assigning a handoff." });
+        const pickupStatus = input.handoffStatus === "customer_verified" ? "verified" : input.handoffStatus === "completed" ? "completed" : input.handoffStatus === "missed" ? "missed" : "pending";
+        await db.update(transactionSchedules).set({ scheduledHandoffAt: input.scheduledHandoffAt ?? schedule.scheduledHandoffAt, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName, handoffStatus: input.handoffStatus, handoffNotes: input.handoffNotes ?? schedule.handoffNotes }).where(eq(transactionSchedules.id, schedule.id));
+        if (transaction.transactionType === "rental") await db.update(vehicleTransactions).set({ pickupStatus }).where(eq(vehicleTransactions.id, transaction.id));
+        else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "verified" ? "verified" : pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
+        return { success: true, handoffStatus: input.handoffStatus };
+      }),
+    }),
+
     fleetIncidents: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });

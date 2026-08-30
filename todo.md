@@ -201,7 +201,7 @@
 - [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
 - [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
-- [ ] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
+- [x] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
 - [ ] Build a role-isolated Fleet Partner portal with authorized vehicle operations, reservations, utilization, maintenance, inspections, damage, documents, performance, and payout views.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [ ] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.

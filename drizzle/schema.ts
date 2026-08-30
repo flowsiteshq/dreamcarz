@@ -163,6 +163,10 @@ export const transactionSchedules = mysqlTable("transaction_schedules", {
   pickupLocation: varchar("pickupLocation", { length: 255 }),
   deliveryAddress: text("deliveryAddress"),
   customerNotes: text("customerNotes"),
+  scheduledHandoffAt: timestamp("scheduledHandoffAt"),
+  assignedDriverName: varchar("assignedDriverName", { length: 160 }),
+  handoffStatus: mysqlEnum("handoffStatus", ["not_scheduled", "scheduled", "en_route", "arrived", "customer_verified", "completed", "missed", "cancelled"]).default("not_scheduled").notNull(),
+  handoffNotes: text("handoffNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
