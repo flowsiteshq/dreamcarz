@@ -2319,6 +2319,25 @@ export const appRouter = router({
       const created = await db.insert(vehicleMaintenanceRecords).values({ vehiclePassportId: input.vehiclePassportId, maintenanceType: input.maintenanceType, status: "planned", notes: input.notes, odometerAtService: input.odometerAtService, createdByUserId: ctx.user.id });
       return { success: true, maintenanceId: Number(created[0].insertId) };
     }),
+    reportIncident: protectedProcedure.input(z.object({
+      vehiclePassportId: z.number().int().positive(),
+      incidentType: z.enum(["mechanical", "damage", "theft", "towing", "ticket_or_impound", "roadside", "other"]),
+      severity: z.enum(["standard", "urgent"]),
+      description: z.string().trim().min(8).max(4_000),
+      reportedLocation: z.string().trim().max(255).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet operations are temporarily unavailable." });
+      if (!roles.includes("administrator")) {
+        const assignment = await db.select({ id: fleetPartnerVehicleAssignments.id }).from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, ctx.user.id), eq(fleetPartnerVehicleAssignments.vehiclePassportId, input.vehiclePassportId), eq(fleetPartnerVehicleAssignments.accessStatus, "active"))).limit(1);
+        if (!assignment[0]) throw new TRPCError({ code: "FORBIDDEN", message: "This vehicle is not assigned to your partner account." });
+      }
+      const created = await db.insert(vehicleIncidentRecords).values({ vehiclePassportId: input.vehiclePassportId, incidentType: input.incidentType, severity: input.severity, status: "reported", reportedLocation: input.reportedLocation || null, description: input.description, reportedByUserId: ctx.user.id, occurredAt: new Date() });
+      return { success: true, incidentId: Number(created[0].insertId) };
+    }),
   }),
 
   associate: router({
