@@ -43,6 +43,11 @@ describe("DreamCarz OS foundation router", () => {
     })).rejects.toThrow("Administrator access is required");
   });
 
+  it("does not allow a customer to access the fleet-incident review queue", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.operations.fleetIncidents.list()).rejects.toThrow("Administrator access is required");
+  });
+
   it("records a wallet credit with an administrator-owned, pending ledger event rather than a silent balance edit", async () => {
     const account = { id: 9, userId: 77 };
     const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([account]) })) })) }));

@@ -1891,6 +1891,56 @@ export const appRouter = router({
       }),
     }),
 
+    fleetIncidents: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return db.select({
+          id: vehicleIncidentRecords.id,
+          transactionId: vehicleIncidentRecords.transactionId,
+          incidentType: vehicleIncidentRecords.incidentType,
+          severity: vehicleIncidentRecords.severity,
+          status: vehicleIncidentRecords.status,
+          reportedLocation: vehicleIncidentRecords.reportedLocation,
+          occurredAt: vehicleIncidentRecords.occurredAt,
+          description: vehicleIncidentRecords.description,
+          photoKeys: vehicleIncidentRecords.photoKeys,
+          policeReportReference: vehicleIncidentRecords.policeReportReference,
+          towReference: vehicleIncidentRecords.towReference,
+          insuranceClaimReference: vehicleIncidentRecords.insuranceClaimReference,
+          createdAt: vehicleIncidentRecords.createdAt,
+          vehicleName: vehiclePassports.vehicleName,
+          transactionReference: vehicleTransactions.reference,
+          customerName: users.name,
+          customerEmail: users.email,
+        }).from(vehicleIncidentRecords)
+          .innerJoin(vehiclePassports, eq(vehicleIncidentRecords.vehiclePassportId, vehiclePassports.id))
+          .leftJoin(vehicleTransactions, eq(vehicleIncidentRecords.transactionId, vehicleTransactions.id))
+          .leftJoin(users, eq(vehicleTransactions.userId, users.id))
+          .orderBy(desc(vehicleIncidentRecords.createdAt));
+      }),
+
+      review: protectedProcedure.input(z.object({
+        id: z.number().int().positive(),
+        status: z.enum(["under_review", "assigned", "resolved", "closed"]),
+        vehicleReadiness: z.enum(["not_ready", "inspection_due", "maintenance_due", "available", "reserved", "active_rental", "out_of_service", "retired"]).optional(),
+        note: z.string().trim().max(1000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet incident records are temporarily unavailable." });
+        const rows = await db.select().from(vehicleIncidentRecords).where(eq(vehicleIncidentRecords.id, input.id)).limit(1);
+        const incident = rows[0];
+        if (!incident) throw new TRPCError({ code: "NOT_FOUND", message: "Fleet incident not found." });
+        const resolving = ["resolved", "closed"].includes(input.status);
+        await db.update(vehicleIncidentRecords).set({ status: input.status, resolvedByUserId: resolving ? ctx.user.id : null, resolvedAt: resolving ? new Date() : null }).where(eq(vehicleIncidentRecords.id, incident.id));
+        if (input.vehicleReadiness) await db.update(vehiclePassports).set({ readinessStatus: input.vehicleReadiness }).where(eq(vehiclePassports.id, incident.vehiclePassportId));
+        if (incident.transactionId) await db.insert(transactionEvents).values({ transactionId: incident.transactionId, actorUserId: ctx.user.id, actorType: "admin", eventType: "incident.review_updated", fromStatus: null, toStatus: input.status, note: input.note || null, metadata: JSON.stringify({ incidentId: incident.id, vehicleReadiness: input.vehicleReadiness ?? null }) });
+        return { success: true, status: input.status };
+      }),
+    }),
+
     transactionDetail: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32) }))
       .query(async ({ ctx, input }) => {
