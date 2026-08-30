@@ -72,6 +72,12 @@ describe("DreamCarz OS foundation router", () => {
     await expect(caller.fleetPartner.overview()).rejects.toThrow("Fleet Partner access is required");
   });
 
+  it("does not allow a customer to submit Fleet Partner inspection or maintenance records", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.fleetPartner.submitInspection({ vehiclePassportId: 1 })).rejects.toThrow("Fleet Partner access is required");
+    await expect(caller.fleetPartner.requestMaintenance({ vehiclePassportId: 1, maintenanceType: "repair", notes: "Needs review" })).rejects.toThrow("Fleet Partner access is required");
+  });
+
   it("does not allow a customer without an assigned Associate role to access referral or lead operations", async () => {
     const caller = appRouter.createCaller(customerContext as never);
     await expect(caller.associate.overview()).rejects.toThrow("Associate access is required");

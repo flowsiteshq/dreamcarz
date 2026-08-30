@@ -1744,6 +1744,44 @@ export const appRouter = router({
       const activeTransactions = vehicleNames.length ? await db.select({ reference: vehicleTransactions.reference, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, activeRentalStatus: vehicleTransactions.activeRentalStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))).orderBy(desc(vehicleTransactions.updatedAt)) : [];
       return { profile, roles, vehicles, maintenance, inspections, incidents, activeTransactions };
     }),
+    submitInspection: protectedProcedure.input(z.object({
+      vehiclePassportId: z.number().int().positive(),
+      odometerReading: z.number().int().nonnegative().optional(),
+      fuelOrChargeLevel: z.string().trim().max(80).optional(),
+      tireCondition: z.string().trim().max(80).optional(),
+      cleanliness: z.string().trim().max(80).optional(),
+      damageNotes: z.string().trim().max(2_000).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet operations are temporarily unavailable." });
+      if (!roles.includes("administrator")) {
+        const assignment = await db.select({ id: fleetPartnerVehicleAssignments.id }).from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, ctx.user.id), eq(fleetPartnerVehicleAssignments.vehiclePassportId, input.vehiclePassportId), eq(fleetPartnerVehicleAssignments.accessStatus, "active"))).limit(1);
+        if (!assignment[0]) throw new TRPCError({ code: "FORBIDDEN", message: "This vehicle is not assigned to your partner account." });
+      }
+      const created = await db.insert(vehicleOperationalInspections).values({ vehiclePassportId: input.vehiclePassportId, stage: "periodic", status: "submitted", odometerReading: input.odometerReading, fuelOrChargeLevel: input.fuelOrChargeLevel, tireCondition: input.tireCondition, cleanliness: input.cleanliness, damageNotes: input.damageNotes, inspectedByUserId: ctx.user.id, inspectedAt: new Date() });
+      return { success: true, inspectionId: Number(created[0].insertId) };
+    }),
+    requestMaintenance: protectedProcedure.input(z.object({
+      vehiclePassportId: z.number().int().positive(),
+      maintenanceType: z.enum(["scheduled_service", "repair", "recall", "tire", "cleaning", "inspection_follow_up", "other"]),
+      notes: z.string().trim().min(3).max(2_000),
+      odometerAtService: z.number().int().nonnegative().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet operations are temporarily unavailable." });
+      if (!roles.includes("administrator")) {
+        const assignment = await db.select({ id: fleetPartnerVehicleAssignments.id }).from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, ctx.user.id), eq(fleetPartnerVehicleAssignments.vehiclePassportId, input.vehiclePassportId), eq(fleetPartnerVehicleAssignments.accessStatus, "active"))).limit(1);
+        if (!assignment[0]) throw new TRPCError({ code: "FORBIDDEN", message: "This vehicle is not assigned to your partner account." });
+      }
+      const created = await db.insert(vehicleMaintenanceRecords).values({ vehiclePassportId: input.vehiclePassportId, maintenanceType: input.maintenanceType, status: "planned", notes: input.notes, odometerAtService: input.odometerAtService, createdByUserId: ctx.user.id });
+      return { success: true, maintenanceId: Number(created[0].insertId) };
+    }),
   }),
 
   associate: router({
