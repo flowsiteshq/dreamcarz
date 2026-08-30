@@ -499,6 +499,7 @@ describe("transaction intake router", () => {
       licenseStatus: "verified" as const,
       eligibilityStatus: "cleared" as const,
       insuranceStatus: "verified" as const,
+      insuranceDetails: JSON.stringify({ coverageExpiresOn: "2099-12-31" }),
       paymentStatus: "authorized" as const,
       agreementStatus: "signed" as const,
     };
@@ -540,6 +541,7 @@ describe("transaction intake router", () => {
       licenseStatus: "verified" as const,
       eligibilityStatus: "cleared" as const,
       insuranceStatus: "verified" as const,
+      insuranceDetails: JSON.stringify({ coverageExpiresOn: "2099-12-31" }),
       paymentStatus: "authorized" as const,
       agreementStatus: "signed" as const,
     };
@@ -559,5 +561,30 @@ describe("transaction intake router", () => {
     mockedGetDb.mockResolvedValue({ select: handoffSelect } as never);
 
     await expect(appRouter.createCaller(customerContext as never).transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("Any added driver must complete separate identity and license review before handoff confirmation");
+  });
+
+  it("blocks rental release and handoff confirmation when the recorded insurance coverage date is missing or expired", async () => {
+    const transaction = {
+      id: 714,
+      reference: "DCR-2026-INSURANCE-DATE",
+      transactionType: "rental" as const,
+      status: "agreement_pending" as const,
+      identityStatus: "verified" as const,
+      licenseStatus: "verified" as const,
+      eligibilityStatus: "cleared" as const,
+      insuranceStatus: "verified" as const,
+      paymentStatus: "authorized" as const,
+      agreementStatus: "signed" as const,
+      insuranceDetails: null,
+    };
+    const releaseSelect = vi.fn().mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) });
+    mockedGetDb.mockResolvedValue({ select: releaseSelect } as never);
+    const adminContext = { ...customerContext, user: { ...customerContext.user, role: "admin" } };
+    await expect(appRouter.createCaller(adminContext as never).operations.updateTransactionStatus({ reference: transaction.reference, nextStatus: "ready_for_pickup" })).rejects.toThrow("future recorded insurance coverage date is required before vehicle release");
+
+    const expiredHandoff = { ...transaction, status: "ready_for_pickup" as const, insuranceDetails: JSON.stringify({ coverageExpiresOn: "2020-01-01" }) };
+    const handoffSelect = vi.fn().mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([expiredHandoff]) })) })) });
+    mockedGetDb.mockResolvedValue({ select: handoffSelect } as never);
+    await expect(appRouter.createCaller(customerContext as never).transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("future recorded insurance coverage date is required before handoff confirmation");
   });
 });

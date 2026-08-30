@@ -104,6 +104,17 @@ function renderAgreementContent(template: string, transaction: { reference: stri
     .replaceAll("{{CUSTOMER_NAME}}", transaction.contactName ?? "DreamCarz customer");
 }
 
+function hasFutureRecordedInsuranceCoverage(insuranceDetails: string | null | undefined, now = new Date()) {
+  if (!insuranceDetails) return false;
+  try {
+    const parsed = JSON.parse(insuranceDetails) as { coverageExpiresOn?: unknown };
+    if (typeof parsed.coverageExpiresOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.coverageExpiresOn)) return false;
+    return parsed.coverageExpiresOn > now.toISOString().slice(0, 10);
+  } catch {
+    return false;
+  }
+}
+
 async function deliverLifecycleInAppNotice(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   input: { userId: number; title: string; body: string; actionPath: string; relatedTransactionId: number },
@@ -1173,6 +1184,9 @@ export const appRouter = router({
         if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "NOT_FOUND", message: "Rental transaction not found." });
         if (transaction.status !== "ready_for_pickup" || !hasVehicleReleaseReadiness(transaction)) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must complete vehicle release before you can confirm this handoff." });
+        }
+        if (!hasFutureRecordedInsuranceCoverage(transaction.insuranceDetails)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A future recorded insurance coverage date is required before handoff confirmation." });
         }
         if (!await hasReviewedRentalAdditionalDrivers(db, transaction.id)) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Any added driver must complete separate identity and license review before handoff confirmation." });
@@ -3446,6 +3460,9 @@ export const appRouter = router({
         if (input.nextStatus === "ready_for_pickup") {
           if (!hasVehicleReleaseReadiness(transaction)) {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Identity, license, eligibility, insurance, payment authorization, and a signed agreement must all be verified before vehicle release." });
+          }
+          if (transaction.transactionType === "rental" && !hasFutureRecordedInsuranceCoverage(transaction.insuranceDetails)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A future recorded insurance coverage date is required before vehicle release." });
           }
           if (transaction.transactionType === "rental" && !await hasReviewedRentalAdditionalDrivers(db, transaction.id)) {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Any added driver must complete separate identity and license review before vehicle release." });
