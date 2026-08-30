@@ -2532,6 +2532,44 @@ export const appRouter = router({
       };
     }),
 
+    returnProcessing: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const returns = await db.select({ id: vehicleTransactions.id, reference: vehicleTransactions.reference, vehicleId: vehicleTransactions.vehicleId, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, conditionStatus: vehicleTransactions.conditionStatus, settlementStatus: vehicleTransactions.settlementStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(and(eq(vehicleTransactions.transactionType, "rental"), inArray(vehicleTransactions.status, ["return_pending", "settlement_pending"]))).orderBy(desc(vehicleTransactions.updatedAt));
+        const vehicleIds = returns.map(record => record.vehicleId);
+        const [passports, settlements] = await Promise.all([
+          vehicleIds.length ? db.select({ id: vehiclePassports.id, vehicleId: vehiclePassports.vehicleId, readinessStatus: vehiclePassports.readinessStatus, currentLocation: vehiclePassports.currentLocation }).from(vehiclePassports).where(inArray(vehiclePassports.vehicleId, vehicleIds)) : Promise.resolve([]),
+          returns.length ? db.select({ transactionId: transactionSettlements.transactionId, status: transactionSettlements.status, updatedAt: transactionSettlements.updatedAt }).from(transactionSettlements).where(inArray(transactionSettlements.transactionId, returns.map(record => record.id))) : Promise.resolve([]),
+        ]);
+        return returns.map(record => {
+          const settlement = settlements.find(item => item.transactionId === record.id) ?? null;
+          return { ...record, passport: passports.find(passport => passport.vehicleId === record.vehicleId) ?? null, settlement: settlement ? { status: settlement.status, updatedAt: settlement.updatedAt, isFinalized: ["settled", "disputed", "waived"].includes(settlement.status) } : null };
+        });
+      }),
+      process: protectedProcedure.input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        readinessStatus: z.enum(["inspection_due", "maintenance_due", "available", "out_of_service"]),
+        note: z.string().trim().min(3).max(2_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Return processing is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "NOT_FOUND", message: "Rental transaction not found." });
+        if (!['return_pending', 'settlement_pending'].includes(transaction.status) || transaction.conditionStatus !== "return_complete") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A completed return condition report is required before vehicle processing." });
+        const settlement = (await db.select().from(transactionSettlements).where(eq(transactionSettlements.transactionId, transaction.id)).limit(1))[0];
+        if (!settlement || !["settled", "disputed", "waived"].includes(settlement.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Finalize the return settlement review before recording vehicle processing." });
+        const passport = (await db.select().from(vehiclePassports).where(eq(vehiclePassports.vehicleId, transaction.vehicleId)).limit(1))[0];
+        if (!passport) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Create the internal Vehicle Passport before processing this return." });
+        const previousReadiness = passport.readinessStatus;
+        await db.update(vehiclePassports).set({ readinessStatus: input.readinessStatus }).where(eq(vehiclePassports.id, passport.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "return.vehicle_processing_recorded", fromStatus: transaction.status, toStatus: transaction.status, note: input.note, metadata: JSON.stringify({ previousReadiness, readinessStatus: input.readinessStatus, settlementStatus: settlement.status, conditionStatus: transaction.conditionStatus }) });
+        return { success: true, previousReadiness, readinessStatus: input.readinessStatus } as const;
+      }),
+    }),
+
     pricingRules: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });

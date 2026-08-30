@@ -211,6 +211,7 @@
 - [x] Expose account-owned active-rental schedule, agreement, payment, condition, and return status in My Account without displaying private provider or document data.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
+- [x] Add an administrator-only returned-vehicle processing worklist that records manual post-return readiness decisions after condition-report and settlement review.
 - [x] Add an account-owned, read-only finalized settlement statement that never enables collection or exposes evidence, provider, or staff identifiers.
 - [x] Correct client query-string parsing so private transaction references and intended post-login destinations remain reachable in app navigation.
 - [x] Add administrator-controlled settlement records and itemized adjustments for deposits, tolls, tickets, damage, cleaning, and other reviewed return items without automatically charging customers.
