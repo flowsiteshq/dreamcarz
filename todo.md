@@ -91,6 +91,7 @@
 - [x] Correct the Railway-compatible static asset delivery path for the Tesla hero and all confirmed vehicle visuals.
 - [x] Verify production hero and vehicle images render on the live DreamCarz homepage and Fleet page before publishing.
 - [ ] Extract and verify monthly membership, vehicle-entry, rental, and purchase pricing from the user-provided pricing source.
+- [x] Research and document non-production Maryland daily rental-rate benchmarks for the eight confirmed vehicles, pending DreamCarz approval and provider SKU mapping.
 - [x] Design a clear membership-plus-vehicle pricing page that separates recurring membership from per-vehicle access costs.
 - [x] Connect pricing-plan selection to the corresponding vehicle Rent and Buy workflows without hiding required costs.
 - [x] Test and visually verify the pricing-to-vehicle flow before publishing.
@@ -121,6 +122,7 @@
 - [x] Remove the unused Stripe payment-provider implementation and replace it with a CoCard-compatible, configuration-gated payment adapter, callback model, and identifier-only audit handling.
 - [x] Verify CoCard's supported hosted-payment/tokenization, authorization, recurring payment, and callback methods before activating the DreamCarz payment flow.
 - [ ] Configure a compliant identity provider for driver-license plus live-selfie verification with consent, status webhooks, and manual fallback.
+- [x] Research AWS Face Liveness deployment prerequisites, consent boundaries, and cost drivers before selecting or activating a biometric verification provider.
 - [x] Remove the external electronic-signature provider dependency from the DreamCarz agreement plan in favor of a native signing workflow.
 - [x] Add native signature metadata, signer acknowledgement, and controlled agreement-version validation to the DreamCarz transaction model.
 - [x] Build the customer agreement review and native signing experience with private signed-record storage.
