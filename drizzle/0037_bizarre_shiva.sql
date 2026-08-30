@@ -1,0 +1,1 @@
+ALTER TABLE `transaction_schedules` ADD `estimatedArrivalAt` timestamp;

@@ -21,8 +21,10 @@ export function ActiveRentalSummary() {
   if (summary.isLoading) return <section className="border border-gray-200 bg-[#f7f5f0] p-6"><p className="text-sm font-semibold text-black">Loading your current-rental status…</p></section>;
   const rental = summary.data;
   if (!rental) return null;
-  const handoffDetail = rental.schedule?.scheduledHandoffAt
-    ? formatDate(rental.schedule.scheduledHandoffAt)
+  const handoffDetail = rental.schedule?.estimatedArrivalAt
+    ? `Estimated arrival: ${formatDate(rental.schedule.estimatedArrivalAt)}. Timing can change.`
+    : rental.schedule?.scheduledHandoffAt
+      ? formatDate(rental.schedule.scheduledHandoffAt)
     : rental.schedule?.pickupMethod === "pickup" && rental.schedule.pickupLocation
       ? rental.schedule.pickupLocation
       : "DreamCarz will confirm handoff details in your private journey.";

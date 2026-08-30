@@ -915,6 +915,7 @@ export const appRouter = router({
           pickupMethod: transactionSchedules.pickupMethod,
           pickupLocation: transactionSchedules.pickupLocation,
           scheduledHandoffAt: transactionSchedules.scheduledHandoffAt,
+          estimatedArrivalAt: transactionSchedules.estimatedArrivalAt,
           handoffStatus: transactionSchedules.handoffStatus,
         }).from(transactionSchedules).where(eq(transactionSchedules.transactionId, rental.id)).limit(1),
         db.select({
@@ -939,6 +940,7 @@ export const appRouter = router({
         pickupMethod: schedule[0].pickupMethod,
         pickupLocation: schedule[0].pickupLocation,
         scheduledHandoffAt: schedule[0].scheduledHandoffAt,
+        estimatedArrivalAt: schedule[0].estimatedArrivalAt,
         handoffStatus: schedule[0].handoffStatus,
       } : null;
       const safeAgreement = agreement[0] ? {
@@ -2604,6 +2606,7 @@ export const appRouter = router({
           pickupLocation: transactionSchedules.pickupLocation,
           deliveryAddress: transactionSchedules.deliveryAddress,
           scheduledHandoffAt: transactionSchedules.scheduledHandoffAt,
+          estimatedArrivalAt: transactionSchedules.estimatedArrivalAt,
           assignedDriverName: transactionSchedules.assignedDriverName,
           handoffStatus: transactionSchedules.handoffStatus,
           handoffNotes: transactionSchedules.handoffNotes,
@@ -2613,6 +2616,7 @@ export const appRouter = router({
       update: protectedProcedure.input(z.object({
         reference: z.string().trim().min(8).max(32),
         scheduledHandoffAt: z.coerce.date().optional(),
+        estimatedArrivalAt: z.coerce.date().nullable().optional(),
         assignedDriverName: z.string().trim().min(2).max(160).optional(),
         handoffStatus: z.enum(["scheduled", "en_route", "arrived", "customer_verified", "completed", "missed", "cancelled"]),
         handoffNotes: z.string().trim().max(1_000).optional(),
@@ -2625,10 +2629,11 @@ export const appRouter = router({
         const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
         if (!schedule) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save customer schedule details before assigning a handoff." });
         const pickupStatus = input.handoffStatus === "customer_verified" ? "verified" : input.handoffStatus === "completed" ? "completed" : input.handoffStatus === "missed" ? "missed" : "pending";
-        await db.update(transactionSchedules).set({ scheduledHandoffAt: input.scheduledHandoffAt ?? schedule.scheduledHandoffAt, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName, handoffStatus: input.handoffStatus, handoffNotes: input.handoffNotes ?? schedule.handoffNotes }).where(eq(transactionSchedules.id, schedule.id));
+        const estimatedArrivalAt = input.estimatedArrivalAt === undefined ? schedule.estimatedArrivalAt : input.estimatedArrivalAt;
+        await db.update(transactionSchedules).set({ scheduledHandoffAt: input.scheduledHandoffAt ?? schedule.scheduledHandoffAt, estimatedArrivalAt, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName, handoffStatus: input.handoffStatus, handoffNotes: input.handoffNotes ?? schedule.handoffNotes }).where(eq(transactionSchedules.id, schedule.id));
         if (transaction.transactionType === "rental") await db.update(vehicleTransactions).set({ pickupStatus }).where(eq(vehicleTransactions.id, transaction.id));
         else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "verified" ? "verified" : pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, estimatedArrivalAt: estimatedArrivalAt?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
         await deliverLifecycleInAppNotice(db, { userId: transaction.userId, title: "Handoff update", body: `DreamCarz updated the ${schedule.pickupMethod === "delivery" ? "delivery" : "pickup"} status for your rental to ${input.handoffStatus.replaceAll("_", " ")}. Review current details in your private rental record.`, actionPath: `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`, relatedTransactionId: transaction.id });
         return { success: true, handoffStatus: input.handoffStatus };
       }),

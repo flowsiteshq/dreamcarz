@@ -239,7 +239,7 @@ describe("transaction intake router", () => {
       paymentProviderAuthorizationId: "provider-authorization-must-not-leak",
       contactEmail: "customer@example.com",
     };
-    const schedule = { requestedStartAt: new Date("2026-09-01T14:00:00Z"), requestedEndAt: new Date("2026-09-05T14:00:00Z"), pickupMethod: "pickup" as const, pickupLocation: "Lanham", scheduledHandoffAt: null, handoffStatus: "completed" as const };
+    const schedule = { requestedStartAt: new Date("2026-09-01T14:00:00Z"), requestedEndAt: new Date("2026-09-05T14:00:00Z"), pickupMethod: "pickup" as const, pickupLocation: "Lanham", scheduledHandoffAt: null, estimatedArrivalAt: new Date("2026-09-01T13:45:00Z"), handoffStatus: "completed" as const, assignedDriverName: "Private driver name must not leak" };
     const agreement = { status: "signed" as const, version: "rental-2026.1", signedAt: new Date("2026-09-01T13:00:00Z"), signedDocumentKey: "private-key-must-not-leak" };
     const pickupCondition = { stage: "pickup" as const, status: "reviewed" as const, updatedAt: new Date("2026-09-01T13:30:00Z"), photoKeys: "private-evidence-must-not-leak" };
     const settlement = { status: "under_review" as const, updatedAt: new Date("2026-09-05T16:00:00Z"), finalAmountCents: 7500, summary: "private-settlement-note" };
@@ -258,7 +258,7 @@ describe("transaction intake router", () => {
       reference: "DCR-2026-ACTIVE",
       vehicle: { name: "2024 Chevrolet Malibu · Gray" },
       lifecycle: { activeRentalStatus: "active", paymentStatus: "authorized", agreementStatus: "signed" },
-      schedule: { requestedEndAt: new Date("2026-09-05T14:00:00Z"), handoffStatus: "completed" },
+      schedule: { requestedEndAt: new Date("2026-09-05T14:00:00Z"), estimatedArrivalAt: new Date("2026-09-01T13:45:00Z"), handoffStatus: "completed" },
       condition: { pickup: { status: "reviewed" }, return: null },
       settlement: { status: "under_review" },
     });
@@ -267,6 +267,7 @@ describe("transaction intake router", () => {
     expect(JSON.stringify(summary)).not.toContain("private-key-must-not-leak");
     expect(JSON.stringify(summary)).not.toContain("private-evidence-must-not-leak");
     expect(JSON.stringify(summary)).not.toContain("private-settlement-note");
+    expect(JSON.stringify(summary)).not.toContain("Private driver name must not leak");
     expect(JSON.stringify(summary)).not.toContain("customer@example.com");
   });
 

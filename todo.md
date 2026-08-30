@@ -201,6 +201,7 @@
 - [ ] Build guided pickup and return inspections with required vehicle views, mileage, fuel/charge, secure evidence storage, and human-review-only future computer-vision architecture.
 - [x] Require structured pickup and return evidence labels for front, rear, driver side, passenger side, interior, and odometer views before a condition report can be finalized.
 - [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
+- [x] Add an administrator-controlled handoff estimated-arrival field with customer-safe visibility and no delivery-time guarantee.
 - [x] Add an account-owned customer handoff acknowledgement that can only follow DreamCarz release and an arrived pickup or delivery status.
 - [x] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
 - [x] Add a clearly labeled active-rental roadside-support route to the private DreamCarz incident and support journey.
