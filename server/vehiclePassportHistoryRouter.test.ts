@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() }));
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
+import { resetRateLimitsForTests } from "./rateLimit";
 import { storageGetSignedUrl, storagePut } from "./storage";
 import { appRouter } from "./routers";
 
@@ -18,6 +19,7 @@ const memberContext = { user: { id: 77, name: "Member", email: "member@example.c
 
 describe("DreamCarz Vehicle Passport operational history", () => {
   beforeEach(() => { mockedGetDb.mockReset(); mockedStorageGetSignedUrl.mockReset(); mockedStoragePut.mockReset(); });
+  afterEach(() => resetRateLimitsForTests());
 
   it("allows an administrator to read a selected passport's operational history without file keys", async () => {
     const passport = { id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "inspection_due", currentOdometer: 28501, fuelOrChargeLevel: "Full", updatedAt: new Date("2026-09-02T10:00:00Z") };
@@ -104,5 +106,20 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     await expect(caller.operations.vehiclePassports.uploadMaintenanceInvoice({ maintenanceId: 7, filename: "invoice.pdf", contentType: "application/pdf", base64: Buffer.alloc(32, 1).toString("base64") })).resolves.toEqual({ success: true });
     await expect(caller.operations.vehiclePassports.maintenanceInvoiceUrl({ maintenanceId: 7 })).resolves.toEqual({ url: "https://example.invalid/maintenance-invoice" });
     expect(mockedStorageGetSignedUrl).toHaveBeenCalledWith("private/maintenance-invoice.pdf");
+  });
+
+  it("rate limits repeated maintenance invoice uploads for the same administrator account", async () => {
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn(() => terminalWithLimit([{ id: 9 }])),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+    };
+    mockedGetDb.mockResolvedValue(db as never);
+    mockedStoragePut.mockResolvedValue({ key: "private/maintenance-invoice.pdf", url: "/manus-storage/private/maintenance-invoice.pdf" });
+    const caller = appRouter.createCaller(adminContext as never);
+    const input = { maintenanceId: 9, filename: "invoice.pdf", contentType: "application/pdf" as const, base64: Buffer.alloc(32, 1).toString("base64") };
+
+    for (let attempt = 0; attempt < 12; attempt += 1) await expect(caller.operations.vehiclePassports.uploadMaintenanceInvoice(input)).resolves.toEqual({ success: true });
+    await expect(caller.operations.vehiclePassports.uploadMaintenanceInvoice(input)).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   });
 });

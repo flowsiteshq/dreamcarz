@@ -3163,6 +3163,8 @@ export const appRouter = router({
         base64: z.string().min(40),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const invoiceUploadLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_maintenance_invoice_upload", String(ctx.user.id)), limit: 12, windowMs: 60 * 60 * 1000 });
+        if (!invoiceUploadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many maintenance-invoice uploads. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
         const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
