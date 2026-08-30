@@ -1,18 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() }));
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
+import { resetRateLimitsForTests } from "./rateLimit";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
 const callerContext = { user: { id: 51, name: "Member", email: "member@example.com", role: "user" }, req: { headers: {}, ip: "198.51.100.42" }, res: {} };
 const selectResult = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(result) })) })) });
+const selectLimitResult = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(result) })) })) });
 
 describe("DreamCarz support requests", () => {
   beforeEach(() => mockedGetDb.mockReset());
+  afterEach(() => resetRateLimitsForTests());
 
   it("records an account-owned private support request and an immutable submitted event", async () => {
     const requestValues = vi.fn().mockResolvedValue([{ insertId: 44 }]);
@@ -46,5 +49,25 @@ describe("DreamCarz support requests", () => {
     const select = vi.fn().mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })) });
     mockedGetDb.mockResolvedValue({ select } as never);
     await expect(appRouter.createCaller(callerContext as never).supportRequests.queue()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("records a private follow-up only for an account-owned open support request", async () => {
+    const eventValues = vi.fn().mockResolvedValue(undefined);
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn().mockReturnValueOnce(selectLimitResult([{ id: 44, status: "under_review" }])),
+      insert: vi.fn(() => ({ values: eventValues })),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+    };
+    mockedGetDb.mockResolvedValue(db as never);
+
+    await expect(appRouter.createCaller(callerContext as never).supportRequests.addFollowUp({ supportRequestId: 44, message: "I have additional details for the DreamCarz support review." })).resolves.toEqual({ success: true });
+    expect(eventValues).toHaveBeenCalledWith(expect.objectContaining({ supportRequestId: 44, actorUserId: 51, eventType: "support_request.customer_follow_up", fromStatus: "under_review", toStatus: "under_review" }));
+    expect(updateWhere).toHaveBeenCalled();
+  });
+
+  it("does not allow a customer follow-up on a closed or unavailable support request", async () => {
+    mockedGetDb.mockResolvedValue({ select: vi.fn().mockReturnValueOnce(selectLimitResult([{ id: 44, status: "closed" }])) } as never);
+    await expect(appRouter.createCaller(callerContext as never).supportRequests.addFollowUp({ supportRequestId: 44, message: "I have additional details for the DreamCarz support review." })).rejects.toThrow("only while this support request is open");
   });
 });

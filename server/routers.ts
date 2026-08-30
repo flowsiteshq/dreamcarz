@@ -2401,6 +2401,21 @@ export const appRouter = router({
       await db.insert(supportRequestEvents).values({ supportRequestId, actorUserId: ctx.user.id, eventType: "support_request.submitted", toStatus: "submitted", customerUpdate: "Your request was recorded for DreamCarz review." });
       return { success: true, reference } as const;
     }),
+    addFollowUp: protectedProcedure.input(z.object({
+      supportRequestId: z.number().int().positive(),
+      message: z.string().trim().min(10).max(2_000),
+    })).mutation(async ({ ctx, input }) => {
+      const followUpLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "support_request_follow_up", String(ctx.user.id)), limit: 6, windowMs: 15 * 60_000 });
+      if (!followUpLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before adding another support follow-up." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support follow-ups are temporarily unavailable." });
+      const request = (await db.select({ id: supportRequests.id, status: supportRequests.status }).from(supportRequests).where(and(eq(supportRequests.id, input.supportRequestId), eq(supportRequests.userId, ctx.user.id))).limit(1))[0];
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "That support request is not available from this account." });
+      if (request.status !== "submitted" && request.status !== "under_review") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A follow-up can be added only while this support request is open." });
+      await db.insert(supportRequestEvents).values({ supportRequestId: request.id, actorUserId: ctx.user.id, eventType: "support_request.customer_follow_up", fromStatus: request.status, toStatus: request.status, customerUpdate: input.message });
+      await db.update(supportRequests).set({ updatedAt: new Date() }).where(eq(supportRequests.id, request.id));
+      return { success: true } as const;
+    }),
     queue: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support operations are temporarily unavailable." });
