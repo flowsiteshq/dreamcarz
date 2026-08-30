@@ -2414,8 +2414,17 @@ export const appRouter = router({
       const maintenance = passportIds.length ? await db.select().from(vehicleMaintenanceRecords).where(inArray(vehicleMaintenanceRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleMaintenanceRecords.createdAt)) : [];
       const inspections = passportIds.length ? await db.select().from(vehicleOperationalInspections).where(inArray(vehicleOperationalInspections.vehiclePassportId, passportIds)).orderBy(desc(vehicleOperationalInspections.createdAt)) : [];
       const incidents = passportIds.length ? await db.select().from(vehicleIncidentRecords).where(inArray(vehicleIncidentRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleIncidentRecords.createdAt)) : [];
-      const activeTransactions = vehicleNames.length ? await db.select({ reference: vehicleTransactions.reference, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, activeRentalStatus: vehicleTransactions.activeRentalStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))).orderBy(desc(vehicleTransactions.updatedAt)) : [];
-      return { profile, roles, vehicles, maintenance, inspections, incidents, activeTransactions };
+      const activeRentalVehicleRows = vehicleNames.length ? await db.select({ vehicleName: vehicleTransactions.vehicleName }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))) : [];
+      const activeRentalCounts = activeRentalVehicleRows.reduce<Record<string, number>>((counts, row) => {
+        counts[row.vehicleName] = (counts[row.vehicleName] ?? 0) + 1;
+        return counts;
+      }, {});
+      const activity = vehicles.map(vehicle => ({
+        vehiclePassportId: vehicle.id,
+        vehicleName: vehicle.vehicleName,
+        activeRentalCount: activeRentalCounts[vehicle.vehicleName] ?? 0,
+      }));
+      return { profile, roles, vehicles, maintenance, inspections, incidents, activity };
     }),
     submitInspection: protectedProcedure.input(z.object({
       vehiclePassportId: z.number().int().positive(),
