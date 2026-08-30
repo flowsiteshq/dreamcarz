@@ -123,6 +123,17 @@ function nativeSignatureHash(input: { agreementId: number; signerName: string; a
   return createHash("sha256").update([input.agreementId, input.signerName, input.acknowledgedAt.toISOString(), input.contentSnapshot, process.env.JWT_SECRET ?? "dreamcarz-native-signature"].join("|"), "utf8").digest("hex");
 }
 
+async function hasReviewedRentalAdditionalDrivers(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  transactionId: number,
+) {
+  const drivers = await db.select({
+    licenseStatus: transactionAdditionalDrivers.licenseStatus,
+    identityStatus: transactionAdditionalDrivers.identityStatus,
+  }).from(transactionAdditionalDrivers).where(eq(transactionAdditionalDrivers.transactionId, transactionId));
+  return drivers.every(driver => driver.licenseStatus === "verified" && driver.identityStatus === "verified");
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1162,6 +1173,9 @@ export const appRouter = router({
         if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "NOT_FOUND", message: "Rental transaction not found." });
         if (transaction.status !== "ready_for_pickup" || !hasVehicleReleaseReadiness(transaction)) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must complete vehicle release before you can confirm this handoff." });
+        }
+        if (!await hasReviewedRentalAdditionalDrivers(db, transaction.id)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Any added driver must complete separate identity and license review before handoff confirmation." });
         }
         const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
         if (!schedule || schedule.handoffStatus !== "arrived") {
@@ -3373,8 +3387,13 @@ export const appRouter = router({
         const transaction = rows[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (!canTransitionTransaction(transaction.status, input.nextStatus)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "That transaction status change is not allowed from the current lifecycle stage." });
-        if (input.nextStatus === "ready_for_pickup" && !hasVehicleReleaseReadiness(transaction)) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Identity, license, eligibility, insurance, payment authorization, and a signed agreement must all be verified before vehicle release." });
+        if (input.nextStatus === "ready_for_pickup") {
+          if (!hasVehicleReleaseReadiness(transaction)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Identity, license, eligibility, insurance, payment authorization, and a signed agreement must all be verified before vehicle release." });
+          }
+          if (transaction.transactionType === "rental" && !await hasReviewedRentalAdditionalDrivers(db, transaction.id)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Any added driver must complete separate identity and license review before vehicle release." });
+          }
         }
         await db.update(vehicleTransactions).set({ status: input.nextStatus, currentStep: transactionStepForStatus(transaction.transactionType, input.nextStatus, transaction.currentStep) }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.status_changed", fromStatus: transaction.status, toStatus: input.nextStatus, note: input.note || null });

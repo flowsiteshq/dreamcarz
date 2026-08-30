@@ -482,6 +482,7 @@ describe("transaction intake router", () => {
     const schedule = { id: 73, handoffStatus: "arrived" as const, pickupMethod: "delivery" as const };
     const select = vi.fn()
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })) })
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([schedule]) })) })) });
     const updateSchedule = vi.fn().mockResolvedValue(undefined);
     const updateTransaction = vi.fn().mockResolvedValue(undefined);
@@ -500,8 +501,40 @@ describe("transaction intake router", () => {
 
     const unarrivedSelect = vi.fn()
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })) })
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ ...schedule, handoffStatus: "en_route" }]) })) })) });
     mockedGetDb.mockResolvedValue({ select: unarrivedSelect } as never);
     await expect(caller.transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("only after DreamCarz marks the pickup or delivery as arrived");
+  });
+
+  it("blocks rental release and handoff confirmation until every added driver has separate identity and license review", async () => {
+    const transaction = {
+      id: 713,
+      reference: "DCR-2026-ADDED-DRIVER",
+      transactionType: "rental" as const,
+      status: "agreement_pending" as const,
+      identityStatus: "verified" as const,
+      licenseStatus: "verified" as const,
+      eligibilityStatus: "cleared" as const,
+      insuranceStatus: "verified" as const,
+      paymentStatus: "authorized" as const,
+      agreementStatus: "signed" as const,
+    };
+    const pendingDriver = { id: 19, licenseStatus: "pending" as const, identityStatus: "verified" as const };
+    const releaseSelect = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([pendingDriver]) })) });
+    mockedGetDb.mockResolvedValue({ select: releaseSelect } as never);
+    const adminContext = { ...customerContext, user: { ...customerContext.user, role: "admin" } };
+
+    await expect(appRouter.createCaller(adminContext as never).operations.updateTransactionStatus({ reference: transaction.reference, nextStatus: "ready_for_pickup" })).rejects.toThrow("Any added driver must complete separate identity and license review before vehicle release");
+
+    const handoffTransaction = { ...transaction, status: "ready_for_pickup" as const };
+    const handoffSelect = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([handoffTransaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([pendingDriver]) })) });
+    mockedGetDb.mockResolvedValue({ select: handoffSelect } as never);
+
+    await expect(appRouter.createCaller(customerContext as never).transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("Any added driver must complete separate identity and license review before handoff confirmation");
   });
 });
