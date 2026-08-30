@@ -1567,7 +1567,9 @@ export const appRouter = router({
             .where(and(
               eq(transactionDocuments.id, input.id),
               eq(vehicleTransactions.userId, ctx.user.id),
-              eq(transactionDocuments.documentType, input.recordType === "transaction_insurance_document" ? "insurance_card" : "license_front"),
+              input.recordType === "transaction_insurance_document"
+                ? eq(transactionDocuments.documentType, "insurance_card")
+                : inArray(transactionDocuments.documentType, ["license_front", "license_back"]),
             ))
             .limit(1);
           if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: input.recordType === "transaction_insurance_document" ? "Insurance record not found." : "Driver-license record not found." });
