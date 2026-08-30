@@ -7,6 +7,7 @@ import { TransactionQuoteManager } from "@/components/TransactionQuoteManager";
 import { VehiclePassportManager } from "@/components/VehiclePassportManager";
 import { FleetIncidentQueue } from "@/components/FleetIncidentQueue";
 import { VehicleServiceLog } from "@/components/VehicleServiceLog";
+import { MaintenanceCompletionControl } from "@/components/MaintenanceCompletionControl";
 import { HandoffManager } from "@/components/HandoffManager";
 import { PricingRuleManager } from "@/components/PricingRuleManager";
 import { RentalExtensionQueue } from "@/components/RentalExtensionQueue";
@@ -139,6 +140,8 @@ export default function AdminOperations() {
         <FleetIncidentQueue />
 
         <VehicleServiceLog />
+
+        <MaintenanceCompletionControl />
 
         <HandoffManager />
 

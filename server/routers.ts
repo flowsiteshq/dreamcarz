@@ -3127,6 +3127,20 @@ export const appRouter = router({
         const created = await db.insert(vehicleMaintenanceRecords).values({ ...input, dueAt: input.dueAt ?? null, vendorName: input.vendorName || null, workOrderReference: input.workOrderReference || null, notes: input.notes || null, createdByUserId: ctx.user.id });
         return { success: true, maintenanceId: Number(created[0].insertId) };
       }),
+
+      updateMaintenanceStatus: protectedProcedure.input(z.object({
+        maintenanceId: z.number().int().positive(),
+        status: z.enum(["scheduled", "in_progress", "completed", "deferred", "canceled"]),
+        completedAt: z.date().optional(),
+      }).refine(input => input.status !== "completed" || Boolean(input.completedAt), { message: "Enter the staff-recorded completion date before marking maintenance complete." })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
+        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
+        if (!maintenance) throw new TRPCError({ code: "NOT_FOUND", message: "Maintenance record not found." });
+        await db.update(vehicleMaintenanceRecords).set({ status: input.status, completedAt: input.status === "completed" ? input.completedAt! : null }).where(eq(vehicleMaintenanceRecords.id, maintenance.id));
+        return { success: true, status: input.status, vehicleReadinessChanged: false } as const;
+      }),
     }),
 
     handoff: router({

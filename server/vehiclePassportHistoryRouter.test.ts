@@ -66,4 +66,22 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     await expect(appRouter.createCaller(adminContext as never).operations.vehiclePassports.reviewInspection({ inspectionId: 12, status: "needs_attention", reviewNote: "Tire condition requires operations follow-up." })).resolves.toEqual({ success: true, status: "needs_attention", vehicleReadinessChanged: false });
     expect(db.update).toHaveBeenCalled();
   });
+
+  it("requires a staff-recorded completion date and never changes vehicle readiness when maintenance is completed", async () => {
+    const caller = appRouter.createCaller(adminContext as never);
+    await expect(caller.operations.vehiclePassports.updateMaintenanceStatus({ maintenanceId: 5, status: "completed" })).rejects.toThrow("staff-recorded completion date");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn(() => terminalWithLimit([{ id: 5 }])),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+    };
+    mockedGetDb.mockResolvedValue(db as never);
+    const completedAt = new Date("2026-09-03T15:30:00Z");
+
+    await expect(caller.operations.vehiclePassports.updateMaintenanceStatus({ maintenanceId: 5, status: "completed", completedAt })).resolves.toEqual({ success: true, status: "completed", vehicleReadinessChanged: false });
+    expect(db.update).toHaveBeenCalled();
+    expect(updateWhere).toHaveBeenCalled();
+  });
 });

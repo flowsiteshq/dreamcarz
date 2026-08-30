@@ -212,6 +212,7 @@
 - [ ] Add configurable membership benefits that affect permitted vehicle access, discounts, deposits, credits, delivery benefits, and upgrade eligibility through transaction rules.
 - [x] Build an auditable DreamCarz wallet ledger for credits, refunds, deposits/holds, membership and referral credits, receipts, and transaction history without silent balance changes.
 - [ ] Build protected DreamCarz Vehicle Passports with vehicle lifecycle, location, readiness, acquisition, maintenance, inspection, damage, document, reservation, and utilization/revenue record support.
+- [x] Add administrator-only Vehicle Passport maintenance status updates with a staff-entered completion date, without automatically changing vehicle readiness.
 - [x] Add administrator-only registration and insurance document upload and signed retrieval for Vehicle Passports without exposing storage references in portal lists.
 - [x] Correct the Administrator Operations route used by management navigation and verification so the protected operations workspace does not resolve to a 404.
 - [x] Add administrator-only Vehicle Passport inspection and maintenance history retrieval with a protected operational timeline.
