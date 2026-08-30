@@ -98,6 +98,21 @@ function renderAgreementContent(template: string, transaction: { reference: stri
     .replaceAll("{{CUSTOMER_NAME}}", transaction.contactName ?? "DreamCarz customer");
 }
 
+async function deliverLifecycleInAppNotice(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  input: { userId: number; title: string; body: string; actionPath: string; relatedTransactionId: number },
+) {
+  const preference = (await db.select().from(communicationPreferences).where(eq(communicationPreferences.userId, input.userId)).limit(1))[0];
+  if (preference?.transactionalInAppEnabled === false) {
+    await db.insert(communicationEvents).values({ userId: input.userId, channel: "in_app", status: "suppressed", detail: "Customer disabled transactional in-app notices." });
+    return { suppressed: true } as const;
+  }
+  const inserted = await db.insert(customerNotifications).values({ ...input, category: "transaction" });
+  const notificationId = Number(inserted[0].insertId);
+  await db.insert(communicationEvents).values({ userId: input.userId, notificationId, channel: "in_app", status: "delivered", detail: "Automated lifecycle notice" });
+  return { suppressed: false, notificationId } as const;
+}
+
 function nativeSignatureHash(input: { agreementId: number; signerName: string; acknowledgedAt: Date; contentSnapshot: string }) {
   return createHash("sha256").update([input.agreementId, input.signerName, input.acknowledgedAt.toISOString(), input.contentSnapshot, process.env.JWT_SECRET ?? "dreamcarz-native-signature"].join("|"), "utf8").digest("hex");
 }
@@ -2614,6 +2629,7 @@ export const appRouter = router({
         if (transaction.transactionType === "rental") await db.update(vehicleTransactions).set({ pickupStatus }).where(eq(vehicleTransactions.id, transaction.id));
         else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "verified" ? "verified" : pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
+        await deliverLifecycleInAppNotice(db, { userId: transaction.userId, title: "Handoff update", body: `DreamCarz updated the ${schedule.pickupMethod === "delivery" ? "delivery" : "pickup"} status for your rental to ${input.handoffStatus.replaceAll("_", " ")}. Review current details in your private rental record.`, actionPath: `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`, relatedTransactionId: transaction.id });
         return { success: true, handoffStatus: input.handoffStatus };
       }),
     }),
@@ -2667,6 +2683,7 @@ export const appRouter = router({
           note: input.reviewNote,
           metadata: JSON.stringify({ extensionRequestId: request.id, requestedEndDate: request.requestedEndDate, scheduleChanged: input.decision === "approved" }),
         });
+        await deliverLifecycleInAppNotice(db, { userId: transaction.userId, title: "Rental extension reviewed", body: input.decision === "approved" ? "DreamCarz approved your rental extension request. Your updated return date is available in your private rental record." : "DreamCarz reviewed your rental extension request and it was not approved. Your existing rental schedule has not changed.", actionPath: `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`, relatedTransactionId: transaction.id });
         return { success: true, status: input.decision, requestedEndDate: request.requestedEndDate };
       }),
     }),
@@ -2749,6 +2766,7 @@ export const appRouter = router({
         await db.update(transactionSettlements).set({ status: input.status, approvedSubtotalCents: input.approvedSubtotalCents, depositAppliedCents: input.depositAppliedCents, adjustmentsCents: approvedAdjustmentsCents, finalAmountCents, summary: input.summary, reviewedByUserId: ctx.user.id, settledAt }).where(eq(transactionSettlements.id, settlement.id));
         await db.update(vehicleTransactions).set({ settlementStatus: input.status === "settled" ? "complete" : input.status === "disputed" ? "disputed" : input.status === "waived" ? "complete" : "pending" }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "settlement.finalized", fromStatus: transaction.settlementStatus, toStatus: input.status, note: input.summary, metadata: JSON.stringify({ settlementId: settlement.id, approvedSubtotalCents: input.approvedSubtotalCents, depositAppliedCents: input.depositAppliedCents, approvedAdjustmentsCents, finalAmountCents, paymentAction: "not_collected" }) });
+        await deliverLifecycleInAppNotice(db, { userId: transaction.userId, title: "Return settlement reviewed", body: input.status === "disputed" ? "DreamCarz marked your return settlement for further review. No payment action is available in this notice." : "DreamCarz finalized a return settlement review. You can review the private, read-only settlement statement in your transaction record. This notice does not initiate payment collection.", actionPath: `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`, relatedTransactionId: transaction.id });
         return { success: true, finalAmountCents, status: input.status };
       }),
     }),
