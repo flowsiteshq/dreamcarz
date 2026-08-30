@@ -180,6 +180,7 @@
 - [x] Add a clear administrator payment-evidence view with provider, identifier-only payment references, current status, and related audit history without exposing secrets.
 - [ ] Configure and verify CoCard signed webhook delivery so asynchronous authorization, settlement, refund, and dispute events are securely processed.
 - [ ] Obtain or enable the CoCard merchant-console Webhooks setting; it is not exposed in the authenticated DreamCarz gateway options despite the integration documentation referring to it.
+- [ ] Resume CoCard webhook activation when the merchant portal exposes **Settings → Webhooks → Add Endpoint**, then add and verify the DreamCarz endpoint without initiating a payment.
 - [x] Bind each CoCard checkout result to its specific DreamCarz transaction with a one-time customer attempt token, server-side Query API verification, and cross-transaction gateway-ID reuse protection.
 - [ ] Run end-to-end QA of the CoCard hosted-checkout handoff and verified return/callback path for an approved transaction without entering or storing card data in DreamCarz.
 - [x] Correct stale customer back-office agreement copy so it accurately reflects the native DreamCarz signing workflow.

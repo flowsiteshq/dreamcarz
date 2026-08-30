@@ -4,6 +4,14 @@
 
 Stripe Identity supports government-issued document verification and document-to-selfie matching in the United States. Its Verification Sessions API returns a status including `verified` or `requires_input`; Stripe recommends reusing a session, using idempotency keys, and responding to status changes through verified webhook events. The DreamCarz application should store only the provider session identifier and status, never raw biometric data or identity-document content in general transaction records. Document and selfie collection must be conditioned on explicit consent, with a manual-review alternative if the customer declines or fails automated verification. [1] [2] [3]
 
+### AWS Face Liveness alternative — reviewed, not activated
+
+Because a Stripe Identity sandbox is not available for DreamCarz, **Amazon Rekognition Face Liveness** is a viable alternative for the live-selfie portion of the identity journey. AWS documents that Face Liveness uses a short video selfie and returns a probabilistic confidence result plus a reference image; it must be combined with other risk controls rather than treated as a guaranteed identity decision. The DreamCarz implementation must therefore keep its existing explicit consent, manual-review, retry, retention, and deletion-request safeguards. [8] [9]
+
+For a future AWS rollout, DreamCarz would create an account-owned liveness session on the server, supply only short-lived and limited credentials to the web liveness component, evaluate the session result on the server, and store only the status and provider session identifier in DreamCarz. It must not persist liveness confidence scores, audit images, reference images, raw biometric video, or browser credentials in application records. AWS recommends an alternative path for people who decline or cannot use liveness verification, so the existing manual-review option remains required. [9]
+
+This option is **not activated**. It requires an AWS region decision, a dedicated least-privilege role/identity-pool design, appropriate billing and data-retention review, counsel-approved privacy notice and consent language, operating thresholds tested on DreamCarz data, and a verified driver-license image comparison process. No biometric session has been created.
+
 ## Payments
 
 Stripe Checkout or Payment Elements should collect payment details through Stripe rather than DreamCarz. DreamCarz should retain only necessary Stripe object identifiers and business-state references—not card number, CVV, expiry date, client secret, or raw webhook payload. Payment and deposit capture will remain blocked until approved pricing is entered for the selected membership and vehicle transaction.
@@ -21,6 +29,8 @@ The user-provided **Dream Carz Rental Contract Addendum** includes renter initia
 [1]: https://docs.stripe.com/identity "Stripe Identity"
 [2]: https://docs.stripe.com/identity/verification-sessions "Stripe Verification Sessions API"
 [3]: https://docs.stripe.com/identity/handle-verification-outcomes "Stripe Identity verification outcomes"
+[8]: https://docs.aws.amazon.com/rekognition/latest/dg/face-liveness.html "Amazon Rekognition Face Liveness"
+[9]: https://docs.aws.amazon.com/rekognition/latest/dg/recommendations-liveness.html "AWS Face Liveness recommendations"
 
 ## Stripe Identity implementation update — 2026-08-29
 
