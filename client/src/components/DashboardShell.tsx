@@ -76,10 +76,16 @@ function IdentityVerificationLauncher({ reference }: { reference: string }) {
   const [consents, setConsents] = useState({ document: false, biometric: false });
   const [message, setMessage] = useState("");
   const provider = trpc.transactions.identityProviderStatus.useQuery(undefined, { refetchOnWindowFocus: false });
+  const awsFaceLiveness = trpc.transactions.awsFaceLivenessStatus.useQuery(undefined, { refetchOnWindowFocus: false });
   const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
   const start = trpc.transactions.startIdentityVerification.useMutation();
 
-  if (!provider.data?.configured || transaction.data?.transaction.currentStep !== "identity") return null;
+  if (transaction.data?.transaction.currentStep !== "identity") return null;
+
+  if (!provider.data?.configured) {
+    if (!awsFaceLiveness.data?.serverCredentialsConfigured) return null;
+    return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Identity verification status</p><h2 className="mt-2 font-display text-xl font-bold">Face Liveness is being prepared</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz has prepared a server-side AWS Face Liveness connection. The live-selfie verification experience remains disabled until temporary browser credentials and the final consent flow are configured. Your private document upload and manual review path remain available; no biometric check has been started.</p></section>;
+  }
 
   const launch = async () => {
     if (!consents.document || !consents.biometric) {

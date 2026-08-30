@@ -73,6 +73,7 @@ import { DREAMCARZ_ROLES, effectiveDreamCarzRoles } from "../shared/dreamcarzRol
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
+import { getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
@@ -1211,6 +1212,8 @@ export const appRouter = router({
       }),
 
     identityProviderStatus: protectedProcedure.query(() => getIdentityProviderStatus()),
+
+    awsFaceLivenessStatus: protectedProcedure.query(() => getAwsFaceLivenessStatus()),
 
     startIdentityVerification: protectedProcedure
       .input(z.object({
