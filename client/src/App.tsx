@@ -39,6 +39,7 @@ import TransactionOnboarding from "./pages/dashboard/TransactionOnboarding";
 import DreamCarzId from "./pages/dashboard/DreamCarzId";
 import IncidentCenter from "./pages/dashboard/IncidentCenter";
 import FleetPartnerPortal from "./pages/dashboard/FleetPartnerPortal";
+import AssociatePortal from "./pages/dashboard/AssociatePortal";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/dashboard/report" component={ReportIssue} />
       <Route path="/dashboard/incidents" component={IncidentCenter} />
       <Route path="/dashboard/fleet-partner" component={FleetPartnerPortal} />
+      <Route path="/dashboard/associate" component={AssociatePortal} />
       <Route path="/opportunity" component={Opportunity} />
       <Route path="/dashboard/drive-network" component={DriveNetwork} />
       <Route path="/dashboard/rental-setup" component={RentalOnboarding} />

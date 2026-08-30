@@ -5,12 +5,12 @@ import { DollarSign, Users, TrendingUp, Award, Zap, ChevronRight, Car } from "lu
 import { Link } from "wouter";
 
 const earnings = [
-  { icon:<Car size={20}/>, title:"Dream Carz Supplies Vehicles", desc:"Operate a location and manage qualifying vehicle activity with Dream Carz vehicle support." },
-  { icon:<Users size={20}/>, title:"Operate & Manage", desc:"Build a local business by managing customer relationships and day-to-day operations." },
-  { icon:<DollarSign size={20}/>, title:"Transaction Commissions", desc:"Earn on qualifying rentals, RTO/LTO activity, and sales transactions." },
-  { icon:<TrendingUp size={20}/>, title:"Scalable Location Model", desc:"Grow a location model designed to support expansion with lower operational risk." },
-  { icon:<Award size={20}/>, title:"Leadership & Performance", desc:"Qualifying growth may unlock leadership overrides and performance bonuses." },
-  { icon:<Zap size={20}/>, title:"Training Included", desc:"No experience is needed to begin; Dream Carz provides a path to learn, operate, and grow." },
+  { icon:<Car size={20}/>, title:"Vehicle Operations", desc:"Approved Fleet Partner and operations roles use controlled vehicle and transaction workflows." },
+  { icon:<Users size={20}/>, title:"Customer Introductions", desc:"Authorized Associates can share a referral route and manage only consented follow-up contacts." },
+  { icon:<DollarSign size={20}/>, title:"Recorded Activity", desc:"The private Associate workspace shows recorded referral and program activity without estimating compensation." },
+  { icon:<TrendingUp size={20}/>, title:"Role-Based Growth", desc:"Access and responsibilities are reviewed by DreamCarz based on the applicable program terms." },
+  { icon:<Award size={20}/>, title:"Program Review", desc:"DreamCarz confirms role standing and available operating tools before private access is granted." },
+  { icon:<Zap size={20}/>, title:"Training Access", desc:"Any approved training materials are provided inside the authorized Associate workspace." },
 ];
 
 export default function Agent() {
@@ -21,9 +21,9 @@ export default function Agent() {
       <section className="pt-28 pb-16 bg-section">
         <div className="container">
           <div className="section-label mb-3 reveal">Agent Opportunity</div>
-          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>We Supply the Cars.<br />You Build the Business.</h1>
-          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Operate. Manage. Earn. Build a scalable Dream Carz location through qualifying rentals, RTO/LTO activity, and sales support.</p>
-          <Link href="/membership" className="btn-primary reveal delay-300">Become an Agent <ChevronRight size={16} /></Link>
+          <h1 className="font-display text-5xl font-bold text-black mb-4 reveal delay-100" style={{ fontFamily: "var(--font-display)" }}>Build a connected<br />DreamCarz Path.</h1>
+          <p className="text-gray-500 max-w-xl mb-8 reveal delay-200" style={{ fontFamily: "var(--font-sans)" }}>Learn about Associate access, customer introductions, and role-based operating tools. Program terms and role approval are reviewed directly by DreamCarz.</p>
+          <Link href="/contact" className="btn-primary reveal delay-300">Ask about Associate access <ChevronRight size={16} /></Link>
         </div>
       </section>
       <section className="py-16">
@@ -37,7 +37,7 @@ export default function Agent() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-gray-400 mt-8" style={{ fontFamily: "var(--font-sans)" }}>Exact compensation plan requires separate financial and legal modeling.</p>
+          <p className="text-center text-xs text-gray-400 mt-8" style={{ fontFamily: "var(--font-sans)" }}>Role access, any program terms, and any recorded compensation arrangements are managed and confirmed directly by DreamCarz.</p>
         </div>
       </section>
       <Footer />

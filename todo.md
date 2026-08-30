@@ -205,6 +205,10 @@
 - [ ] Build a role-isolated Fleet Partner portal with authorized vehicle operations, reservations, utilization, maintenance, inspections, damage, documents, performance, and payout views.
 - [ ] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
+- [ ] Capture a validated Associate referral code at new-account registration and preserve the attribution without allowing self-referrals or arbitrary reassignment.
+- [ ] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.
+- [ ] Add a discoverable Associate Path navigation entry for authorized Associate and administrator accounts without exposing it to ordinary customers.
+- [x] Remove or qualify unsupported public Associate commission, earnings, eligibility, and expansion claims before exposing the role-isolated portal.
 - [ ] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [ ] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.

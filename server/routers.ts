@@ -8,6 +8,7 @@ import {
   referralProfiles,
   referrals,
   commissions,
+  associateLeads,
   rentalApplications,
   rentalApplicationDocuments,
   customerProfiles,
@@ -100,12 +101,19 @@ export const appRouter = router({
           email: z.string().trim().email().max(320),
           password: z.string().min(10).max(128),
           acceptedTerms: z.literal(true),
+          referralCode: z.string().trim().toUpperCase().regex(/^DC-[A-Z0-9_-]{4,28}$/).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const user = await registerDirectAccount(input);
+        const db = await getDb();
+        const referrer = input.referralCode && db ? (await db.select().from(referralProfiles).where(eq(referralProfiles.referralCode, input.referralCode)).limit(1))[0] : undefined;
+        if (input.referralCode && !referrer) throw new TRPCError({ code: "BAD_REQUEST", message: "That Associate referral code is not active." });
+        const user = await registerDirectAccount({ name: input.name, email: input.email, password: input.password });
         if (!user) {
           throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists. Please sign in instead." });
+        }
+        if (referrer && db && referrer.userId !== user.id) {
+          await db.insert(referrals).values({ referrerId: referrer.userId, referredId: user.id, status: "pending" });
         }
         const session = await createDirectSession(user.id);
         ctx.res.cookie(DIRECT_SESSION_COOKIE, session.token, {
@@ -1733,6 +1741,57 @@ export const appRouter = router({
       const incidents = passportIds.length ? await db.select().from(vehicleIncidentRecords).where(inArray(vehicleIncidentRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleIncidentRecords.createdAt)) : [];
       const activeTransactions = vehicleNames.length ? await db.select({ reference: vehicleTransactions.reference, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, activeRentalStatus: vehicleTransactions.activeRentalStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))).orderBy(desc(vehicleTransactions.updatedAt)) : [];
       return { profile, roles, vehicles, maintenance, inspections, incidents, activeTransactions };
+    }),
+  }),
+
+  associate: router({
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate data is temporarily unavailable." });
+      const profile = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
+      const leads = await db.select().from(associateLeads).where(eq(associateLeads.associateUserId, ctx.user.id)).orderBy(desc(associateLeads.updatedAt));
+      const referralsForAssociate = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id)).orderBy(desc(referrals.createdAt));
+      const commissionRecords = await db.select().from(commissions).where(eq(commissions.userId, ctx.user.id)).orderBy(desc(commissions.month));
+      return { profile, leads, referrals: referralsForAssociate, commissionRecords, roles };
+    }),
+    ensureProfile: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate profile setup is temporarily unavailable." });
+      const existing = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0];
+      if (existing) return existing;
+      const referralCode = `DC-${nanoid(8).toUpperCase()}`;
+      await db.insert(referralProfiles).values({ userId: ctx.user.id, referralCode });
+      return (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0];
+    }),
+    createLead: protectedProcedure.input(z.object({
+      contactName: z.string().trim().min(2).max(160),
+      contactEmail: z.string().trim().email().max(320).optional(),
+      contactPhone: z.string().trim().min(7).max(48).optional(),
+      interestType: z.enum(["membership", "rental", "purchase", "fleet_partner", "associate", "general"]),
+      consentToContact: z.literal(true),
+      notes: z.string().trim().max(2_000).optional(),
+    }).refine(input => Boolean(input.contactEmail || input.contactPhone), { message: "An email address or phone number is required." })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      const result = await db.insert(associateLeads).values({ associateUserId: ctx.user.id, ...input });
+      return { id: Number(result[0].insertId) };
+    }),
+    updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead update is temporarily unavailable." });
+      const lead = (await db.select().from(associateLeads).where(eq(associateLeads.id, input.id)).limit(1))[0];
+      if (!lead || (lead.associateUserId !== ctx.user.id && ctx.user.role !== "admin")) throw new TRPCError({ code: "FORBIDDEN", message: "This lead is not available to this account." });
+      await db.update(associateLeads).set({ status: input.status, notes: input.notes ?? lead.notes }).where(eq(associateLeads.id, input.id));
+      return { success: true };
     }),
   }),
 

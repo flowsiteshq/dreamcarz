@@ -11,7 +11,9 @@ type AuthMode = "signin" | "create";
 export default function Login() {
   const { isAuthenticated, loading } = useAuth();
   const [location, navigate] = useLocation();
-  const requestedNext = new URLSearchParams(location.split("?")[1] ?? "").get("next");
+  const queryParams = new URLSearchParams(location.split("?")[1] ?? "");
+  const requestedNext = queryParams.get("next");
+  const referralCode = queryParams.get("ref")?.trim().toUpperCase() || undefined;
   const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/dashboard";
   const utils = trpc.useUtils();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -41,7 +43,7 @@ export default function Login() {
     try {
       const user = mode === "signin"
         ? await login.mutateAsync({ email, password })
-        : await register.mutateAsync({ name, email, password, acceptedTerms: true });
+        : await register.mutateAsync({ name, email, password, acceptedTerms: true, referralCode });
       utils.auth.me.setData(undefined, user);
       await utils.auth.me.invalidate();
       navigate(safeNext);

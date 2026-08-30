@@ -328,6 +328,21 @@ export const commissions = mysqlTable("commissions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Associate-owned lead records remain private and require the prospect's contact consent. */
+export const associateLeads = mysqlTable("associate_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  associateUserId: int("associateUserId").notNull(),
+  contactName: varchar("contactName", { length: 160 }).notNull(),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactPhone: varchar("contactPhone", { length: 48 }),
+  interestType: mysqlEnum("interestType", ["membership", "rental", "purchase", "fleet_partner", "associate", "general"]).default("general").notNull(),
+  status: mysqlEnum("status", ["new", "contacted", "qualified", "converted", "closed"]).default("new").notNull(),
+  consentToContact: boolean("consentToContact").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── Rental Onboarding & Identity Verification ───────────────────────────────
 
 export const rentalApplications = mysqlTable("rental_applications", {
