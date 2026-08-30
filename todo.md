@@ -202,7 +202,8 @@
 - [x] Require structured pickup and return evidence labels for front, rear, driver side, passenger side, interior, and odometer views before a condition report can be finalized.
 - [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
 - [x] Add an account-owned customer handoff acknowledgement that can only follow DreamCarz release and an arrived pickup or delivery status.
-- [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
+- [x] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
+- [x] Add a clearly labeled active-rental roadside-support route to the private DreamCarz incident and support journey.
 - [x] Add an active-rental vehicle-swap request control limited to confirmed DreamCarz inventory and administrator review.
 - [x] Expose account-owned active-rental schedule, agreement, payment, condition, and return status in My Account without displaying private provider or document data.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
