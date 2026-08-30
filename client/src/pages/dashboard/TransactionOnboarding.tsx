@@ -54,6 +54,7 @@ export default function TransactionOnboarding() {
   const saveProfile = trpc.transactions.saveProfile.useMutation({ onSuccess: () => utils.transactions.get.invalidate({ reference }) });
   const saveRentalSchedule = trpc.transactions.saveRentalSchedule.useMutation({ onSuccess: () => utils.transactions.get.invalidate({ reference }) });
   const saveStep = trpc.transactions.saveStep.useMutation({ onSuccess: () => utils.transactions.get.invalidate({ reference }) });
+  const getRecordLink = trpc.transactions.getRecordLink.useMutation();
   const uploadIdentityDocument = trpc.transactions.uploadIdentityDocument.useMutation({
     onSuccess: async () => {
       await Promise.all([utils.transactions.get.invalidate({ reference }), utils.transactions.backOffice.invalidate()]);
@@ -232,7 +233,7 @@ export default function TransactionOnboarding() {
 
   const openRecord = async (recordType: "legacy_license_document" | "transaction_license_document" | "agreement", id: number) => {
     try {
-      const record = await utils.transactions.getRecordLink.fetch({ recordType, id });
+      const record = await getRecordLink.mutateAsync({ recordType, id });
       window.open(record.url, "_blank", "noopener,noreferrer");
     } catch {
       setProfileError("This secure record could not be opened. Please try again or contact DreamCarz support.");

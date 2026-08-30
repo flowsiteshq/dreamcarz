@@ -9,14 +9,14 @@ function displayStatus(value?: string | null) {
 type SecureRecordType = "legacy_license_document" | "transaction_license_document" | "transaction_insurance_document" | "agreement";
 
 export default function CustomerRecordsBackoffice() {
-  const utils = trpc.useUtils();
   const records = trpc.transactions.backOffice.useQuery(undefined, { refetchOnWindowFocus: false });
+  const getRecordLink = trpc.transactions.getRecordLink.useMutation();
   const [error, setError] = useState("");
 
   const openRecord = async (recordType: SecureRecordType, id: number) => {
     try {
       setError("");
-      const record = await utils.transactions.getRecordLink.fetch({ recordType, id });
+      const record = await getRecordLink.mutateAsync({ recordType, id });
       window.open(record.url, "_blank", "noopener,noreferrer");
     } catch {
       setError("This private record could not be opened. Please try again or contact DreamCarz support.");

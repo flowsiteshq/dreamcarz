@@ -5,11 +5,12 @@ vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() 
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
 import { verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
+const mockedStorageGetSignedUrl = vi.mocked(storageGetSignedUrl);
 const mockedStoragePut = vi.mocked(storagePut);
 const mockedVerifyCoCardCheckoutReturn = vi.mocked(verifyCoCardCheckoutReturn);
 const customerContext = {
@@ -19,7 +20,7 @@ const customerContext = {
 };
 
 describe("transaction intake router", () => {
-  beforeEach(() => { mockedGetDb.mockReset(); mockedStoragePut.mockReset(); mockedVerifyCoCardCheckoutReturn.mockReset(); });
+  beforeEach(() => { mockedGetDb.mockReset(); mockedStorageGetSignedUrl.mockReset(); mockedStoragePut.mockReset(); mockedVerifyCoCardCheckoutReturn.mockReset(); });
 
   it("rejects a Coming Soon or unsupported vehicle before creating a transaction", async () => {
     mockedGetDb.mockResolvedValue({} as never);
@@ -237,6 +238,28 @@ describe("transaction intake router", () => {
 
     await expect(appRouter.createCaller(adminContext as never).transactions.listAgreementTemplates()).resolves.toEqual(templates);
     await expect(appRouter.createCaller(customerContext as never).transactions.listAgreementTemplates()).rejects.toThrow("Administrator access is required");
+  });
+
+  it("records a minimal access audit before returning an account-owned signed agreement link", async () => {
+    const signedAgreement = { transactionId: 37, signedDocumentKey: "private/transaction-37/signed-agreement.pdf" };
+    const select = vi.fn().mockReturnValueOnce({
+      from: vi.fn(() => ({
+        innerJoin: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([signedAgreement]) })) })),
+      })),
+    });
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 91 }]);
+    mockedGetDb.mockResolvedValue({ select, insert: vi.fn(() => ({ values: insertValues })) } as never);
+    mockedStorageGetSignedUrl.mockResolvedValue("https://example.invalid/private-record" as never);
+
+    await expect(appRouter.createCaller(customerContext as never).transactions.getRecordLink({ recordType: "agreement", id: 8 })).resolves.toEqual({ url: "https://example.invalid/private-record" });
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      transactionId: 37,
+      actorUserId: customerContext.user.id,
+      actorType: "customer",
+      eventType: "record.access_requested",
+      metadata: JSON.stringify({ recordType: "agreement" }),
+    }));
+    expect(JSON.stringify(insertValues.mock.calls)).not.toContain(signedAgreement.signedDocumentKey);
   });
 
   it("prepares and signs a native agreement with a private artifact and immutable audit event", async () => {

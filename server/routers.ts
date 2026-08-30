@@ -1644,7 +1644,7 @@ export const appRouter = router({
 
     getRecordLink: protectedProcedure
       .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "transaction_insurance_document", "agreement"]), id: z.number().int().positive() }))
-      .query(async ({ ctx, input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
         if (input.recordType === "legacy_license_document") {
@@ -1656,7 +1656,7 @@ export const appRouter = router({
           return { url: await storageGetSignedUrl(documents[0].storageKey) };
         }
         if (input.recordType === "transaction_license_document" || input.recordType === "transaction_insurance_document") {
-          const documents = await db.select({ storageKey: transactionDocuments.storageKey })
+          const documents = await db.select({ storageKey: transactionDocuments.storageKey, transactionId: transactionDocuments.transactionId })
             .from(transactionDocuments)
             .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
             .where(and(
@@ -1665,12 +1665,19 @@ export const appRouter = router({
               input.recordType === "transaction_insurance_document"
                 ? eq(transactionDocuments.documentType, "insurance_card")
                 : inArray(transactionDocuments.documentType, ["license_front", "license_back"]),
-            ))
-            .limit(1);
+          ))
+          .limit(1);
           if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: input.recordType === "transaction_insurance_document" ? "Insurance record not found." : "Driver-license record not found." });
+          await db.insert(transactionEvents).values({
+            transactionId: documents[0].transactionId,
+            actorUserId: ctx.user.id,
+            actorType: "customer",
+            eventType: "record.access_requested",
+            metadata: JSON.stringify({ recordType: input.recordType }),
+          });
           return { url: await storageGetSignedUrl(documents[0].storageKey) };
         }
-        const agreements = await db.select({ signedDocumentKey: transactionAgreements.signedDocumentKey })
+        const agreements = await db.select({ signedDocumentKey: transactionAgreements.signedDocumentKey, transactionId: transactionAgreements.transactionId })
           .from(transactionAgreements)
           .innerJoin(vehicleTransactions, eq(transactionAgreements.transactionId, vehicleTransactions.id))
           .where(and(eq(transactionAgreements.id, input.id), eq(vehicleTransactions.userId, ctx.user.id)))
@@ -1678,6 +1685,13 @@ export const appRouter = router({
         const agreement = agreements[0];
         if (!agreement) throw new TRPCError({ code: "NOT_FOUND", message: "Agreement record not found." });
         if (!agreement.signedDocumentKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A signed agreement file is not available yet." });
+        await db.insert(transactionEvents).values({
+          transactionId: agreement.transactionId,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "record.access_requested",
+          metadata: JSON.stringify({ recordType: input.recordType }),
+        });
         return { url: await storageGetSignedUrl(agreement.signedDocumentKey) };
       }),
 
