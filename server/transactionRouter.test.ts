@@ -2,13 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() }));
+vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
 import { storagePut } from "./storage";
+import { verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
 const mockedStoragePut = vi.mocked(storagePut);
+const mockedVerifyCoCardCheckoutReturn = vi.mocked(verifyCoCardCheckoutReturn);
 const customerContext = {
   user: { id: 77, name: "Transaction Customer", email: "customer@example.com", role: "user" },
   req: { headers: {} },
@@ -16,7 +19,7 @@ const customerContext = {
 };
 
 describe("transaction intake router", () => {
-  beforeEach(() => { mockedGetDb.mockReset(); mockedStoragePut.mockReset(); });
+  beforeEach(() => { mockedGetDb.mockReset(); mockedStoragePut.mockReset(); mockedVerifyCoCardCheckoutReturn.mockReset(); });
 
   it("rejects a Coming Soon or unsupported vehicle before creating a transaction", async () => {
     mockedGetDb.mockResolvedValue({} as never);
@@ -155,5 +158,26 @@ describe("transaction intake router", () => {
     await expect(caller.transactions.signNativeAgreement({ reference: "DCR-2026-NATIVE", agreementId: 71, signerName: "Transaction Customer", acknowledgesAgreement: true, electronicSignatureConsent: true })).resolves.toMatchObject({ success: true });
     expect(mockedStoragePut).toHaveBeenCalledWith(expect.stringContaining("native-signed"), expect.any(Buffer), "text/html");
     expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "agreement.native_signed", toStatus: "manual_review" }));
+  });
+
+  it("rejects a CoCard checkout return without the exact one-time DreamCarz checkout attempt", async () => {
+    const transaction = { id: 31, reference: "DCR-2026-PAYMENT", currentStep: "payment", cocardCheckoutAttemptToken: "matching-attempt-token-123456", paymentProviderTransactionId: null };
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })) } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.recordCoCardCheckoutReturn({ reference: transaction.reference, checkoutAttemptToken: "different-attempt-token-123456", gatewayTransactionId: "txn_12345" })).rejects.toThrow("does not match the current DreamCarz payment attempt");
+    expect(mockedVerifyCoCardCheckoutReturn).not.toHaveBeenCalled();
+  });
+
+  it("rejects a verified CoCard gateway transaction that is already linked to another DreamCarz record", async () => {
+    const transaction = { id: 31, reference: "DCR-2026-PAYMENT", currentStep: "payment", cocardCheckoutAttemptToken: "matching-attempt-token-123456", paymentProviderTransactionId: null };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ id: 32 }]) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.recordCoCardCheckoutReturn({ reference: transaction.reference, checkoutAttemptToken: transaction.cocardCheckoutAttemptToken, gatewayTransactionId: "txn_12345" })).rejects.toThrow("already associated with another DreamCarz request");
+    expect(mockedVerifyCoCardCheckoutReturn).not.toHaveBeenCalled();
   });
 });

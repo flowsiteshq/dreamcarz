@@ -113,7 +113,7 @@ function PaymentMethodSetupLauncher({ reference }: { reference: string }) {
       if (!response.started) { setMessage(response.message); return; }
       await loadCoCardCheckout(response.provider.checkoutScriptUrl, response.checkoutKey);
       if (!window.CollectCheckout) { setMessage("CoCard checkout could not be prepared. Please contact DreamCarz support."); return; }
-      const query = new URLSearchParams({ ref: response.reference, cocard_transaction: "(TRANSACTION_ID)", cocard_vault: "(CUSTOMER_VAULT_ID)" });
+      const query = new URLSearchParams({ ref: response.reference, cocard_attempt: response.checkoutAttemptToken, cocard_transaction: "(TRANSACTION_ID)", cocard_vault: "(CUSTOMER_VAULT_ID)" });
       const destination = `${window.location.origin}/dashboard/transactions?${query.toString()}`;
       await window.CollectCheckout.redirectToCheckout({ lineItems: [{ sku: response.productSku, quantity: 1 }], type: "auth", collectShippingInfo: false, customerVault: { addCustomer: true }, successUrl: destination, cancelUrl: `${window.location.origin}/dashboard/transactions?ref=${encodeURIComponent(response.reference)}&cocard_cancelled=true`, receipt: { showReceipt: false, redirectToSuccessUrl: false } });
     } catch (error) { setMessage(error instanceof Error ? error.message : "CoCard checkout could not be opened. Please contact DreamCarz support."); }

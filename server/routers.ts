@@ -705,14 +705,15 @@ export const appRouter = router({
         const provider = getPaymentProviderStatus();
         const blocker = cocardPaymentSetupBlocker();
         if (blocker || !provider.checkoutKey) return { started: false as const, provider, message: blocker ?? "CoCard checkout is not configured." };
+        const checkoutAttemptToken = nanoid(40);
         await db.insert(transactionConsents).values({ transactionId: transaction.id, userId: ctx.user.id, consentType: "payment_authorization", policyVersion: "cocard-collect-checkout-v1", source: "cocard_collect_checkout" });
-        await db.update(vehicleTransactions).set({ paymentProvider: "cocard_gateway", paymentStatus: "pending" }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_requested", metadata: JSON.stringify({ provider: "cocard_gateway", productSku: transaction.cocardProductSku }) });
-        return { started: true as const, provider, checkoutKey: provider.checkoutKey, productSku: transaction.cocardProductSku, reference: transaction.reference };
+        await db.update(vehicleTransactions).set({ paymentProvider: "cocard_gateway", paymentStatus: "pending", cocardCheckoutAttemptToken: checkoutAttemptToken, cocardCheckoutAttemptedAt: new Date() }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "payment.cocard_checkout_requested", metadata: JSON.stringify({ provider: "cocard_gateway", productSku: transaction.cocardProductSku, checkoutAttemptIssued: true }) });
+        return { started: true as const, provider, checkoutKey: provider.checkoutKey, productSku: transaction.cocardProductSku, reference: transaction.reference, checkoutAttemptToken };
       }),
 
     recordCoCardCheckoutReturn: protectedProcedure
-      .input(z.object({ reference: z.string().trim().min(8).max(32), gatewayTransactionId: z.string().trim().min(4).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway transaction identifier returned by CoCard."), customerVaultId: z.string().trim().min(2).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway customer-vault identifier returned by CoCard.").optional() }))
+      .input(z.object({ reference: z.string().trim().min(8).max(32), checkoutAttemptToken: z.string().trim().min(24).max(96).regex(/^[A-Za-z0-9_-]+$/, "Use the secure checkout-attempt reference returned by DreamCarz."), gatewayTransactionId: z.string().trim().min(4).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway transaction identifier returned by CoCard."), customerVaultId: z.string().trim().min(2).max(160).regex(/^[A-Za-z0-9._-]+$/, "Use the gateway customer-vault identifier returned by CoCard.").optional() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment reconciliation is temporarily unavailable." });
@@ -720,8 +721,15 @@ export const appRouter = router({
         const transaction = transactions[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (transaction.currentStep !== "payment") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction is not awaiting a payment authorization." });
+        if (!transaction.cocardCheckoutAttemptToken || transaction.cocardCheckoutAttemptToken !== input.checkoutAttemptToken) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This CoCard checkout return does not match the current DreamCarz payment attempt." });
+        }
         if (transaction.paymentProviderTransactionId && transaction.paymentProviderTransactionId !== input.gatewayTransactionId) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A different CoCard transaction is already associated with this request. DreamCarz must review it manually." });
+        }
+        const reusedGatewayTransaction = await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(eq(vehicleTransactions.paymentProviderTransactionId, input.gatewayTransactionId)).limit(1);
+        if (reusedGatewayTransaction[0] && reusedGatewayTransaction[0].id !== transaction.id) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This CoCard transaction is already associated with another DreamCarz request and requires manual review." });
         }
         const providerEventId = `cocard:return:${transaction.id}:${input.gatewayTransactionId}`;
         const duplicate = await db.select({ id: transactionEvents.id }).from(transactionEvents).where(eq(transactionEvents.providerEventId, providerEventId)).limit(1);

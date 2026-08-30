@@ -162,6 +162,13 @@
       "when": 1788039923971,
       "tag": "0022_complete_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1788046666815,
+      "tag": "0023_ordinary_annihilus",
+      "breakpoints": true
     }
   ]
 }

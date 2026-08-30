@@ -281,6 +281,8 @@ export const vehicleTransactions = mysqlTable("vehicle_transactions", {
   paymentProviderTransactionId: varchar("paymentProviderTransactionId", { length: 160 }),
   paymentProviderAuthorizationId: varchar("paymentProviderAuthorizationId", { length: 160 }),
   paymentProviderCustomerVaultId: varchar("paymentProviderCustomerVaultId", { length: 160 }),
+  cocardCheckoutAttemptToken: varchar("cocardCheckoutAttemptToken", { length: 96 }),
+  cocardCheckoutAttemptedAt: timestamp("cocardCheckoutAttemptedAt"),
   stripeCustomerId: varchar("stripeCustomerId", { length: 160 }),
   stripePaymentMethodId: varchar("stripePaymentMethodId", { length: 160 }),
   stripeSetupIntentId: varchar("stripeSetupIntentId", { length: 160 }),

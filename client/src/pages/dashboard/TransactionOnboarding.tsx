@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardShell from "@/components/DashboardShell";
+import CustomerRecordsBackoffice from "@/components/CustomerRecordsBackoffice";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, BadgeCheck, CheckCircle2, CircleAlert, ClipboardCheck, FilePenLine, Loader2, LockKeyhole, ShieldCheck, Upload, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -78,13 +79,14 @@ export default function TransactionOnboarding() {
   }, [intent, membershipPlan, reference, startTransaction, user, vehicleId]);
 
   useEffect(() => {
+    const checkoutAttemptToken = parameters.get("cocard_attempt");
     const gatewayTransactionId = parameters.get("cocard_transaction");
     const customerVaultId = parameters.get("cocard_vault") || undefined;
-    if (!user || !reference || !gatewayTransactionId || gatewayTransactionId.includes("(") || recordCoCardCheckoutReturn.isPending) return;
-    const key = `${reference}:${gatewayTransactionId}`;
+    if (!user || !reference || !checkoutAttemptToken || !gatewayTransactionId || gatewayTransactionId.includes("(") || recordCoCardCheckoutReturn.isPending) return;
+    const key = `${reference}:${checkoutAttemptToken}:${gatewayTransactionId}`;
     if (cocardReturnAttempt.current === key) return;
     cocardReturnAttempt.current = key;
-    recordCoCardCheckoutReturn.mutate({ reference, gatewayTransactionId, customerVaultId });
+    recordCoCardCheckoutReturn.mutate({ reference, checkoutAttemptToken, gatewayTransactionId, customerVaultId });
   }, [parameters, recordCoCardCheckoutReturn, reference, user]);
 
   useEffect(() => {
@@ -195,6 +197,8 @@ export default function TransactionOnboarding() {
   if (!user) return <DashboardShell title="Transaction onboarding"><div /></DashboardShell>;
 
   if (!reference && intent && vehicleId) return <DashboardShell title="Transaction onboarding"><div className="mx-auto grid max-w-2xl place-items-center py-20 text-center"><Loader2 className="h-8 w-8 animate-spin text-[#a8832d]" /><h2 className="mt-6 font-display text-3xl font-bold">Preparing your transaction</h2><p className="mt-3 max-w-md text-sm leading-6 text-gray-500">We are securely creating your saved rental or purchase path.</p>{startTransaction.error && <><p className="mt-5 max-w-md text-sm leading-6 text-red-600">{startTransaction.error.message}</p><Link href="/fleet" className="mt-5 inline-flex text-sm font-semibold underline underline-offset-4">Return to confirmed inventory</Link></>}</div></DashboardShell>;
+
+  if (!reference) return <DashboardShell title="My Records"><CustomerRecordsBackoffice /></DashboardShell>;
 
   if (!reference) {
     const records = backOfficeQuery.data;
