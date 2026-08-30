@@ -819,6 +819,21 @@ export const partnerLocations = mysqlTable("partner_locations", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Extension requests are proposals only; an approved administrator decision is required before the rental schedule changes. */
+export const rentalExtensionRequests = mysqlTable("rental_extension_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  userId: int("userId").notNull(),
+  requestedEndDate: varchar("requestedEndDate", { length: 10 }).notNull(),
+  customerNote: text("customerNote"),
+  status: mysqlEnum("status", ["pending", "approved", "declined", "canceled"]).default("pending").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedByUserId: int("reviewedByUserId"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type ReferralProfile = typeof referralProfiles.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Commission = typeof commissions.$inferSelect;

@@ -3,8 +3,8 @@ import { CarFront, MapPin, UserRound } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 export function HandoffManager() {
-  const handoffs = trpc.operations.handoffs.list.useQuery(undefined, { refetchOnWindowFocus: false });
-  const update = trpc.operations.handoffs.update.useMutation({ onSuccess: () => handoffs.refetch() });
+  const handoffs = trpc.operations.handoff.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const update = trpc.operations.handoff.update.useMutation({ onSuccess: () => handoffs.refetch() });
   const [selectedReference, setSelectedReference] = useState("");
   const [scheduledHandoffAt, setScheduledHandoffAt] = useState("");
   const [assignedDriverName, setAssignedDriverName] = useState("");

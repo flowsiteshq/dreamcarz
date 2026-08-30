@@ -49,6 +49,7 @@ import {
   communicationPreferences,
   customerNotifications,
   communicationEvents,
+  rentalExtensionRequests,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -1005,6 +1006,48 @@ export const appRouter = router({
         .where(and(eq(vehicleTransactions.userId, ctx.user.id), inArray(vehicleTransactions.status, ["ready_for_pickup", "active_rental", "return_pending", "settlement_pending"])))
         .orderBy(desc(vehicleTransactions.updatedAt));
     }),
+
+    requestRentalExtension: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        requestedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        note: z.string().trim().max(1_000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Extension requests are temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions)
+          .where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id)))
+          .limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "rental" || transaction.status !== "active_rental") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "An extension can be requested only for an active rental." });
+        }
+        const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
+        if (!schedule?.requestedEndAt || Date.parse(`${input.requestedEndDate}T12:00:00Z`) <= schedule.requestedEndAt.getTime()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an extension date after the currently requested rental end date." });
+        }
+        const existing = (await db.select({ id: rentalExtensionRequests.id }).from(rentalExtensionRequests)
+          .where(and(eq(rentalExtensionRequests.transactionId, transaction.id), eq(rentalExtensionRequests.status, "pending")))
+          .limit(1))[0];
+        if (existing) throw new TRPCError({ code: "CONFLICT", message: "DreamCarz already has a pending extension request for this rental." });
+        const inserted = await db.insert(rentalExtensionRequests).values({
+          transactionId: transaction.id,
+          userId: ctx.user.id,
+          requestedEndDate: input.requestedEndDate,
+          customerNote: input.note ?? null,
+        });
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "rental.extension_requested",
+          fromStatus: transaction.status,
+          toStatus: transaction.status,
+          metadata: JSON.stringify({ extensionRequestId: Number(inserted[0].insertId), requestedEndDate: input.requestedEndDate, hasCustomerNote: Boolean(input.note) }),
+        });
+        return { success: true, extensionRequestId: Number(inserted[0].insertId), requestedEndDate: input.requestedEndDate };
+      }),
 
     uploadConditionEvidence: protectedProcedure
       .input(z.object({
@@ -2231,7 +2274,7 @@ export const appRouter = router({
       }),
     }),
 
-    handoffs: router({
+    handoff: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
@@ -2274,6 +2317,59 @@ export const appRouter = router({
         else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "verified" ? "verified" : pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
         return { success: true, handoffStatus: input.handoffStatus };
+      }),
+    }),
+
+    rentalExtensions: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return db.select({
+          id: rentalExtensionRequests.id,
+          reference: vehicleTransactions.reference,
+          vehicleName: vehicleTransactions.vehicleName,
+          customerName: vehicleTransactions.contactName,
+          requestedEndDate: rentalExtensionRequests.requestedEndDate,
+          customerNote: rentalExtensionRequests.customerNote,
+          status: rentalExtensionRequests.status,
+          requestedAt: rentalExtensionRequests.requestedAt,
+          reviewNote: rentalExtensionRequests.reviewNote,
+        }).from(rentalExtensionRequests)
+          .innerJoin(vehicleTransactions, eq(rentalExtensionRequests.transactionId, vehicleTransactions.id))
+          .orderBy(desc(rentalExtensionRequests.requestedAt));
+      }),
+
+      review: protectedProcedure.input(z.object({
+        requestId: z.number().int().positive(),
+        decision: z.enum(["approved", "declined"]),
+        reviewNote: z.string().trim().min(2).max(1_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Extension review is temporarily unavailable." });
+        const request = (await db.select().from(rentalExtensionRequests).where(eq(rentalExtensionRequests.id, input.requestId)).limit(1))[0];
+        if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Extension request not found." });
+        if (request.status !== "pending") throw new TRPCError({ code: "CONFLICT", message: "This extension request has already been reviewed." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.id, request.transactionId)).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This extension request is not linked to a rental transaction." });
+        const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
+        if (!schedule?.requestedEndAt) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This rental has no active schedule to extend." });
+        const requestedEndAt = new Date(`${request.requestedEndDate}T12:00:00Z`);
+        if (requestedEndAt.getTime() <= schedule.requestedEndAt.getTime()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The requested extension date must be after the current schedule end date." });
+        await db.update(rentalExtensionRequests).set({ status: input.decision, reviewNote: input.reviewNote, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(rentalExtensionRequests.id, request.id));
+        if (input.decision === "approved") await db.update(transactionSchedules).set({ requestedEndAt }).where(eq(transactionSchedules.id, schedule.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "admin",
+          eventType: `rental.extension_${input.decision}`,
+          fromStatus: transaction.status,
+          toStatus: transaction.status,
+          note: input.reviewNote,
+          metadata: JSON.stringify({ extensionRequestId: request.id, requestedEndDate: request.requestedEndDate, scheduleChanged: input.decision === "approved" }),
+        });
+        return { success: true, status: input.decision, requestedEndDate: request.requestedEndDate };
       }),
     }),
 
