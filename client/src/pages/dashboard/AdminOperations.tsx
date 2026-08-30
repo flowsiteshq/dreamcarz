@@ -3,6 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { ClipboardCheck, CalendarCheck, Check, AlertTriangle, X, RefreshCw, ShieldCheck, FileText, Search, ArrowRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { TransactionQuoteManager } from "@/components/TransactionQuoteManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -111,6 +112,7 @@ export default function AdminOperations() {
           {selectedTransaction && <AdminTransactionEvidence detail={selectedTransaction} />}
           {selectedTransaction && <NativeSignatureEvidence detail={selectedTransaction} />}
           {selectedTransaction && <TransactionPricingApproval detail={selectedTransaction} />}
+          {selectedTransaction && <TransactionQuoteManager detail={selectedTransaction} />}
         </section>
 
         <NativeAgreementTemplateManager />

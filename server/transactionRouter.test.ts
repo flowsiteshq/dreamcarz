@@ -45,6 +45,14 @@ describe("transaction intake router", () => {
     })).rejects.toThrow();
   });
 
+  it("blocks customers from issuing an approved versioned transaction quote", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.operations.createTransactionQuote({
+      reference: "DCR-2026-QUOTE",
+      lines: [{ lineType: "base_rental", label: "Verified rental charge", amountCents: 10000, isConditional: false }],
+    })).rejects.toThrow("Administrator access is required");
+  });
+
   it("blocks driver-license capture until the customer gives explicit identity-document consent", async () => {
     const transaction = { id: 41, status: "verification_pending" as const, licenseStatus: "not_started" as const };
     mockedGetDb.mockResolvedValue({

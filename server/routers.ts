@@ -38,7 +38,7 @@ import {
   transactionQuoteLines,
   transactionLinks,
 } from "../drizzle/schema";
-import { eq, and, desc, inArray, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
 import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
@@ -1764,14 +1764,18 @@ export const appRouter = router({
           .where(eq(vehicleTransactions.reference, input.reference)).limit(1);
         const record = rows[0];
         if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
-        const [agreements, documents, consents, conditionReports, events] = await Promise.all([
+        const [agreements, documents, consents, conditionReports, events, schedules, quotes, links] = await Promise.all([
           db.select().from(transactionAgreements).where(eq(transactionAgreements.transactionId, record.transaction.id)).orderBy(desc(transactionAgreements.updatedAt)),
           db.select({ id: transactionDocuments.id, documentType: transactionDocuments.documentType, originalFilename: transactionDocuments.originalFilename, contentType: transactionDocuments.contentType, status: transactionDocuments.status, createdAt: transactionDocuments.createdAt }).from(transactionDocuments).where(eq(transactionDocuments.transactionId, record.transaction.id)).orderBy(desc(transactionDocuments.createdAt)),
           db.select().from(transactionConsents).where(eq(transactionConsents.transactionId, record.transaction.id)).orderBy(desc(transactionConsents.acceptedAt)),
           db.select().from(vehicleConditionReports).where(eq(vehicleConditionReports.transactionId, record.transaction.id)).orderBy(desc(vehicleConditionReports.updatedAt)),
           db.select().from(transactionEvents).where(eq(transactionEvents.transactionId, record.transaction.id)).orderBy(desc(transactionEvents.createdAt)),
+          db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, record.transaction.id)).limit(1),
+          db.select().from(transactionQuotes).where(eq(transactionQuotes.transactionId, record.transaction.id)).orderBy(desc(transactionQuotes.version)),
+          db.select().from(transactionLinks).where(or(eq(transactionLinks.sourceTransactionId, record.transaction.id), eq(transactionLinks.targetTransactionId, record.transaction.id))).orderBy(desc(transactionLinks.updatedAt)),
         ]);
-        return { ...record, agreements, documents, consents, conditionReports, events };
+        const quoteLines = quotes.length ? await db.select().from(transactionQuoteLines).where(inArray(transactionQuoteLines.transactionQuoteId, quotes.map(quote => quote.id))).orderBy(desc(transactionQuoteLines.createdAt)) : [];
+        return { ...record, agreements, documents, consents, conditionReports, events, schedule: schedules[0] ?? null, quotes: quotes.map(quote => ({ ...quote, lines: quoteLines.filter(line => line.transactionQuoteId === quote.id) })), links };
       }),
 
     updateTransactionStatus: protectedProcedure
@@ -1853,6 +1857,65 @@ export const appRouter = router({
         await db.update(vehicleTransactions).set({ pricingSnapshot: input.pricingSummary, cocardProductSku: input.cocardProductSku || null }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.approved_summary_recorded", metadata: JSON.stringify({ summaryLength: input.pricingSummary.length, cocardProductSkuRecorded: Boolean(input.cocardProductSku) }) });
         return { success: true };
+      }),
+
+    createTransactionQuote: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        currency: z.literal("USD").default("USD"),
+        validUntil: z.coerce.date().optional(),
+        cocardProductSku: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/, "Use the exact CoCard Product Manager SKU.").optional(),
+        lines: z.array(z.object({
+          lineType: z.enum(["base_rental", "membership_discount", "tax", "fee", "protection", "deposit_authorization", "credit", "purchase_price", "trade_in_credit", "down_payment", "other"]),
+          label: z.string().trim().min(2).max(160),
+          amountCents: z.number().int().min(-500_000_000).max(500_000_000),
+          isConditional: z.boolean().default(false),
+        })).min(1).max(32),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction quoting is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (!["pricing", "payment", "review"].includes(transaction.currentStep)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Quotes may be issued only after the transaction reaches pricing review." });
+        const priorQuotes = await db.select().from(transactionQuotes).where(eq(transactionQuotes.transactionId, transaction.id)).orderBy(desc(transactionQuotes.version));
+        const totalDueNowCents = input.lines.filter(line => !line.isConditional).reduce((total, line) => total + line.amountCents, 0);
+        const conditionalTotalCents = input.lines.filter(line => line.isConditional).reduce((total, line) => total + line.amountCents, 0);
+        if (priorQuotes.length) await db.update(transactionQuotes).set({ status: "superseded" }).where(and(eq(transactionQuotes.transactionId, transaction.id), inArray(transactionQuotes.status, ["draft", "approved"])));
+        const quoteVersion = (priorQuotes[0]?.version ?? 0) + 1;
+        const created = await db.insert(transactionQuotes).values({ transactionId: transaction.id, version: quoteVersion, status: "approved", currency: input.currency, totalDueNowCents, conditionalTotalCents, validUntil: input.validUntil ?? null, approvedByUserId: ctx.user.id, approvedAt: new Date() });
+        const quoteId = Number(created[0].insertId);
+        await db.insert(transactionQuoteLines).values(input.lines.map(line => ({ transactionQuoteId: quoteId, ...line })));
+        await db.update(vehicleTransactions).set({ pricingSnapshot: JSON.stringify({ quoteId, version: quoteVersion, currency: input.currency, totalDueNowCents, conditionalTotalCents, validUntil: input.validUntil?.toISOString() ?? null }), cocardProductSku: input.cocardProductSku ?? transaction.cocardProductSku }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.quote_approved", metadata: JSON.stringify({ quoteId, version: quoteVersion, totalDueNowCents, conditionalTotalCents, lineCount: input.lines.length, cocardProductSkuRecorded: Boolean(input.cocardProductSku) }) });
+        return { success: true, quoteId, version: quoteVersion, totalDueNowCents, conditionalTotalCents };
+      }),
+
+    requestLinkedTransaction: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), linkType: z.enum(["rent_to_buy", "swap"]), targetVehicleId: z.string().trim().min(4).max(96).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction requests are temporarily unavailable." });
+        const source = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
+        if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (source.transactionType !== "rental" || source.status !== "active_rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Rent-to-buy and vehicle-swap requests are available after an active rental begins." });
+        const vehicleId = input.linkType === "rent_to_buy" ? source.vehicleId : input.targetVehicleId;
+        if (!vehicleId || !isApprovedTransactionVehicle(vehicleId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a confirmed DreamCarz inventory vehicle for this request." });
+        const vehicle = APPROVED_TRANSACTION_VEHICLES[vehicleId];
+        const targetType = input.linkType === "rent_to_buy" ? "purchase" as const : "rental" as const;
+        const existingLinks = await db.select().from(transactionLinks).where(and(eq(transactionLinks.sourceTransactionId, source.id), eq(transactionLinks.linkType, input.linkType), inArray(transactionLinks.status, ["requested", "under_review", "approved"]))).limit(1);
+        if (existingLinks[0]) throw new TRPCError({ code: "CONFLICT", message: "A current request of this type already exists for this rental." });
+        const lifecycle = initialTransactionLifecycle(targetType);
+        const reference = `DC${targetType === "purchase" ? "B" : "S"}-${nanoid(10).toUpperCase()}`;
+        const created = await db.insert(vehicleTransactions).values({ reference, userId: ctx.user.id, transactionType: targetType, vehicleId, vehicleName: vehicle.vehicleName, vehicleImage: vehicle.image, membershipPlan: source.membershipPlan, ...lifecycle, status: "initiated", currentStep: targetType === "rental" ? "dates" : "profile", contactName: source.contactName, contactEmail: source.contactEmail, contactPhone: source.contactPhone, addressLine1: source.addressLine1, addressLine2: source.addressLine2, city: source.city, state: source.state, postalCode: source.postalCode, identityStatus: source.identityStatus === "verified" ? "verified" : "not_started", licenseStatus: source.licenseStatus === "verified" ? "verified" : "not_started" });
+        const targetTransactionId = Number(created[0].insertId);
+        await db.insert(transactionLinks).values({ sourceTransactionId: source.id, targetTransactionId, linkType: input.linkType, requestedByUserId: ctx.user.id });
+        await db.insert(transactionEvents).values([
+          { transactionId: source.id, actorUserId: ctx.user.id, actorType: "customer", eventType: `transaction.${input.linkType}_requested`, metadata: JSON.stringify({ targetReference: reference, targetVehicleId: vehicleId }) },
+          { transactionId: targetTransactionId, actorUserId: ctx.user.id, actorType: "customer", eventType: "transaction.linked_request_created", metadata: JSON.stringify({ sourceReference: source.reference, linkType: input.linkType }) },
+        ]);
+        return { success: true, reference, transactionType: targetType };
       }),
 
     getTransactionRecordLink: protectedProcedure
