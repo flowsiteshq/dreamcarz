@@ -2751,7 +2751,8 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
         if (!db) return [];
-        return db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
+        const passports = await db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
+        return passports.map(({ registrationDocumentKey, insuranceDocumentKey, ...passport }) => ({ ...passport, hasRegistrationDocument: Boolean(registrationDocumentKey), hasInsuranceDocument: Boolean(insuranceDocumentKey) }));
       }),
 
       operationalHistory: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive() })).query(async ({ ctx, input }) => {
@@ -2793,6 +2794,38 @@ export const appRouter = router({
         }
         const created = await db.insert(vehiclePassports).values(values);
         return { success: true, passportId: Number(created[0].insertId), updated: false };
+      }),
+
+      uploadDocument: protectedProcedure.input(z.object({
+        vehiclePassportId: z.number().int().positive(),
+        documentType: z.enum(["registration", "insurance"]),
+        filename: z.string().trim().min(1).max(180),
+        contentType: z.enum(["application/pdf", "image/jpeg", "image/png"]),
+        base64: z.string().min(40),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport documents are temporarily unavailable." });
+        const passport = (await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
+        if (!passport) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+        const bytes = Buffer.from(input.base64, "base64");
+        if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Vehicle Passport documents must be between 1 byte and 8 MB." });
+        const extension = input.contentType === "application/pdf" ? "pdf" : input.contentType === "image/png" ? "png" : "jpg";
+        const { key } = await storagePut(`vehicle-passport-documents/${passport.id}/${input.documentType}_${Date.now()}.${extension}`, bytes, input.contentType);
+        const patch = input.documentType === "registration" ? { registrationDocumentKey: key } : { insuranceDocumentKey: key };
+        await db.update(vehiclePassports).set(patch).where(eq(vehiclePassports.id, passport.id));
+        return { success: true, documentType: input.documentType } as const;
+      }),
+
+      documentUrl: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive(), documentType: z.enum(["registration", "insurance"]) })).query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport documents are temporarily unavailable." });
+        const passport = (await db.select({ id: vehiclePassports.id, registrationDocumentKey: vehiclePassports.registrationDocumentKey, insuranceDocumentKey: vehiclePassports.insuranceDocumentKey }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
+        if (!passport) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+        const key = input.documentType === "registration" ? passport.registrationDocumentKey : passport.insuranceDocumentKey;
+        if (!key) throw new TRPCError({ code: "NOT_FOUND", message: "No document has been stored for this Vehicle Passport." });
+        return { url: await storageGetSignedUrl(key) };
       }),
 
       recordInspection: protectedProcedure.input(z.object({

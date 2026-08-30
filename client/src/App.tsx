@@ -95,6 +95,7 @@ function Router() {
       <Route path="/dashboard/notifications" component={NotificationsCenter} />
       <Route path="/dashboard/dreamcarz-id" component={DreamCarzId} />
       <Route path="/dashboard/operations" component={AdminOperations} />
+      <Route path="/dashboard/admin" component={AdminOperations} />
       <Route path="/dashboard/command-center" component={CommandCenter} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

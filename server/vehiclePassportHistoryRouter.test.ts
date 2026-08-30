@@ -38,6 +38,17 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("returns document-presence indicators to administrators without exposing Vehicle Passport storage keys", async () => {
+    const listRows = [{ id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "available", registrationDocumentKey: "private/registration.pdf", insuranceDocumentKey: null, updatedAt: new Date("2026-09-02T10:00:00Z") }];
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(listRows) })) })) } as never);
+
+    const result = await appRouter.createCaller(adminContext as never).operations.vehiclePassports.list();
+
+    expect(result).toEqual([expect.objectContaining({ id: 91, hasRegistrationDocument: true, hasInsuranceDocument: false })]);
+    expect(result[0]).not.toHaveProperty("registrationDocumentKey");
+    expect(result[0]).not.toHaveProperty("insuranceDocumentKey");
+  });
+
   it("requires a reviewer note before an administrator marks an inspection as needing attention", async () => {
     const caller = appRouter.createCaller(adminContext as never);
     await expect(caller.operations.vehiclePassports.reviewInspection({ inspectionId: 12, status: "needs_attention" })).rejects.toThrow("Add a review note");
