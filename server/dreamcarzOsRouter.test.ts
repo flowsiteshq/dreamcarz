@@ -64,7 +64,12 @@ describe("DreamCarz OS foundation router", () => {
 
   it("does not allow a customer to update an operational pickup or delivery handoff", async () => {
     const caller = appRouter.createCaller(customerContext as never);
-    await expect(caller.operations.handoff.update({ reference: "DCR-2026-HANDOFF", handoffStatus: "scheduled" })).rejects.toThrow("Administrator access is required");
+    await expect(caller.operations.handoff.update({ reference: "DCR-2026-HANDOFF", handoffStatus: "scheduled" })).rejects.toThrow("Administrator access is required.");
+  });
+
+  it("does not allow a customer to create a reviewed return adjustment", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.operations.settlements.addAdjustment({ reference: "DCR-2026-RETURN", adjustmentType: "toll", amountCents: 2500, description: "Reviewed toll record" })).rejects.toThrow("Administrator access is required.");
   });
 
   it("does not allow a customer without an assigned partner role to access Fleet Partner operations", async () => {

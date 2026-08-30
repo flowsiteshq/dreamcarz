@@ -239,6 +239,13 @@
       "when": 1788087042973,
       "tag": "0033_gray_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1788087502842,
+      "tag": "0034_rich_jack_murdock",
+      "breakpoints": true
     }
   ]
 }

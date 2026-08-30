@@ -50,6 +50,8 @@ import {
   customerNotifications,
   communicationEvents,
   rentalExtensionRequests,
+  transactionSettlements,
+  transactionAdjustments,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -2370,6 +2372,88 @@ export const appRouter = router({
           metadata: JSON.stringify({ extensionRequestId: request.id, requestedEndDate: request.requestedEndDate, scheduleChanged: input.decision === "approved" }),
         });
         return { success: true, status: input.decision, requestedEndDate: request.requestedEndDate };
+      }),
+    }),
+
+    settlements: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const settlements = await db.select({
+          id: transactionSettlements.id,
+          transactionId: transactionSettlements.transactionId,
+          status: transactionSettlements.status,
+          currency: transactionSettlements.currency,
+          approvedSubtotalCents: transactionSettlements.approvedSubtotalCents,
+          depositAppliedCents: transactionSettlements.depositAppliedCents,
+          adjustmentsCents: transactionSettlements.adjustmentsCents,
+          finalAmountCents: transactionSettlements.finalAmountCents,
+          summary: transactionSettlements.summary,
+          settledAt: transactionSettlements.settledAt,
+          reference: vehicleTransactions.reference,
+          vehicleName: vehicleTransactions.vehicleName,
+          customerName: vehicleTransactions.contactName,
+        }).from(transactionSettlements).innerJoin(vehicleTransactions, eq(transactionSettlements.transactionId, vehicleTransactions.id)).orderBy(desc(transactionSettlements.updatedAt));
+        const adjustments = await db.select().from(transactionAdjustments).orderBy(desc(transactionAdjustments.createdAt));
+        return settlements.map(settlement => ({ ...settlement, adjustments: adjustments.filter(adjustment => adjustment.settlementId === settlement.id) }));
+      }),
+
+      addAdjustment: protectedProcedure.input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        adjustmentType: z.enum(["deposit", "damage", "toll", "ticket", "cleaning", "fuel_charge", "other"]),
+        amountCents: z.number().int().min(0).max(5_000_000),
+        description: z.string().trim().min(3).max(2_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Return adjustments are available only for rental transactions." });
+        const existing = (await db.select().from(transactionSettlements).where(eq(transactionSettlements.transactionId, transaction.id)).limit(1))[0];
+        const settlementId = existing?.id ?? Number((await db.insert(transactionSettlements).values({ transactionId: transaction.id, status: "under_review", summary: "Return review in progress.", reviewedByUserId: ctx.user.id }))[0].insertId);
+        const created = await db.insert(transactionAdjustments).values({ transactionId: transaction.id, settlementId, adjustmentType: input.adjustmentType, amountCents: input.amountCents, description: input.description, reviewedByUserId: ctx.user.id });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "settlement.adjustment_added", fromStatus: transaction.settlementStatus, toStatus: "pending", note: input.description, metadata: JSON.stringify({ adjustmentId: Number(created[0].insertId), adjustmentType: input.adjustmentType, amountCents: input.amountCents }) });
+        return { success: true, adjustmentId: Number(created[0].insertId) };
+      }),
+
+      reviewAdjustment: protectedProcedure.input(z.object({
+        adjustmentId: z.number().int().positive(),
+        status: z.enum(["approved", "waived", "disputed"]),
+        reviewNote: z.string().trim().min(2).max(1_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement review is temporarily unavailable." });
+        const adjustment = (await db.select().from(transactionAdjustments).where(eq(transactionAdjustments.id, input.adjustmentId)).limit(1))[0];
+        if (!adjustment) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement adjustment not found." });
+        await db.update(transactionAdjustments).set({ status: input.status, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(transactionAdjustments.id, adjustment.id));
+        await db.insert(transactionEvents).values({ transactionId: adjustment.transactionId, actorUserId: ctx.user.id, actorType: "admin", eventType: "settlement.adjustment_reviewed", fromStatus: adjustment.status, toStatus: input.status, note: input.reviewNote, metadata: JSON.stringify({ adjustmentId: adjustment.id, amountCents: adjustment.amountCents }) });
+        return { success: true, status: input.status };
+      }),
+
+      finalize: protectedProcedure.input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        approvedSubtotalCents: z.number().int().min(0).max(5_000_000),
+        depositAppliedCents: z.number().int().min(0).max(5_000_000),
+        status: z.enum(["under_review", "settled", "disputed", "waived"]),
+        summary: z.string().trim().min(3).max(4_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Final settlement is available only for rental transactions." });
+        const settlement = (await db.select().from(transactionSettlements).where(eq(transactionSettlements.transactionId, transaction.id)).limit(1))[0];
+        if (!settlement) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record an itemized adjustment or settlement review before finalizing." });
+        const adjustments = await db.select().from(transactionAdjustments).where(eq(transactionAdjustments.settlementId, settlement.id));
+        const approvedAdjustmentsCents = adjustments.filter(item => item.status === "approved").reduce((total, item) => total + item.amountCents, 0);
+        const finalAmountCents = Math.max(0, input.approvedSubtotalCents - input.depositAppliedCents + approvedAdjustmentsCents);
+        const settledAt = input.status === "settled" ? new Date() : null;
+        await db.update(transactionSettlements).set({ status: input.status, approvedSubtotalCents: input.approvedSubtotalCents, depositAppliedCents: input.depositAppliedCents, adjustmentsCents: approvedAdjustmentsCents, finalAmountCents, summary: input.summary, reviewedByUserId: ctx.user.id, settledAt }).where(eq(transactionSettlements.id, settlement.id));
+        await db.update(vehicleTransactions).set({ settlementStatus: input.status === "settled" ? "complete" : input.status === "disputed" ? "disputed" : input.status === "waived" ? "complete" : "pending" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "settlement.finalized", fromStatus: transaction.settlementStatus, toStatus: input.status, note: input.summary, metadata: JSON.stringify({ settlementId: settlement.id, approvedSubtotalCents: input.approvedSubtotalCents, depositAppliedCents: input.depositAppliedCents, approvedAdjustmentsCents, finalAmountCents, paymentAction: "not_collected" }) });
+        return { success: true, finalAmountCents, status: input.status };
       }),
     }),
 

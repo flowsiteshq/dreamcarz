@@ -10,6 +10,7 @@ import { VehicleServiceLog } from "@/components/VehicleServiceLog";
 import { HandoffManager } from "@/components/HandoffManager";
 import { PricingRuleManager } from "@/components/PricingRuleManager";
 import { RentalExtensionQueue } from "@/components/RentalExtensionQueue";
+import { SettlementManager } from "@/components/SettlementManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -132,6 +133,8 @@ export default function AdminOperations() {
         <HandoffManager />
 
         <RentalExtensionQueue />
+
+        <SettlementManager />
 
         <PricingRuleManager />
 

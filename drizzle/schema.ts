@@ -834,6 +834,39 @@ export const rentalExtensionRequests = mysqlTable("rental_extension_requests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Return settlements record reviewed accounting decisions; all payment collection remains provider-managed and separately authorized. */
+export const transactionSettlements = mysqlTable("transaction_settlements", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull().unique(),
+  status: mysqlEnum("status", ["pending", "under_review", "settled", "disputed", "waived"]).default("pending").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  approvedSubtotalCents: int("approvedSubtotalCents").default(0).notNull(),
+  depositAppliedCents: int("depositAppliedCents").default(0).notNull(),
+  adjustmentsCents: int("adjustmentsCents").default(0).notNull(),
+  finalAmountCents: int("finalAmountCents").default(0).notNull(),
+  summary: text("summary"),
+  receiptStorageKey: varchar("receiptStorageKey", { length: 512 }),
+  reviewedByUserId: int("reviewedByUserId"),
+  settledAt: timestamp("settledAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const transactionAdjustments = mysqlTable("transaction_adjustments", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull(),
+  settlementId: int("settlementId"),
+  adjustmentType: mysqlEnum("adjustmentType", ["deposit", "damage", "toll", "ticket", "cleaning", "fuel_charge", "other"]).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "waived", "disputed"]).default("pending").notNull(),
+  amountCents: int("amountCents").notNull(),
+  description: text("description").notNull(),
+  evidenceStorageKey: varchar("evidenceStorageKey", { length: 512 }),
+  reviewedByUserId: int("reviewedByUserId"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type ReferralProfile = typeof referralProfiles.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Commission = typeof commissions.$inferSelect;

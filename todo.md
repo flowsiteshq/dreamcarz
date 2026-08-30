@@ -203,6 +203,7 @@
 - [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
+- [x] Add administrator-controlled settlement records and itemized adjustments for deposits, tolls, tickets, damage, cleaning, and other reviewed return items without automatically charging customers.
 - [x] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
 - [ ] Build a role-isolated Fleet Partner portal with authorized vehicle operations, reservations, utilization, maintenance, inspections, damage, documents, performance, and payout views.
 - [x] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
