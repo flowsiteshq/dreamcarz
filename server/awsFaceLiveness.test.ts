@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAwsFaceLivenessSession, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
+import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 
 const envKeys = [
   "AWS_ACCESS_KEY_ID",
@@ -59,6 +59,18 @@ describe("AWS Face Liveness provider state", () => {
     vi.stubEnv("AWS_FACE_LIVENESS_BROWSER_ROLE_ARN", "");
 
     await expect(createAwsFaceLivenessSession({ clientRequestToken: "test-request-token" })).resolves.toMatchObject({
+      configured: false,
+      provider: { mode: "manual_review" },
+    });
+  });
+
+  it("does not issue short-lived browser credentials while the scoped browser role is unavailable", async () => {
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "dedicated-server-key");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "dedicated-server-secret");
+    vi.stubEnv("AWS_FACE_LIVENESS_ENABLED", "true");
+    vi.stubEnv("AWS_FACE_LIVENESS_BROWSER_ROLE_ARN", "");
+
+    await expect(createAwsFaceLivenessBrowserCredentials()).resolves.toMatchObject({
       configured: false,
       provider: { mode: "manual_review" },
     });

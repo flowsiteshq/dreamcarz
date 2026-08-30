@@ -3,6 +3,8 @@ import {
   GetFaceLivenessSessionResultsCommand,
   RekognitionClient,
 } from "@aws-sdk/client-rekognition";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { randomUUID } from "crypto";
 
 const DEFAULT_AWS_REGION = "us-east-1";
 
@@ -43,6 +45,43 @@ export function getAwsFaceLivenessStatus(): AwsFaceLivenessStatus {
 
 function getClient() {
   return new RekognitionClient({ region: getRegion() });
+}
+
+function getBrowserRoleArn() {
+  return process.env.AWS_FACE_LIVENESS_BROWSER_ROLE_ARN?.trim() || "";
+}
+
+/**
+ * Produces short-lived browser credentials only when the separately configured
+ * least-privilege browser role exists. The caller must never persist these
+ * credentials, and no long-term server key is returned to the browser.
+ */
+export async function createAwsFaceLivenessBrowserCredentials() {
+  const provider = getAwsFaceLivenessStatus();
+  if (!provider.configured) return { configured: false as const, provider };
+
+  const role = await new STSClient({ region: getRegion() }).send(new AssumeRoleCommand({
+    RoleArn: getBrowserRoleArn(),
+    RoleSessionName: `dreamcarz-liveness-${randomUUID().replaceAll("-", "").slice(0, 32)}`,
+    DurationSeconds: 900,
+    Policy: JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [{ Effect: "Allow", Action: "rekognition:StartFaceLivenessSession", Resource: "*" }],
+    }),
+  }));
+  if (!role.Credentials?.AccessKeyId || !role.Credentials.SecretAccessKey || !role.Credentials.SessionToken || !role.Credentials.Expiration) {
+    throw new Error("AWS did not return complete temporary Face Liveness browser credentials.");
+  }
+  return {
+    configured: true as const,
+    provider,
+    credentials: {
+      accessKeyId: role.Credentials.AccessKeyId,
+      secretAccessKey: role.Credentials.SecretAccessKey,
+      sessionToken: role.Credentials.SessionToken,
+      expiration: role.Credentials.Expiration,
+    },
+  };
 }
 
 /**
