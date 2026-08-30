@@ -52,6 +52,7 @@ const sidebarLinks = [
   { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
   { href: "/dashboard/dreamcarz-id", label: "DreamCarz ID", icon: BadgeCheck },
   { href: "/dashboard/transactions", label: "My Records", icon: FileText },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/report", label: "Report an Issue", icon: AlertTriangle },
   { href: "/dashboard/incidents", label: "Incident Center", icon: ShieldCheck },

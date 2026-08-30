@@ -151,6 +151,43 @@ export const walletLedgerEntries = mysqlTable("wallet_ledger_entries", {
   reversedAt: timestamp("reversedAt"),
 });
 
+/** Channel preferences are opt-in records; external channels stay disabled until a provider is intentionally configured. */
+export const communicationPreferences = mysqlTable("communication_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  emailEnabled: boolean("emailEnabled").default(false).notNull(),
+  smsEnabled: boolean("smsEnabled").default(false).notNull(),
+  pushEnabled: boolean("pushEnabled").default(false).notNull(),
+  transactionalInAppEnabled: boolean("transactionalInAppEnabled").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** Private, account-bound in-app notices for transactional and operational updates. */
+export const customerNotifications = mysqlTable("customer_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  category: mysqlEnum("category", ["transaction", "membership", "wallet", "vehicle", "incident", "support", "account", "other"]).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  actionPath: varchar("actionPath", { length: 512 }),
+  relatedTransactionId: int("relatedTransactionId"),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/** Delivery attempts record channel and outcome only; providers and message secrets are never stored in this table. */
+export const communicationEvents = mysqlTable("communication_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  notificationId: int("notificationId"),
+  channel: mysqlEnum("channel", ["in_app", "email", "sms", "push"]).notNull(),
+  status: mysqlEnum("status", ["queued", "delivered", "failed", "suppressed", "read"]).default("queued").notNull(),
+  providerReference: varchar("providerReference", { length: 160 }),
+  detail: varchar("detail", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── DreamCarz OS rental and purchase transaction engine ────────────────────
 
 /** Planned journey details remain outside the core transaction so saved requests can change safely. */

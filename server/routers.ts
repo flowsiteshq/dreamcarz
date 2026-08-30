@@ -46,6 +46,9 @@ import {
   vehicleIncidentRecords,
   fleetPartnerProfiles,
   fleetPartnerVehicleAssignments,
+  communicationPreferences,
+  customerNotifications,
+  communicationEvents,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -1832,6 +1835,61 @@ export const appRouter = router({
       if (!lead || (lead.associateUserId !== ctx.user.id && ctx.user.role !== "admin")) throw new TRPCError({ code: "FORBIDDEN", message: "This lead is not available to this account." });
       await db.update(associateLeads).set({ status: input.status, notes: input.notes ?? lead.notes }).where(eq(associateLeads.id, input.id));
       return { success: true };
+    }),
+  }),
+
+  communications: router({
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { preferences: null, notifications: [] };
+      const preferences = (await db.select().from(communicationPreferences).where(eq(communicationPreferences.userId, ctx.user.id)).limit(1))[0] ?? null;
+      const notifications = await db.select().from(customerNotifications).where(eq(customerNotifications.userId, ctx.user.id)).orderBy(desc(customerNotifications.createdAt)).limit(60);
+      return { preferences, notifications };
+    }),
+    updatePreferences: protectedProcedure.input(z.object({
+      emailEnabled: z.boolean(),
+      smsEnabled: z.boolean(),
+      pushEnabled: z.boolean(),
+      transactionalInAppEnabled: z.boolean(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Communication preferences are temporarily unavailable." });
+      const existing = (await db.select({ id: communicationPreferences.id }).from(communicationPreferences).where(eq(communicationPreferences.userId, ctx.user.id)).limit(1))[0];
+      if (existing) await db.update(communicationPreferences).set(input).where(eq(communicationPreferences.id, existing.id));
+      else await db.insert(communicationPreferences).values({ userId: ctx.user.id, ...input });
+      return { success: true };
+    }),
+    markRead: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Notifications are temporarily unavailable." });
+      const notification = (await db.select().from(customerNotifications).where(eq(customerNotifications.id, input.id)).limit(1))[0];
+      if (!notification || notification.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "This notification is not available to this account." });
+      if (!notification.readAt) {
+        await db.update(customerNotifications).set({ readAt: new Date() }).where(eq(customerNotifications.id, notification.id));
+        await db.insert(communicationEvents).values({ userId: ctx.user.id, notificationId: notification.id, channel: "in_app", status: "read" });
+      }
+      return { success: true };
+    }),
+    issueInApp: protectedProcedure.input(z.object({
+      userId: z.number().int().positive(),
+      category: z.enum(["transaction", "membership", "wallet", "vehicle", "incident", "support", "account", "other"]),
+      title: z.string().trim().min(2).max(180),
+      body: z.string().trim().min(2).max(4_000),
+      actionPath: z.string().trim().regex(/^\/[a-zA-Z0-9_?=&\-/.]*$/).max(512).optional(),
+      relatedTransactionId: z.number().int().positive().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Notifications are temporarily unavailable." });
+      const preference = (await db.select().from(communicationPreferences).where(eq(communicationPreferences.userId, input.userId)).limit(1))[0];
+      if (preference?.transactionalInAppEnabled === false) {
+        await db.insert(communicationEvents).values({ userId: input.userId, channel: "in_app", status: "suppressed", detail: "Customer disabled transactional in-app notices." });
+        return { success: true, suppressed: true };
+      }
+      const inserted = await db.insert(customerNotifications).values(input);
+      const notificationId = Number(inserted[0].insertId);
+      await db.insert(communicationEvents).values({ userId: input.userId, notificationId, channel: "in_app", status: "delivered" });
+      return { success: true, notificationId, suppressed: false };
     }),
   }),
 

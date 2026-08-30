@@ -84,6 +84,17 @@ describe("DreamCarz OS foundation router", () => {
     await expect(caller.associate.createLead({ contactName: "Consented Contact", contactEmail: "contact@example.test", interestType: "rental", consentToContact: true })).rejects.toThrow("Associate access is required");
   });
 
+  it("does not allow a customer to issue a private notification to another account", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.communications.issueInApp({
+      userId: 78,
+      category: "transaction",
+      title: "Transaction update",
+      body: "A private record was updated.",
+      actionPath: "/dashboard/transactions",
+    })).rejects.toThrow("Administrator access is required");
+  });
+
   it("records a wallet credit with an administrator-owned, pending ledger event rather than a silent balance edit", async () => {
     const account = { id: 9, userId: 77 };
     const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([account]) })) })) }));

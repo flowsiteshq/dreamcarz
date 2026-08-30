@@ -218,6 +218,13 @@
       "when": 1788085109774,
       "tag": "0030_flimsy_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1788085827806,
+      "tag": "0031_lean_warbound",
+      "breakpoints": true
     }
   ]
 }
