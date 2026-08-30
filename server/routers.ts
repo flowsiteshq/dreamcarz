@@ -835,10 +835,123 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) return [];
       return db
-        .select()
+        .select({
+          reference: vehicleTransactions.reference,
+          transactionType: vehicleTransactions.transactionType,
+          vehicleId: vehicleTransactions.vehicleId,
+          vehicleName: vehicleTransactions.vehicleName,
+          vehicleImage: vehicleTransactions.vehicleImage,
+          membershipPlan: vehicleTransactions.membershipPlan,
+          status: vehicleTransactions.status,
+          currentStep: vehicleTransactions.currentStep,
+          identityStatus: vehicleTransactions.identityStatus,
+          licenseStatus: vehicleTransactions.licenseStatus,
+          eligibilityStatus: vehicleTransactions.eligibilityStatus,
+          insuranceStatus: vehicleTransactions.insuranceStatus,
+          paymentStatus: vehicleTransactions.paymentStatus,
+          agreementStatus: vehicleTransactions.agreementStatus,
+          conditionStatus: vehicleTransactions.conditionStatus,
+          pickupStatus: vehicleTransactions.pickupStatus,
+          activeRentalStatus: vehicleTransactions.activeRentalStatus,
+          returnStatus: vehicleTransactions.returnStatus,
+          settlementStatus: vehicleTransactions.settlementStatus,
+          deliveryStatus: vehicleTransactions.deliveryStatus,
+          requestedStartDate: vehicleTransactions.requestedStartDate,
+          requestedEndDate: vehicleTransactions.requestedEndDate,
+          pickupLocation: vehicleTransactions.pickupLocation,
+          createdAt: vehicleTransactions.createdAt,
+          updatedAt: vehicleTransactions.updatedAt,
+        })
         .from(vehicleTransactions)
         .where(eq(vehicleTransactions.userId, ctx.user.id))
         .orderBy(desc(vehicleTransactions.updatedAt));
+    }),
+
+    activeRentalSummary: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const rental = (await db.select({
+        id: vehicleTransactions.id,
+        reference: vehicleTransactions.reference,
+        vehicleName: vehicleTransactions.vehicleName,
+        vehicleImage: vehicleTransactions.vehicleImage,
+        status: vehicleTransactions.status,
+        paymentStatus: vehicleTransactions.paymentStatus,
+        agreementStatus: vehicleTransactions.agreementStatus,
+        conditionStatus: vehicleTransactions.conditionStatus,
+        pickupStatus: vehicleTransactions.pickupStatus,
+        activeRentalStatus: vehicleTransactions.activeRentalStatus,
+        returnStatus: vehicleTransactions.returnStatus,
+        settlementStatus: vehicleTransactions.settlementStatus,
+      }).from(vehicleTransactions).where(and(
+        eq(vehicleTransactions.userId, ctx.user.id),
+        eq(vehicleTransactions.transactionType, "rental"),
+        eq(vehicleTransactions.status, "active_rental"),
+      )).orderBy(desc(vehicleTransactions.updatedAt)).limit(1))[0];
+      if (!rental) return null;
+
+      const [schedule, agreement, conditionReports, settlement] = await Promise.all([
+        db.select({
+          requestedStartAt: transactionSchedules.requestedStartAt,
+          requestedEndAt: transactionSchedules.requestedEndAt,
+          pickupMethod: transactionSchedules.pickupMethod,
+          pickupLocation: transactionSchedules.pickupLocation,
+          scheduledHandoffAt: transactionSchedules.scheduledHandoffAt,
+          handoffStatus: transactionSchedules.handoffStatus,
+        }).from(transactionSchedules).where(eq(transactionSchedules.transactionId, rental.id)).limit(1),
+        db.select({
+          status: transactionAgreements.status,
+          version: transactionAgreements.version,
+          signedAt: transactionAgreements.signedAt,
+        }).from(transactionAgreements).where(eq(transactionAgreements.transactionId, rental.id)).orderBy(desc(transactionAgreements.updatedAt)).limit(1),
+        db.select({
+          stage: vehicleConditionReports.stage,
+          status: vehicleConditionReports.status,
+          updatedAt: vehicleConditionReports.updatedAt,
+        }).from(vehicleConditionReports).where(eq(vehicleConditionReports.transactionId, rental.id)).orderBy(desc(vehicleConditionReports.updatedAt)),
+        db.select({
+          status: transactionSettlements.status,
+          updatedAt: transactionSettlements.updatedAt,
+        }).from(transactionSettlements).where(eq(transactionSettlements.transactionId, rental.id)).limit(1),
+      ]);
+
+      const safeSchedule = schedule[0] ? {
+        requestedStartAt: schedule[0].requestedStartAt,
+        requestedEndAt: schedule[0].requestedEndAt,
+        pickupMethod: schedule[0].pickupMethod,
+        pickupLocation: schedule[0].pickupLocation,
+        scheduledHandoffAt: schedule[0].scheduledHandoffAt,
+        handoffStatus: schedule[0].handoffStatus,
+      } : null;
+      const safeAgreement = agreement[0] ? {
+        status: agreement[0].status,
+        version: agreement[0].version,
+        signedAt: agreement[0].signedAt,
+      } : null;
+      const conditionForStage = (stage: "pickup" | "return") => {
+        const condition = conditionReports.find(report => report.stage === stage);
+        return condition ? { stage: condition.stage, status: condition.status, updatedAt: condition.updatedAt } : null;
+      };
+      const safeSettlement = settlement[0] ? { status: settlement[0].status, updatedAt: settlement[0].updatedAt } : null;
+      const pickupCondition = conditionForStage("pickup");
+      const returnCondition = conditionForStage("return");
+      return {
+        reference: rental.reference,
+        vehicle: { name: rental.vehicleName, image: rental.vehicleImage },
+        lifecycle: {
+          status: rental.status,
+          activeRentalStatus: rental.activeRentalStatus,
+          paymentStatus: rental.paymentStatus,
+          agreementStatus: safeAgreement?.status ?? rental.agreementStatus,
+          pickupStatus: rental.pickupStatus,
+          returnStatus: rental.returnStatus,
+          settlementStatus: safeSettlement?.status ?? rental.settlementStatus,
+        },
+        schedule: safeSchedule,
+        agreement: safeAgreement,
+        condition: { pickup: pickupCondition, return: returnCondition, overallStatus: rental.conditionStatus },
+        settlement: safeSettlement,
+      };
     }),
 
     saveRentalSchedule: protectedProcedure

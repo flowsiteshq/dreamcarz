@@ -220,4 +220,60 @@ describe("transaction intake router", () => {
     await expect(caller.transactions.recordCoCardCheckoutReturn({ reference: transaction.reference, checkoutAttemptToken: transaction.cocardCheckoutAttemptToken, gatewayTransactionId: "txn_12345" })).rejects.toThrow("already associated with another DreamCarz request");
     expect(mockedVerifyCoCardCheckoutReturn).not.toHaveBeenCalled();
   });
+
+  it("returns an account-owned active-rental status summary without provider, document, or customer-profile identifiers", async () => {
+    const rental = {
+      id: 208,
+      reference: "DCR-2026-ACTIVE",
+      vehicleName: "2024 Chevrolet Malibu · Gray",
+      vehicleImage: "https://assets.example/malibu.png",
+      status: "active_rental" as const,
+      paymentStatus: "authorized" as const,
+      agreementStatus: "signed" as const,
+      conditionStatus: "pickup_complete" as const,
+      pickupStatus: "completed" as const,
+      activeRentalStatus: "active" as const,
+      returnStatus: "pending" as const,
+      settlementStatus: "pending" as const,
+      paymentProviderTransactionId: "provider-transaction-must-not-leak",
+      paymentProviderAuthorizationId: "provider-authorization-must-not-leak",
+      contactEmail: "customer@example.com",
+    };
+    const schedule = { requestedStartAt: new Date("2026-09-01T14:00:00Z"), requestedEndAt: new Date("2026-09-05T14:00:00Z"), pickupMethod: "pickup" as const, pickupLocation: "Lanham", scheduledHandoffAt: null, handoffStatus: "completed" as const };
+    const agreement = { status: "signed" as const, version: "rental-2026.1", signedAt: new Date("2026-09-01T13:00:00Z"), signedDocumentKey: "private-key-must-not-leak" };
+    const pickupCondition = { stage: "pickup" as const, status: "reviewed" as const, updatedAt: new Date("2026-09-01T13:30:00Z"), photoKeys: "private-evidence-must-not-leak" };
+    const settlement = { status: "under_review" as const, updatedAt: new Date("2026-09-05T16:00:00Z"), finalAmountCents: 7500, summary: "private-settlement-note" };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([rental]) })) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([schedule]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([agreement]) })) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([pickupCondition]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([settlement]) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+
+    const caller = appRouter.createCaller(customerContext as never);
+    const summary = await caller.transactions.activeRentalSummary();
+
+    expect(summary).toMatchObject({
+      reference: "DCR-2026-ACTIVE",
+      vehicle: { name: "2024 Chevrolet Malibu · Gray" },
+      lifecycle: { activeRentalStatus: "active", paymentStatus: "authorized", agreementStatus: "signed" },
+      schedule: { requestedEndAt: new Date("2026-09-05T14:00:00Z"), handoffStatus: "completed" },
+      condition: { pickup: { status: "reviewed" }, return: null },
+      settlement: { status: "under_review" },
+    });
+    expect(JSON.stringify(summary)).not.toContain("provider-transaction-must-not-leak");
+    expect(JSON.stringify(summary)).not.toContain("provider-authorization-must-not-leak");
+    expect(JSON.stringify(summary)).not.toContain("private-key-must-not-leak");
+    expect(JSON.stringify(summary)).not.toContain("private-evidence-must-not-leak");
+    expect(JSON.stringify(summary)).not.toContain("private-settlement-note");
+    expect(JSON.stringify(summary)).not.toContain("customer@example.com");
+  });
+
+  it("returns no active-rental summary when the account has no matching active rental", async () => {
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) })) })) } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.activeRentalSummary()).resolves.toBeNull();
+  });
 });

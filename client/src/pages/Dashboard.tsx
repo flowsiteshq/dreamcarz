@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import DashboardShell from "@/components/DashboardShell";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { ActiveRentalOptions } from "@/components/ActiveRentalOptions";
+import { ActiveRentalSummary } from "@/components/ActiveRentalSummary";
 import { BadgeCheck } from "lucide-react";
 
 const memberActions = [
@@ -16,8 +16,6 @@ const memberActions = [
 export default function Dashboard() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Member";
-  const transactionsQuery = trpc.transactions.list.useQuery(undefined, { enabled: Boolean(user), refetchOnWindowFocus: false });
-  const activeRental = transactionsQuery.data?.find(transaction => transaction.transactionType === "rental" && transaction.status === "active_rental");
 
   return (
     <DashboardShell title={`Welcome back, ${firstName}`}>
@@ -27,7 +25,7 @@ export default function Dashboard() {
           <div className="border-l-2 border-[#a8832d] pl-5"><p className="text-sm font-semibold">Your member process</p><p className="mt-2 text-sm leading-relaxed text-gray-500">Join → Drive → Build → Use. Eligibility, availability, release, redemption, and member benefits are governed by the applicable program terms.</p></div>
         </section>
 
-        {activeRental ? <section className="grid gap-5 border border-black bg-black p-6 text-white lg:grid-cols-[1fr_auto] lg:items-center lg:p-8"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#d1ad54]">Current vehicle</p><h3 className="mt-2 font-display text-3xl font-bold tracking-[-0.04em]">{activeRental.vehicleName}</h3><p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">Your active rental remains available in one private journey for agreement records, return planning, condition reporting, support, and eligible next-step requests.</p><ActiveRentalOptions reference={activeRental.reference} /></div><Link href={`/dashboard/transactions?ref=${encodeURIComponent(activeRental.reference)}`} className="inline-flex h-11 items-center justify-center gap-2 bg-white px-5 text-sm font-semibold text-black">Manage active rental <ArrowRight size={15} /></Link></section> : null}
+        <ActiveRentalSummary />
 
         <section className="grid grid-cols-1 border-t border-gray-200 md:grid-cols-2 lg:grid-cols-4">{memberActions.map(({ icon: Icon, label, description, href, cta }) => <article key={label} className="border-b border-gray-200 py-7 md:border-r md:px-7 md:odd:border-r-0 lg:border-b-0 lg:odd:border-r lg:first:pl-0 lg:last:border-r-0"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white"><Icon size={17} /></span><h3 className="mt-5 text-lg font-bold text-black">{label}</h3><p className="mt-3 text-sm leading-relaxed text-gray-500">{description}</p><Link href={href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">{cta}<ArrowRight size={14} /></Link></article>)}</section>
 

@@ -201,6 +201,7 @@
 - [x] Require structured pickup and return evidence labels for front, rear, driver side, passenger side, interior, and odometer views before a condition report can be finalized.
 - [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
 - [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
+- [x] Expose account-owned active-rental schedule, agreement, payment, condition, and return status in My Account without displaying private provider or document data.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
 - [x] Add administrator-controlled settlement records and itemized adjustments for deposits, tolls, tickets, damage, cleaning, and other reviewed return items without automatically charging customers.
