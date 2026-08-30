@@ -1,10 +1,9 @@
 /**
- * DreamCarz AI Concierge — persistent floating prompt bar
- * Lives at the bottom of every dashboard page.
- * Answers FAQs, routes to any feature, acts as the source of truth.
+ * DreamCarz Concierge — private, account-scoped guidance.
+ * Conversation exists only in the current browser view; the server does not persist chat content.
  */
-import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, ChevronRight, Send, Minimize2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronRight, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
@@ -15,131 +14,20 @@ interface Message {
   actions?: { label: string; href: string }[];
 }
 
-// ── Knowledge base ──────────────────────────────────────────────────────────
-const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: string; href: string }[] }[] = [
-  {
-    patterns: [/dcp|dream carz point|loyalty point|point balance|how many point/i],
-    answer: "Your authorized DreamCarz wallet and recorded credits appear in DreamCarz ID. This concierge does not calculate, promise, or create credit value.",
-    actions: [{ label: "View Rewards", href: "/dashboard/rewards" }],
-  },
-  {
-    patterns: [/extend|more day|longer|keep the car/i],
-    answer: "If you have an active DreamCarz rental, open My Vehicles or contact the team to request an extension. Extensions are confirmed only after DreamCarz reviews current vehicle availability.",
-    actions: [{ label: "My Vehicles", href: "/dashboard/vehicles" }],
-  },
-  {
-    patterns: [/swap|different car|change vehicle|switch car/i],
-    answer: "A vehicle swap can be requested from an eligible active rental. DreamCarz reviews vehicle and transaction conditions before confirming any change.",
-    actions: [{ label: "My Records", href: "/dashboard/transactions" }],
-  },
-  {
-    patterns: [/upgrade|elite|pro|plus|freedom|tier|membership level/i],
-    answer: "Your active membership, when one is recorded, and its approved benefits are shown in DreamCarz ID. Vehicle eligibility and pricing remain subject to the applicable review.",
-    actions: [{ label: "View Membership", href: "/dashboard/membership" }, { label: "Call Us", href: "tel:3017722500" }],
-  },
-  {
-    patterns: [/payment|bill|charge|invoice|how much|cost|price/i],
-    answer: "DreamCarz does not display or store card data. Any vehicle quote must be approved before a secure payment step is available. Review your records for approved transaction information.",
-    actions: [{ label: "View My Records", href: "/dashboard/transactions" }],
-  },
-  {
-    patterns: [/reservation|book|reserve|upcoming|schedule/i],
-    answer: "Open Reservations to review your current requests and reservation status. DreamCarz confirms vehicle availability before a request is accepted.",
-    actions: [{ label: "View Reservations", href: "/dashboard/reservations" }],
-  },
-  {
-    patterns: [/report|issue|problem|broken|damage|crash|accident|service|repair|maintenance/i],
-    answer: "For an active rental, use the private Safety & Incident Center to document an issue and add secure evidence. If there is an emergency, contact emergency services first.",
-    actions: [{ label: "Safety & Incident Center", href: "/dashboard/incidents" }],
-  },
-  {
-    patterns: [/location|address|office|where|hours|open|close/i],
-    answer: "DreamCarz is located at **10001 Derekwood Ln, Suite 204, Lanham, MD 20706**.\n\n📅 Mon–Fri: 9am–6pm\n📅 Saturday: 9am–3pm\n📅 Sunday: Closed\n\n📞 (301) 772-2500",
-    actions: [{ label: "Get Directions", href: "/dashboard/locations" }, { label: "Call Us", href: "tel:3017722500" }],
-  },
-  {
-    patterns: [/contact|call|phone|speak|talk|help|support/i],
-    answer: "DreamCarz support is available during published business hours. Call us at **(301) 772-2500** or use the Support Center to send a request.",
-    actions: [{ label: "Support Center", href: "/dashboard/support" }, { label: "Call Now", href: "tel:3017722500" }],
-  },
-  {
-    patterns: [/credit free|credit.free|free car|no credit|without credit/i],
-    answer: "DreamCarz does not promise vehicle access or an approval outcome through this concierge. Eligibility is reviewed against the transaction and applicable requirements.",
-    actions: [{ label: "Contact Concierge", href: "/dashboard/support" }],
-  },
-  {
-    patterns: [/host|list my car|earn with my car|my car on platform/i],
-    answer: "Fleet Partner participation is subject to DreamCarz review, vehicle assignment, and separately approved operating terms. Review the partnership path to begin the conversation.",
-    actions: [{ label: "Fleet Partners", href: "/fleet-partners" }],
-  },
-  {
-    patterns: [/sign out|log out|logout|signout/i],
-    answer: "You can sign out from the **Settings** page or by tapping the sign-out icon at the bottom of the sidebar.",
-    actions: [{ label: "Settings", href: "/dashboard/settings" }],
-  },
-  {
-    patterns: [/dashboard|home|main/i],
-    answer: "Taking you back to your main dashboard overview.",
-    actions: [{ label: "Go to Dashboard", href: "/dashboard" }],
-  },
-  {
-    patterns: [/vehicle|car|fleet|garage|my car/i],
-    answer: "The current confirmed DreamCarz inventory includes four sedans—two Chevrolet Malibus, a Ford Fusion, and a Ford Taurus—and four SUVs—two Chevrolet Traverses and two Chevrolet Equinox vehicles. Open the confirmed inventory to review the exact year and color of each vehicle, then contact DreamCarz to confirm rental or sale options.",
-    actions: [{ label: "View Confirmed Inventory", href: "/fleet" }],
-  },
-  {
-    patterns: [/reward|redeem|cashback|gift|perk/i],
-    answer: "Eligible DCP may be used toward free rental days, lease and interest credits, down-payment assistance, vehicle purchase credits, service and maintenance savings, and exclusive member perks. Open Rewards to view your current options.",
-    actions: [{ label: "View Rewards", href: "/dashboard/rewards" }],
-  },
-];
-
 const suggestions = [
+  "Show my current journey",
   "How do I extend my rental?",
-  "What's my DCP balance?",
-  "How do I upgrade my membership?",
+  "How do I swap my vehicle?",
   "Report a vehicle issue",
-  "Where is the DreamCarz office?",
-  "How do I swap my car?",
+  "What inventory is confirmed?",
+  "Where is the office?",
 ];
 
-function getAIResponse(query: string, context: { membershipName?: string | null; walletCents?: number; transactionCount?: number }): { answer: string; actions?: { label: string; href: string }[] } {
-  const q = query.toLowerCase().trim();
-  if (/dcp|dream carz point|loyalty point|point balance|how many point/i.test(q)) {
-    const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((context.walletCents ?? 0) / 100);
-    return { answer: `Your currently recorded DreamCarz wallet credit is **${amount}**. This reflects the authorized ledger only and is not a promise of future credits.`, actions: [{ label: "Open DreamCarz ID", href: "/dashboard/dreamcarz-id" }] };
-  }
-  if (/upgrade|elite|pro|plus|freedom|tier|membership level/i.test(q) && context.membershipName) {
-    return { answer: `Your recorded active membership is **${context.membershipName}**. Its approved benefits are available in DreamCarz ID; vehicle access and transaction pricing still require review.`, actions: [{ label: "Open DreamCarz ID", href: "/dashboard/dreamcarz-id" }] };
-  }
-  if (/reservation|book|reserve|upcoming|schedule|transaction/i.test(q) && context.transactionCount) {
-    return { answer: `You have **${context.transactionCount}** saved vehicle ${context.transactionCount === 1 ? "journey" : "journeys"}. Open My Records to continue the appropriate one.`, actions: [{ label: "Open My Records", href: "/dashboard/transactions" }] };
-  }
-  for (const entry of knowledgeBase) {
-    if (entry.patterns.some(p => p.test(q))) {
-      return { answer: entry.answer, actions: entry.actions };
-    }
-  }
-  return {
-    answer: "I can help you find a DreamCarz workflow or route you to your authorized account records. I do not make approval, availability, pricing, payment, or payout decisions. Could you rephrase your question or choose a topic below?",
-    actions: [
-      { label: "My Vehicles", href: "/dashboard/vehicles" },
-      { label: "Support", href: "/dashboard/support" },
-    ],
-  };
-}
-
-function renderMarkdown(text: string) {
-  return text
-    .split("\n")
-    .map((line, i) => {
-      const segments = line.split(/(\*\*.*?\*\*)/g);
-      return <p key={i} className="mb-0.5 last:mb-0">{segments.map((segment, index) => segment.startsWith("**") && segment.endsWith("**") ? <strong key={index}>{segment.slice(2, -2)}</strong> : <span key={index}>{segment}</span>)}</p>;
-    });
+function renderText(text: string) {
+  return text.split("\n").map((line, index) => <p key={index} className="mb-1 last:mb-0">{line}</p>);
 }
 
 export default function AIConcierge() {
-  const overview = trpc.dreamcarzId.overview.useQuery(undefined, { retry: false, refetchOnWindowFocus: false });
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -147,176 +35,105 @@ export default function AIConcierge() {
     {
       id: "welcome",
       role: "ai",
-      text: "Hi! I can route you to DreamCarz workflows and summarize only the account information you are authorized to view. I cannot approve a vehicle, quote a price, or make a payment decision.",
+      text: "I can use your authorized DreamCarz membership and journey status, plus confirmed inventory, to guide you to the right next step. I do not store this chat or make availability, eligibility, price, payment, legal, or release decisions.",
       actions: [
-        { label: "My Vehicles", href: "/dashboard/vehicles" },
-        { label: "Rewards", href: "/dashboard/rewards" },
+        { label: "My Records", href: "/dashboard/transactions" },
         { label: "Support", href: "/dashboard/support" },
       ],
     },
   ]);
-  const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
+  const guidance = trpc.concierge.guide.useMutation();
 
   useEffect(() => {
     if (open && !minimized) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-      setTimeout(() => inputRef.current?.focus(), 200);
+      window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+      window.setTimeout(() => inputRef.current?.focus(), 160);
     }
-  }, [open, minimized, messages]);
+  }, [open, minimized, messages, guidance.isPending]);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: "user", text: text.trim() };
-    setMessages(prev => [...prev, userMsg]);
+  const sendMessage = async (question: string) => {
+    const text = question.trim();
+    if (!text || guidance.isPending) return;
+    setMessages(previous => [...previous, { id: `${Date.now()}-user`, role: "user", text }]);
     setInput("");
-    setTyping(true);
-    setTimeout(() => {
-      const response = getAIResponse(text, {
-        membershipName: overview.data?.membership?.plan.name,
-        walletCents: overview.data?.wallet?.availableCreditCents,
-        transactionCount: overview.data?.transactions.length,
-      });
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+    try {
+      const response = await guidance.mutateAsync({ question: text });
+      setMessages(previous => [...previous, { id: `${Date.now()}-guide`, role: "ai", text: response.answer, actions: response.actions }]);
+    } catch {
+      setMessages(previous => [...previous, {
+        id: `${Date.now()}-unavailable`,
         role: "ai",
-        text: response.answer,
-        actions: response.actions,
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      setTyping(false);
-    }, 700);
+        text: "DreamCarz guidance is temporarily unavailable. For an urgent vehicle issue or a decision that requires staff review, please use Support or the Safety & Incident Center.",
+        actions: [{ label: "Support", href: "/dashboard/support" }, { label: "Safety & Incident Center", href: "/dashboard/incidents" }],
+      }]);
+    }
   };
 
   const handleAction = (href: string) => {
     if (href.startsWith("tel:") || href.startsWith("mailto:")) {
       window.location.href = href;
-    } else {
-      navigate(href);
-      setMinimized(true);
+      return;
     }
+    navigate(href);
+    setMinimized(true);
   };
 
   return (
     <>
-      {/* Floating pill trigger */}
       {!open && (
         <button
+          type="button"
           onClick={() => { setOpen(true); setMinimized(false); }}
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-3 bg-black text-white rounded-full shadow-lg hover:bg-gray-900 transition-all duration-200 active:scale-95"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-black px-4 py-3 text-white shadow-lg transition-transform duration-200 active:scale-95"
           style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}
         >
-          <Sparkles size={15} className="text-yellow-400" />
+          <Sparkles size={15} className="text-[#d0a73a]" />
           <span className="text-[13px] font-semibold">Ask DreamCarz</span>
         </button>
       )}
 
-      {/* Chat panel */}
       {open && (
-        <div
-          className={`fixed z-50 bg-white rounded-3xl shadow-2xl transition-all duration-300 ${minimized ? "bottom-5 right-5 w-auto" : "bottom-5 right-5 w-[340px] sm:w-[380px]"}`}
-          style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)", maxHeight: minimized ? "auto" : "70vh" }}
-        >
+        <div className={`fixed bottom-5 right-5 z-50 rounded-3xl bg-white shadow-2xl transition-all duration-300 ${minimized ? "w-auto" : "w-[340px] sm:w-[380px]"}`} style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)", maxHeight: minimized ? "auto" : "70vh" }}>
           {minimized ? (
-            /* Minimized pill */
-            <button
-              onClick={() => setMinimized(false)}
-              className="flex items-center gap-2 px-4 py-3 bg-black text-white rounded-full hover:bg-gray-900 transition-colors active:scale-95"
-            >
-              <Sparkles size={15} className="text-yellow-400" />
+            <button type="button" onClick={() => setMinimized(false)} className="flex items-center gap-2 rounded-full bg-black px-4 py-3 text-white transition-transform duration-200 active:scale-95">
+              <Sparkles size={15} className="text-[#d0a73a]" />
               <span className="text-[13px] font-semibold">Ask DreamCarz</span>
-              <div className="w-2 h-2 rounded-full bg-green-400 ml-1" />
             </button>
           ) : (
             <div className="flex flex-col" style={{ maxHeight: "70vh" }}>
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+              <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center">
-                    <Sparkles size={13} className="text-yellow-400" />
-                  </div>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black"><Sparkles size={13} className="text-[#d0a73a]" /></div>
                   <div>
                     <p className="text-[13px] font-bold text-black">DreamCarz Concierge</p>
-                    <p className="text-[10px] text-green-500 font-medium">● Online</p>
+                    <p className="text-[10px] font-medium text-gray-500">Private live-record guidance</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setMinimized(true)} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-                    <Minimize2 size={14} className="text-gray-400" />
-                  </button>
-                  <button onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-                    <X size={14} className="text-gray-400" />
-                  </button>
+                  <button type="button" aria-label="Minimize DreamCarz Concierge" onClick={() => setMinimized(true)} className="rounded-full p-1.5 transition-colors hover:bg-gray-100"><Minimize2 size={14} className="text-gray-400" /></button>
+                  <button type="button" aria-label="Close DreamCarz Concierge" onClick={() => setOpen(false)} className="rounded-full p-1.5 transition-colors hover:bg-gray-100"><X size={14} className="text-gray-400" /></button>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
-                {messages.map(msg => (
-                  <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] ${msg.role === "user" ? "bg-black text-white rounded-2xl rounded-br-sm" : "bg-gray-50 text-black rounded-2xl rounded-bl-sm border border-gray-100"} px-3.5 py-2.5`}>
-                      <div className="text-[12px] leading-relaxed">
-                        {renderMarkdown(msg.text)}
-                      </div>
-                      {msg.actions && msg.actions.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {msg.actions.map((a, i) => (
-                            <button key={i} onClick={() => handleAction(a.href)}
-                              className="flex items-center gap-1 px-2.5 py-1 bg-black text-white text-[10px] font-semibold rounded-full hover:bg-gray-800 transition-colors">
-                              {a.label} <ChevronRight size={9} />
-                            </button>
-                          ))}
-                        </div>
-                      )}
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                {messages.map(message => (
+                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] px-3.5 py-2.5 text-[12px] leading-relaxed ${message.role === "user" ? "rounded-2xl rounded-br-sm bg-black text-white" : "rounded-2xl rounded-bl-sm border border-gray-100 bg-[#faf9f6] text-black"}`}>
+                      {renderText(message.text)}
+                      {message.actions?.length ? <div className="mt-2 flex flex-wrap gap-1.5">{message.actions.map(action => <button key={action.href} type="button" onClick={() => handleAction(action.href)} className="flex items-center gap-1 rounded-full bg-black px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-gray-800">{action.label} <ChevronRight size={9} /></button>)}</div> : null}
                     </div>
                   </div>
                 ))}
-                {typing && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-50 border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
-                      {[0, 1, 2].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {guidance.isPending ? <div className="flex justify-start"><div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-gray-100 bg-[#faf9f6] px-4 py-3"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" /><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" /><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gray-400" /></div></div> : null}
                 <div ref={bottomRef} />
               </div>
 
-              {/* Suggestions */}
-              {messages.length <= 2 && (
-                <div className="px-4 pb-2 flex-shrink-0">
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                    {suggestions.map((s, i) => (
-                      <button key={i} onClick={() => sendMessage(s)}
-                        className="flex-shrink-0 px-3 py-1.5 bg-gray-100 text-black text-[10px] font-medium rounded-full hover:bg-gray-200 transition-colors whitespace-nowrap">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {messages.length <= 2 ? <div className="flex-shrink-0 px-4 pb-2"><div className="flex gap-1.5 overflow-x-auto pb-1">{suggestions.map(suggestion => <button key={suggestion} type="button" onClick={() => void sendMessage(suggestion)} disabled={guidance.isPending} className="flex-shrink-0 rounded-full bg-gray-100 px-3 py-1.5 text-[10px] font-medium text-black transition-colors hover:bg-gray-200 disabled:opacity-50">{suggestion}</button>)}</div></div> : null}
 
-              {/* Input */}
-              <div className="px-4 pb-4 flex-shrink-0">
-                <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-3 py-2 border border-gray-100 focus-within:border-gray-300 transition-colors">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") sendMessage(input); }}
-                    placeholder="Ask anything about DreamCarz..."
-                    className="flex-1 bg-transparent text-[13px] text-black placeholder-gray-300 outline-none"
-                  />
-                  <button onClick={() => sendMessage(input)} disabled={!input.trim()}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${input.trim() ? "bg-black hover:bg-gray-800" : "bg-gray-200"}`}>
-                    <Send size={12} className={input.trim() ? "text-white" : "text-gray-400"} />
-                  </button>
-                </div>
-              </div>
+              <div className="flex-shrink-0 px-4 pb-4"><p className="mb-2 text-[10px] leading-4 text-gray-400">Guidance only. Staff review controls availability, eligibility, pricing, payment, agreements, and vehicle release.</p><div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-[#faf9f6] px-3 py-2 focus-within:border-gray-300"><input ref={inputRef} value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void sendMessage(input); }} placeholder="Ask about your DreamCarz journey..." className="flex-1 bg-transparent text-[13px] text-black outline-none placeholder:text-gray-300" maxLength={800} /><button type="button" aria-label="Send DreamCarz question" onClick={() => void sendMessage(input)} disabled={!input.trim() || guidance.isPending} className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-colors ${input.trim() && !guidance.isPending ? "bg-black hover:bg-gray-800" : "bg-gray-200"}`}><Send size={12} className={input.trim() && !guidance.isPending ? "text-white" : "text-gray-400"} /></button></div></div>
             </div>
           )}
         </div>

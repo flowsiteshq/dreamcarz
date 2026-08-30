@@ -145,9 +145,9 @@ describe("DreamCarz ecosystem process content", () => {
   it("keeps the concierge free of static account, payment, response-time, and payout claims", () => {
     const concierge = source("client/src/components/AIConcierge.tsx");
 
-    expect(concierge).toContain("trpc.dreamcarzId.overview.useQuery");
-    expect(concierge).toContain("currently recorded DreamCarz wallet credit");
-    expect(concierge).toContain("I do not make approval, availability, pricing, payment, or payout decisions");
+    expect(concierge).toContain("trpc.concierge.guide.useMutation");
+    expect(concierge).toContain("Private live-record guidance");
+    expect(concierge).toContain("Guidance only. Staff review controls availability");
     expect(concierge).not.toContain("renewing Jun 28, 2026");
     expect(concierge).not.toContain("$99.95/month");
     expect(concierge).not.toContain("within 2 hours");

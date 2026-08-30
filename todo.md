@@ -228,7 +228,8 @@
 - [x] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
 - [x] Add automatic opt-out-aware in-app notices for rental extension, handoff, and settlement decisions while leaving email, SMS, and push unconfigured.
-- [ ] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.
+- [x] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.
+- [x] Add an account-scoped DreamCarz concierge guidance endpoint that uses only safe membership, transaction-status, and confirmed-inventory context without storing chat content.
 - [x] Remove static concierge account balances, membership prices, renewal dates, response-time promises, reward outcomes, and payout claims before exposing authorized live-data guidance.
 - [x] Replace static authenticated member-tier and membership-tenure labels with authorized live DreamCarz ID membership data or a neutral incomplete-profile state.
 - [ ] Apply active membership benefits to authorized transaction eligibility, pricing, deposits, credits, delivery benefits, and upgrade rules after approved benefit configurations are defined.

@@ -70,6 +70,7 @@ import { canMemberCancelReservation, hasValidReservationDateRange } from "../sha
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
+import { invokeLLM, listLLMModels } from "./_core/llm";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
@@ -180,6 +181,82 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       ctx.res.clearCookie(DIRECT_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
+    }),
+  }),
+
+  concierge: router({
+    guide: protectedProcedure.input(z.object({ question: z.string().trim().min(2).max(800) })).mutation(async ({ ctx, input }) => {
+      const guidanceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "concierge_guidance", String(ctx.user.id)), limit: 18, windowMs: 60 * 60 * 1000 });
+      if (!guidanceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before asking DreamCarz Concierge another question." });
+
+      const actionMap = {
+        inventory: { label: "Confirmed inventory", href: "/fleet" },
+        transactions: { label: "My Records", href: "/dashboard/transactions" },
+        vehicles: { label: "My Vehicles", href: "/dashboard/vehicles" },
+        membership: { label: "DreamCarz ID", href: "/dashboard/dreamcarz-id" },
+        reservations: { label: "Reservations", href: "/dashboard/reservations" },
+        incidents: { label: "Safety & Incident Center", href: "/dashboard/incidents" },
+        support: { label: "Support", href: "/dashboard/support" },
+        call: { label: "Call DreamCarz", href: "tel:3017722500" },
+      } as const;
+      type ActionId = keyof typeof actionMap;
+      const actionIds = Object.keys(actionMap) as ActionId[];
+      const fallback = {
+        answer: "I can guide you to your current DreamCarz records, confirmed inventory, or support. I cannot approve a vehicle, confirm availability, quote a price, make a payment decision, or provide legal or eligibility determinations.",
+        actions: [actionMap.transactions, actionMap.support],
+        source: "fallback" as const,
+      };
+
+      const db = await getDb();
+      if (!db) return fallback;
+      const [membership, transactions] = await Promise.all([
+        db.select({ planName: membershipPlans.name, status: customerMemberships.status, endsAt: customerMemberships.endsAt }).from(customerMemberships).innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id)).where(eq(customerMemberships.userId, ctx.user.id)).orderBy(desc(customerMemberships.updatedAt)).limit(1),
+        db.select({ transactionType: vehicleTransactions.transactionType, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, currentStep: vehicleTransactions.currentStep, agreementStatus: vehicleTransactions.agreementStatus, paymentStatus: vehicleTransactions.paymentStatus, pickupStatus: vehicleTransactions.pickupStatus, returnStatus: vehicleTransactions.returnStatus, settlementStatus: vehicleTransactions.settlementStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(eq(vehicleTransactions.userId, ctx.user.id)).orderBy(desc(vehicleTransactions.updatedAt)).limit(6),
+      ]);
+      const recordContext = {
+        activeMembership: membership[0] ? { planName: membership[0].planName, status: membership[0].status, endsAt: membership[0].endsAt?.toISOString() ?? null } : null,
+        recentTransactionStatuses: transactions.map(transaction => ({ type: transaction.transactionType, vehicle: transaction.vehicleName, status: transaction.status, step: transaction.currentStep, agreement: transaction.agreementStatus, payment: transaction.paymentStatus, pickup: transaction.pickupStatus, return: transaction.returnStatus, settlement: transaction.settlementStatus })),
+        confirmedInventory: Object.values(APPROVED_TRANSACTION_VEHICLES).map(vehicle => vehicle.vehicleName),
+        publishedOffice: { address: "10001 Derekwood Ln, Suite 204, Lanham, MD 20706", phone: "(301) 772-2500", hours: "Monday–Friday 9:00 AM–6:00 PM; Saturday 9:00 AM–3:00 PM; Sunday closed" },
+      };
+
+      try {
+        const { data: models } = await listLLMModels();
+        const model = models.find(candidate => candidate.id === "gpt-5-mini")?.id ?? models.find(candidate => candidate.id.startsWith("gpt-5"))?.id;
+        const response = await invokeLLM({
+          model,
+          maxTokens: 700,
+          messages: [
+            { role: "system", content: "You are DreamCarz Concierge. Answer only from the RECORDS_CONTEXT supplied by the application. Do not invent information or use knowledge outside it. Never promise or decide availability, eligibility, financing, pricing, deposits, payment, insurance, contracts, legal outcomes, compensation, timing, or vehicle release. Do not request or repeat card data, license numbers, government ID, full address, or biometric information. For immediate danger or an accident, tell the member to contact emergency services first when appropriate and direct them to the Safety & Incident Center. Do not claim you are a human or that chat is monitored. Keep answer under 550 characters and make it clear when staff review is required." },
+            { role: "user", content: `QUESTION: ${input.question}\n\nRECORDS_CONTEXT: ${JSON.stringify(recordContext)}\n\nReturn structured guidance.` },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "dreamcarz_guidance",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  answer: { type: "string" },
+                  actionIds: { type: "array", items: { type: "string", enum: actionIds }, maxItems: 2 },
+                },
+                required: ["answer", "actionIds"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const content = response.choices[0]?.message.content;
+        const parsed = typeof content === "string" ? JSON.parse(content) as { answer?: unknown; actionIds?: unknown } : null;
+        const answer = typeof parsed?.answer === "string" ? parsed.answer.trim().slice(0, 550) : "";
+        const selectedActionIds = Array.isArray(parsed?.actionIds) ? parsed.actionIds.filter((id): id is ActionId => typeof id === "string" && actionIds.includes(id as ActionId)).slice(0, 2) : [];
+        if (!answer) return fallback;
+        return { answer, actions: selectedActionIds.map(id => actionMap[id]), source: "live_guidance" as const };
+      } catch (error) {
+        console.warn("[DreamCarz Concierge] Guidance unavailable", error instanceof Error ? error.message : "unknown error");
+        return fallback;
+      }
     }),
   }),
 
