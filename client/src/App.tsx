@@ -40,6 +40,7 @@ import DreamCarzId from "./pages/dashboard/DreamCarzId";
 import IncidentCenter from "./pages/dashboard/IncidentCenter";
 import FleetPartnerPortal from "./pages/dashboard/FleetPartnerPortal";
 import AssociatePortal from "./pages/dashboard/AssociatePortal";
+import CommandCenter from "./pages/dashboard/CommandCenter";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -90,6 +91,7 @@ function Router() {
       <Route path="/dashboard/transactions" component={TransactionOnboarding} />
       <Route path="/dashboard/dreamcarz-id" component={DreamCarzId} />
       <Route path="/dashboard/operations" component={AdminOperations} />
+      <Route path="/dashboard/command-center" component={CommandCenter} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

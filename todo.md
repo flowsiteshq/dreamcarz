@@ -208,8 +208,9 @@
 - [ ] Capture a validated Associate referral code at new-account registration and preserve the attribution without allowing self-referrals or arbitrary reassignment.
 - [ ] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.
 - [ ] Add a discoverable Associate Path navigation entry for authorized Associate and administrator accounts without exposing it to ordinary customers.
+- [ ] Correct DreamCarz ID role data so authorized Associate, Fleet Partner, and administrator sidebar entries render after the role-isolation check.
 - [x] Remove or qualify unsupported public Associate commission, earnings, eligibility, and expansion claims before exposing the role-isolated portal.
-- [ ] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
+- [x] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [ ] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
 - [ ] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.

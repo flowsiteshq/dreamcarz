@@ -188,7 +188,7 @@ export const appRouter = router({
       const profile = profiles[0] ?? null;
       return {
         profile,
-        roles: activeRoles.map(record => record.role),
+        roles: effectiveDreamCarzRoles(ctx.user.role, activeRoles.map(record => record.role)),
         membership: membership ? { ...membership.membership, plan: membership.plan, benefits } : null,
         wallet: wallet ? { account: wallet, ...walletSummary, entries: ledgerEntries } : null,
         transactions,
@@ -1864,6 +1864,47 @@ export const appRouter = router({
       })));
 
       return { applications, reservations, serviceReports: serviceReportsWithHistory };
+    }),
+
+    commandCenter: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Command Center data is temporarily unavailable." });
+      const [passports, transactions, incidents, maintenance, inspections, schedules] = await Promise.all([
+        db.select({ id: vehiclePassports.id, readinessStatus: vehiclePassports.readinessStatus }).from(vehiclePassports),
+        db.select({ id: vehicleTransactions.id, reference: vehicleTransactions.reference, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, currentStep: vehicleTransactions.currentStep, transactionType: vehicleTransactions.transactionType, paymentStatus: vehicleTransactions.paymentStatus, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).orderBy(desc(vehicleTransactions.updatedAt)),
+        db.select({ id: vehicleIncidentRecords.id, status: vehicleIncidentRecords.status, severity: vehicleIncidentRecords.severity }).from(vehicleIncidentRecords),
+        db.select({ id: vehicleMaintenanceRecords.id, status: vehicleMaintenanceRecords.status }).from(vehicleMaintenanceRecords),
+        db.select({ id: vehicleOperationalInspections.id, status: vehicleOperationalInspections.status }).from(vehicleOperationalInspections),
+        db.select({ id: transactionSchedules.id, handoffStatus: transactionSchedules.handoffStatus }).from(transactionSchedules),
+      ]);
+      const count = <T,>(records: T[], predicate: (record: T) => boolean) => records.filter(predicate).length;
+      const openIncidents = count(incidents, item => !["resolved", "closed"].includes(item.status));
+      const openMaintenance = count(maintenance, item => !["completed", "canceled"].includes(item.status));
+      const pendingInspections = count(inspections, item => ["draft", "submitted", "needs_attention"].includes(item.status));
+      const manualExceptions = count(transactions, item => ["manual_review", "verification_pending", "eligibility_review", "payment_pending", "settlement_pending"].includes(item.status));
+      return {
+        fleet: {
+          total: passports.length,
+          available: count(passports, item => item.readinessStatus === "available"),
+          activeRental: count(passports, item => item.readinessStatus === "active_rental"),
+          requiresAttention: count(passports, item => ["inspection_due", "maintenance_due", "out_of_service"].includes(item.readinessStatus)),
+        },
+        transactions: {
+          total: transactions.length,
+          activeRentals: count(transactions, item => item.status === "active_rental"),
+          manualExceptions,
+          pendingPayments: count(transactions, item => item.paymentStatus === "pending"),
+        },
+        operations: {
+          openIncidents,
+          urgentIncidents: count(incidents, item => item.severity === "urgent" || item.severity === "emergency"),
+          openMaintenance,
+          pendingInspections,
+          scheduledHandoffs: count(schedules, item => item.handoffStatus === "scheduled"),
+        },
+        recentTransactions: transactions.slice(0, 8),
+      };
     }),
 
     transactionConsole: protectedProcedure

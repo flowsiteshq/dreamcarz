@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle, FileText,
-  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck, BadgeCheck
+  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck, BadgeCheck, Gauge
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -273,6 +273,12 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const tier = membershipName ?? "DreamCarz ID";
   const tierGradient = membershipName ? (tierColors[membershipName] || tierColors.Pro) : "linear-gradient(90deg, #111, #4b4030)";
   const headerStatus = membershipName ? `${membershipName} member` : `Profile ${profileStatus.replaceAll("_", " ")}`;
+  const operatingRoles = dreamcarzId.data?.roles ?? [];
+  const operatingLinks = [
+    ...(operatingRoles.includes("associate") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/associate", label: "Associate Workspace", icon: Network }] : []),
+    ...(operatingRoles.includes("fleet_partner") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/fleet-partner", label: "Fleet Partner Portal", icon: Car }] : []),
+    ...(user?.role === "admin" ? [{ href: "/dashboard/command-center", label: "Command Center", icon: Gauge }, { href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : []),
+  ];
 
   if (loading) {
     return (
@@ -307,7 +313,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
           <img src="/manus-storage/logo-dark-wordmark-crop_bb978492.png" alt="DREAMCARZ" className="h-[12px] w-auto object-contain" />
         </div>
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          {[...sidebarLinks, ...(user?.role === "admin" ? [{ href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : [])].map((link) => {
+          {[...sidebarLinks, ...operatingLinks].map((link) => {
             const Icon = link.icon;
             const active = location === link.href;
             return (
