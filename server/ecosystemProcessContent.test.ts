@@ -142,6 +142,18 @@ describe("DreamCarz ecosystem process content", () => {
     expect(fleet).toContain('access: "elite"');
   });
 
+  it("keeps the concierge free of static account, payment, response-time, and payout claims", () => {
+    const concierge = source("client/src/components/AIConcierge.tsx");
+
+    expect(concierge).toContain("trpc.dreamcarzId.overview.useQuery");
+    expect(concierge).toContain("currently recorded DreamCarz wallet credit");
+    expect(concierge).toContain("I do not make approval, availability, pricing, payment, or payout decisions");
+    expect(concierge).not.toContain("renewing Jun 28, 2026");
+    expect(concierge).not.toContain("$99.95/month");
+    expect(concierge).not.toContain("within 2 hours");
+    expect(concierge).not.toContain("dangerouslySetInnerHTML");
+  });
+
   it("labels the in-app business area as the Associate Path and preserves compliant guidance", () => {
     const shell = source("client/src/components/DashboardShell.tsx");
     const associateHub = source("client/src/pages/dashboard/DriveNetwork.tsx");

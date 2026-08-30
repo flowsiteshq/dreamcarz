@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, X, ChevronRight, Send, Minimize2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 interface Message {
   id: string;
@@ -18,7 +19,7 @@ interface Message {
 const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: string; href: string }[] }[] = [
   {
     patterns: [/dcp|dream carz point|loyalty point|point balance|how many point/i],
-    answer: "DCP (Dream Carz Points) are earned on qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful member referrals, and anniversary activity. Eligible DCP may be redeemed for rewards such as free rental days, lease and interest credits, down-payment assistance, purchase credits, service savings, and member perks.",
+    answer: "Your authorized DreamCarz wallet and recorded credits appear in DreamCarz ID. This concierge does not calculate, promise, or create credit value.",
     actions: [{ label: "View Rewards", href: "/dashboard/rewards" }],
   },
   {
@@ -28,18 +29,18 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/swap|different car|change vehicle|switch car/i],
-    answer: "You can request a vehicle swap from My Vehicles. Tap **Manage → Swap Vehicle** and our concierge team will contact you within 2 hours to arrange the swap.",
-    actions: [{ label: "My Vehicles", href: "/dashboard/vehicles" }],
+    answer: "A vehicle swap can be requested from an eligible active rental. DreamCarz reviews vehicle and transaction conditions before confirming any change.",
+    actions: [{ label: "My Records", href: "/dashboard/transactions" }],
   },
   {
     patterns: [/upgrade|elite|pro|plus|freedom|tier|membership level/i],
-    answer: "DreamCarz starts with **Freedom at $39.95/month** — cancel anytime. Freedom includes DCP on qualifying activity, roadside assistance, Hassle Free member pricing, and Credit Free access that starts day 1 for qualifying members. Plus, Pro, and Elite provide additional DCP and access benefits.",
+    answer: "Your active membership, when one is recorded, and its approved benefits are shown in DreamCarz ID. Vehicle eligibility and pricing remain subject to the applicable review.",
     actions: [{ label: "View Membership", href: "/dashboard/membership" }, { label: "Call Us", href: "tel:3017722500" }],
   },
   {
     patterns: [/payment|bill|charge|invoice|how much|cost|price/i],
-    answer: "Your current plan is **Pro Member at $99.95/month**, renewing Jun 28, 2026. You can view all past payments, invoices, and your payment method on the Payments page.",
-    actions: [{ label: "View Payments", href: "/dashboard/payments" }],
+    answer: "DreamCarz does not display or store card data. Any vehicle quote must be approved before a secure payment step is available. Review your records for approved transaction information.",
+    actions: [{ label: "View My Records", href: "/dashboard/transactions" }],
   },
   {
     patterns: [/reservation|book|reserve|upcoming|schedule/i],
@@ -48,8 +49,8 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/report|issue|problem|broken|damage|crash|accident|service|repair|maintenance/i],
-    answer: "You can report any vehicle issue — from a flat tire to an accident — through our Tesla-style Service Center. Choose the issue type, describe the problem, attach photos, and we'll respond within 2 hours.",
-    actions: [{ label: "Report an Issue", href: "/dashboard/report" }],
+    answer: "For an active rental, use the private Safety & Incident Center to document an issue and add secure evidence. If there is an emergency, contact emergency services first.",
+    actions: [{ label: "Safety & Incident Center", href: "/dashboard/incidents" }],
   },
   {
     patterns: [/location|address|office|where|hours|open|close/i],
@@ -58,18 +59,18 @@ const knowledgeBase: { patterns: RegExp[]; answer: string; actions?: { label: st
   },
   {
     patterns: [/contact|call|phone|speak|talk|help|support/i],
-    answer: "Our concierge team is available Mon–Fri 9am–6pm and Sat 9am–3pm. Call us at **(301) 772-2500** or submit a support message and we'll respond within 2 hours.",
+    answer: "DreamCarz support is available during published business hours. Call us at **(301) 772-2500** or use the Support Center to send a request.",
     actions: [{ label: "Support Center", href: "/dashboard/support" }, { label: "Call Now", href: "tel:3017722500" }],
   },
   {
     patterns: [/credit free|credit.free|free car|no credit|without credit/i],
-    answer: "**Credit Free** starts day 1 for qualifying members and may provide access without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors. Ask our team to review your eligibility.",
+    answer: "DreamCarz does not promise vehicle access or an approval outcome through this concierge. Eligibility is reviewed against the transaction and applicable requirements.",
     actions: [{ label: "Contact Concierge", href: "/dashboard/support" }],
   },
   {
     patterns: [/host|list my car|earn with my car|my car on platform/i],
-    answer: "The **DreamCarz Host Program** lets you own, list, and earn. List your vehicle on the platform, connect with DreamCarz members as potential customers, earn qualifying transaction payouts, and build toward responsible fleet growth.",
-    actions: [{ label: "Learn About Hosting", href: "/dashboard/support" }],
+    answer: "Fleet Partner participation is subject to DreamCarz review, vehicle assignment, and separately approved operating terms. Review the partnership path to begin the conversation.",
+    actions: [{ label: "Fleet Partners", href: "/fleet-partners" }],
   },
   {
     patterns: [/sign out|log out|logout|signout/i],
@@ -102,15 +103,25 @@ const suggestions = [
   "How do I swap my car?",
 ];
 
-function getAIResponse(query: string): { answer: string; actions?: { label: string; href: string }[] } {
+function getAIResponse(query: string, context: { membershipName?: string | null; walletCents?: number; transactionCount?: number }): { answer: string; actions?: { label: string; href: string }[] } {
   const q = query.toLowerCase().trim();
+  if (/dcp|dream carz point|loyalty point|point balance|how many point/i.test(q)) {
+    const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((context.walletCents ?? 0) / 100);
+    return { answer: `Your currently recorded DreamCarz wallet credit is **${amount}**. This reflects the authorized ledger only and is not a promise of future credits.`, actions: [{ label: "Open DreamCarz ID", href: "/dashboard/dreamcarz-id" }] };
+  }
+  if (/upgrade|elite|pro|plus|freedom|tier|membership level/i.test(q) && context.membershipName) {
+    return { answer: `Your recorded active membership is **${context.membershipName}**. Its approved benefits are available in DreamCarz ID; vehicle access and transaction pricing still require review.`, actions: [{ label: "Open DreamCarz ID", href: "/dashboard/dreamcarz-id" }] };
+  }
+  if (/reservation|book|reserve|upcoming|schedule|transaction/i.test(q) && context.transactionCount) {
+    return { answer: `You have **${context.transactionCount}** saved vehicle ${context.transactionCount === 1 ? "journey" : "journeys"}. Open My Records to continue the appropriate one.`, actions: [{ label: "Open My Records", href: "/dashboard/transactions" }] };
+  }
   for (const entry of knowledgeBase) {
     if (entry.patterns.some(p => p.test(q))) {
       return { answer: entry.answer, actions: entry.actions };
     }
   }
   return {
-    answer: "I'm here to help with anything DreamCarz related — reservations, DCP balance, membership upgrades, vehicle service, payments, and more. Could you rephrase your question or choose a topic below?",
+    answer: "I can help you find a DreamCarz workflow or route you to your authorized account records. I do not make approval, availability, pricing, payment, or payout decisions. Could you rephrase your question or choose a topic below?",
     actions: [
       { label: "My Vehicles", href: "/dashboard/vehicles" },
       { label: "Support", href: "/dashboard/support" },
@@ -122,12 +133,13 @@ function renderMarkdown(text: string) {
   return text
     .split("\n")
     .map((line, i) => {
-      const bold = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      return <p key={i} className="mb-0.5 last:mb-0" dangerouslySetInnerHTML={{ __html: bold }} />;
+      const segments = line.split(/(\*\*.*?\*\*)/g);
+      return <p key={i} className="mb-0.5 last:mb-0">{segments.map((segment, index) => segment.startsWith("**") && segment.endsWith("**") ? <strong key={index}>{segment.slice(2, -2)}</strong> : <span key={index}>{segment}</span>)}</p>;
     });
 }
 
 export default function AIConcierge() {
+  const overview = trpc.dreamcarzId.overview.useQuery(undefined, { retry: false, refetchOnWindowFocus: false });
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -135,7 +147,7 @@ export default function AIConcierge() {
     {
       id: "welcome",
       role: "ai",
-      text: "Hi! I'm your DreamCarz AI Concierge. Ask me anything — reservations, DCP balance, membership, service requests, or anything else about your account.",
+      text: "Hi! I can route you to DreamCarz workflows and summarize only the account information you are authorized to view. I cannot approve a vehicle, quote a price, or make a payment decision.",
       actions: [
         { label: "My Vehicles", href: "/dashboard/vehicles" },
         { label: "Rewards", href: "/dashboard/rewards" },
@@ -162,7 +174,11 @@ export default function AIConcierge() {
     setInput("");
     setTyping(true);
     setTimeout(() => {
-      const response = getAIResponse(text);
+      const response = getAIResponse(text, {
+        membershipName: overview.data?.membership?.plan.name,
+        walletCents: overview.data?.wallet?.availableCreditCents,
+        transactionCount: overview.data?.transactions.length,
+      });
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
