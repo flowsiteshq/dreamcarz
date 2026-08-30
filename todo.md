@@ -207,9 +207,9 @@
 - [x] Correct the public Fleet Partner route so the partnership page is reachable from its intended navigation target without a 404.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [ ] Capture a validated Associate referral code at new-account registration and preserve the attribution without allowing self-referrals or arbitrary reassignment.
-- [ ] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.
-- [ ] Add a discoverable Associate Path navigation entry for authorized Associate and administrator accounts without exposing it to ordinary customers.
-- [ ] Correct DreamCarz ID role data so authorized Associate, Fleet Partner, and administrator sidebar entries render after the role-isolation check.
+- [x] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.
+- [x] Add a discoverable Associate Path navigation entry for authorized Associate and administrator accounts without exposing it to ordinary customers.
+- [x] Correct DreamCarz ID role data so authorized Associate, Fleet Partner, and administrator sidebar entries render after the role-isolation check.
 - [x] Remove or qualify unsupported public Associate commission, earnings, eligibility, and expansion claims before exposing the role-isolated portal.
 - [x] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [x] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
