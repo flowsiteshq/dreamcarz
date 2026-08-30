@@ -33,6 +33,16 @@ describe("DreamCarz OS foundation router", () => {
     await expect(caller.wallet.recordEntry({ userId: 77, entryType: "credit", amountCents: 500, description: "Manual test credit" })).rejects.toThrow("Administrator access is required");
   });
 
+  it("does not allow a customer to create a Vehicle Passport", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.operations.vehiclePassports.save({
+      vehicleId: "2024-chevrolet-malibu-gray",
+      vehicleName: "2024 Chevrolet Malibu · Gray",
+      acquisitionStatus: "owned",
+      readinessStatus: "available",
+    })).rejects.toThrow("Administrator access is required");
+  });
+
   it("records a wallet credit with an administrator-owned, pending ledger event rather than a silent balance edit", async () => {
     const account = { id: 9, userId: 77 };
     const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([account]) })) })) }));

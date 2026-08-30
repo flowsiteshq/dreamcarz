@@ -208,6 +208,88 @@ export const transactionLinks = mysqlTable("transaction_links", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [uniqueIndex("transaction_link_unique").on(table.sourceTransactionId, table.targetTransactionId, table.linkType)]);
 
+// ── DreamCarz OS vehicle passports and fleet operations ─────────────────────
+
+/** Internal operating record for one confirmed inventory vehicle. Sensitive VIN, plate, and acquisition details never appear in public inventory. */
+export const vehiclePassports = mysqlTable("vehicle_passports", {
+  id: int("id").autoincrement().primaryKey(),
+  vehicleId: varchar("vehicleId", { length: 96 }).notNull().unique(),
+  vehicleName: varchar("vehicleName", { length: 180 }).notNull(),
+  acquisitionStatus: mysqlEnum("acquisitionStatus", ["not_recorded", "owned", "leased", "partner_managed", "retired"]).default("not_recorded").notNull(),
+  readinessStatus: mysqlEnum("readinessStatus", ["not_ready", "inspection_due", "maintenance_due", "available", "reserved", "active_rental", "out_of_service", "retired"]).default("not_ready").notNull(),
+  stockNumber: varchar("stockNumber", { length: 96 }),
+  vinLast4: varchar("vinLast4", { length: 4 }),
+  plateNumber: varchar("plateNumber", { length: 32 }),
+  currentLocation: varchar("currentLocation", { length: 255 }),
+  currentOdometer: int("currentOdometer"),
+  fuelOrChargeLevel: varchar("fuelOrChargeLevel", { length: 80 }),
+  acquisitionReference: varchar("acquisitionReference", { length: 160 }),
+  insurancePolicyReference: varchar("insurancePolicyReference", { length: 160 }),
+  registrationDocumentKey: varchar("registrationDocumentKey", { length: 512 }),
+  insuranceDocumentKey: varchar("insuranceDocumentKey", { length: 512 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const vehicleOperationalInspections = mysqlTable("vehicle_operational_inspections", {
+  id: int("id").autoincrement().primaryKey(),
+  vehiclePassportId: int("vehiclePassportId").notNull(),
+  transactionId: int("transactionId"),
+  stage: mysqlEnum("stage", ["intake", "pre_rental", "pickup", "return", "post_rental", "periodic", "maintenance_release"]).notNull(),
+  status: mysqlEnum("status", ["draft", "submitted", "reviewed", "needs_attention"]).default("draft").notNull(),
+  odometerReading: int("odometerReading"),
+  fuelOrChargeLevel: varchar("fuelOrChargeLevel", { length: 80 }),
+  tireCondition: varchar("tireCondition", { length: 80 }),
+  cleanliness: varchar("cleanliness", { length: 80 }),
+  damageNotes: text("damageNotes"),
+  photoKeys: text("photoKeys"),
+  inspectedByUserId: int("inspectedByUserId"),
+  reviewedByUserId: int("reviewedByUserId"),
+  inspectedAt: timestamp("inspectedAt"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const vehicleMaintenanceRecords = mysqlTable("vehicle_maintenance_records", {
+  id: int("id").autoincrement().primaryKey(),
+  vehiclePassportId: int("vehiclePassportId").notNull(),
+  maintenanceType: mysqlEnum("maintenanceType", ["scheduled_service", "repair", "recall", "tire", "cleaning", "inspection_follow_up", "other"]).notNull(),
+  status: mysqlEnum("status", ["planned", "scheduled", "in_progress", "completed", "deferred", "canceled"]).default("planned").notNull(),
+  dueAt: timestamp("dueAt"),
+  completedAt: timestamp("completedAt"),
+  odometerAtService: int("odometerAtService"),
+  vendorName: varchar("vendorName", { length: 160 }),
+  workOrderReference: varchar("workOrderReference", { length: 160 }),
+  invoiceDocumentKey: varchar("invoiceDocumentKey", { length: 512 }),
+  notes: text("notes"),
+  createdByUserId: int("createdByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const vehicleIncidentRecords = mysqlTable("vehicle_incident_records", {
+  id: int("id").autoincrement().primaryKey(),
+  vehiclePassportId: int("vehiclePassportId").notNull(),
+  transactionId: int("transactionId"),
+  incidentType: mysqlEnum("incidentType", ["collision", "mechanical", "damage", "theft", "towing", "ticket_or_impound", "roadside", "other"]).notNull(),
+  severity: mysqlEnum("severity", ["standard", "urgent", "emergency"]).default("standard").notNull(),
+  status: mysqlEnum("status", ["reported", "under_review", "assigned", "resolved", "closed"]).default("reported").notNull(),
+  reportedLocation: varchar("reportedLocation", { length: 255 }),
+  occurredAt: timestamp("occurredAt"),
+  policeReportReference: varchar("policeReportReference", { length: 160 }),
+  towReference: varchar("towReference", { length: 160 }),
+  insuranceClaimReference: varchar("insuranceClaimReference", { length: 160 }),
+  description: text("description").notNull(),
+  photoKeys: text("photoKeys"),
+  reportedByUserId: int("reportedByUserId"),
+  resolvedByUserId: int("resolvedByUserId"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── Drive Network Referral Tracking ──────────────────────────────────────────
 
 export const referralProfiles = mysqlTable("referral_profiles", {

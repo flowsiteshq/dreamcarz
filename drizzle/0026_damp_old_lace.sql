@@ -1,0 +1,83 @@
+CREATE TABLE `vehicle_incident_records` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`vehiclePassportId` int NOT NULL,
+	`transactionId` int,
+	`incidentType` enum('collision','mechanical','damage','theft','towing','ticket_or_impound','roadside','other') NOT NULL,
+	`severity` enum('standard','urgent','emergency') NOT NULL DEFAULT 'standard',
+	`status` enum('reported','under_review','assigned','resolved','closed') NOT NULL DEFAULT 'reported',
+	`reportedLocation` varchar(255),
+	`occurredAt` timestamp,
+	`policeReportReference` varchar(160),
+	`towReference` varchar(160),
+	`insuranceClaimReference` varchar(160),
+	`description` text NOT NULL,
+	`photoKeys` text,
+	`reportedByUserId` int,
+	`resolvedByUserId` int,
+	`resolvedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `vehicle_incident_records_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `vehicle_maintenance_records` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`vehiclePassportId` int NOT NULL,
+	`maintenanceType` enum('scheduled_service','repair','recall','tire','cleaning','inspection_follow_up','other') NOT NULL,
+	`status` enum('planned','scheduled','in_progress','completed','deferred','canceled') NOT NULL DEFAULT 'planned',
+	`dueAt` timestamp,
+	`completedAt` timestamp,
+	`odometerAtService` int,
+	`vendorName` varchar(160),
+	`workOrderReference` varchar(160),
+	`invoiceDocumentKey` varchar(512),
+	`notes` text,
+	`createdByUserId` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `vehicle_maintenance_records_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `vehicle_operational_inspections` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`vehiclePassportId` int NOT NULL,
+	`transactionId` int,
+	`stage` enum('intake','pre_rental','pickup','return','post_rental','periodic','maintenance_release') NOT NULL,
+	`status` enum('draft','submitted','reviewed','needs_attention') NOT NULL DEFAULT 'draft',
+	`odometerReading` int,
+	`fuelOrChargeLevel` varchar(80),
+	`tireCondition` varchar(80),
+	`cleanliness` varchar(80),
+	`damageNotes` text,
+	`photoKeys` text,
+	`inspectedByUserId` int,
+	`reviewedByUserId` int,
+	`inspectedAt` timestamp,
+	`reviewedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `vehicle_operational_inspections_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `vehicle_passports` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`vehicleId` varchar(96) NOT NULL,
+	`vehicleName` varchar(180) NOT NULL,
+	`acquisitionStatus` enum('not_recorded','owned','leased','partner_managed','retired') NOT NULL DEFAULT 'not_recorded',
+	`readinessStatus` enum('not_ready','inspection_due','maintenance_due','available','reserved','active_rental','out_of_service','retired') NOT NULL DEFAULT 'not_ready',
+	`stockNumber` varchar(96),
+	`vinLast4` varchar(4),
+	`plateNumber` varchar(32),
+	`currentLocation` varchar(255),
+	`currentOdometer` int,
+	`fuelOrChargeLevel` varchar(80),
+	`acquisitionReference` varchar(160),
+	`insurancePolicyReference` varchar(160),
+	`registrationDocumentKey` varchar(512),
+	`insuranceDocumentKey` varchar(512),
+	`notes` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `vehicle_passports_id` PRIMARY KEY(`id`),
+	CONSTRAINT `vehicle_passports_vehicleId_unique` UNIQUE(`vehicleId`)
+);

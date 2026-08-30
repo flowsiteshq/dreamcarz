@@ -37,6 +37,10 @@ import {
   transactionQuotes,
   transactionQuoteLines,
   transactionLinks,
+  vehiclePassports,
+  vehicleOperationalInspections,
+  vehicleMaintenanceRecords,
+  vehicleIncidentRecords,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -1752,6 +1756,79 @@ export const appRouter = router({
         const query = input?.query?.toLowerCase();
         return query ? rows.filter(row => [row.reference, row.vehicleName, row.customerName, row.customerEmail, row.status].some(value => value?.toLowerCase().includes(query))) : rows;
       }),
+
+    vehiclePassports: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
+      }),
+
+      save: protectedProcedure.input(z.object({
+        vehicleId: z.string().trim().min(2).max(96),
+        vehicleName: z.string().trim().min(2).max(180),
+        acquisitionStatus: z.enum(["not_recorded", "owned", "leased", "partner_managed", "retired"]),
+        readinessStatus: z.enum(["not_ready", "inspection_due", "maintenance_due", "available", "reserved", "active_rental", "out_of_service", "retired"]),
+        stockNumber: z.string().trim().max(96).optional(),
+        vinLast4: z.string().trim().regex(/^$|^[A-Za-z0-9]{4}$/, "Enter only the final four VIN characters.").optional(),
+        plateNumber: z.string().trim().max(32).optional(),
+        currentLocation: z.string().trim().max(255).optional(),
+        currentOdometer: z.number().int().min(0).optional(),
+        fuelOrChargeLevel: z.string().trim().max(80).optional(),
+        acquisitionReference: z.string().trim().max(160).optional(),
+        insurancePolicyReference: z.string().trim().max(160).optional(),
+        notes: z.string().trim().max(4000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport records are temporarily unavailable." });
+        const values = { ...input, stockNumber: input.stockNumber || null, vinLast4: input.vinLast4 || null, plateNumber: input.plateNumber || null, currentLocation: input.currentLocation || null, currentOdometer: input.currentOdometer ?? null, fuelOrChargeLevel: input.fuelOrChargeLevel || null, acquisitionReference: input.acquisitionReference || null, insurancePolicyReference: input.insurancePolicyReference || null, notes: input.notes || null };
+        const existing = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
+        if (existing[0]) {
+          await db.update(vehiclePassports).set(values).where(eq(vehiclePassports.id, existing[0].id));
+          return { success: true, passportId: existing[0].id, updated: true };
+        }
+        const created = await db.insert(vehiclePassports).values(values);
+        return { success: true, passportId: Number(created[0].insertId), updated: false };
+      }),
+
+      recordInspection: protectedProcedure.input(z.object({
+        vehiclePassportId: z.number().int().positive(),
+        transactionId: z.number().int().positive().optional(),
+        stage: z.enum(["intake", "pre_rental", "pickup", "return", "post_rental", "periodic", "maintenance_release"]),
+        odometerReading: z.number().int().min(0).optional(),
+        fuelOrChargeLevel: z.string().trim().max(80).optional(),
+        tireCondition: z.string().trim().max(80).optional(),
+        cleanliness: z.string().trim().max(80).optional(),
+        damageNotes: z.string().trim().max(4000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle inspections are temporarily unavailable." });
+        const passport = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1);
+        if (!passport[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+        const created = await db.insert(vehicleOperationalInspections).values({ ...input, transactionId: input.transactionId ?? null, fuelOrChargeLevel: input.fuelOrChargeLevel || null, tireCondition: input.tireCondition || null, cleanliness: input.cleanliness || null, damageNotes: input.damageNotes || null, status: "submitted", inspectedByUserId: ctx.user.id, inspectedAt: new Date() });
+        return { success: true, inspectionId: Number(created[0].insertId) };
+      }),
+
+      createMaintenance: protectedProcedure.input(z.object({
+        vehiclePassportId: z.number().int().positive(),
+        maintenanceType: z.enum(["scheduled_service", "repair", "recall", "tire", "cleaning", "inspection_follow_up", "other"]),
+        dueAt: z.date().optional(),
+        vendorName: z.string().trim().max(160).optional(),
+        workOrderReference: z.string().trim().max(160).optional(),
+        notes: z.string().trim().max(4000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
+        const passport = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1);
+        if (!passport[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+        const created = await db.insert(vehicleMaintenanceRecords).values({ ...input, dueAt: input.dueAt ?? null, vendorName: input.vendorName || null, workOrderReference: input.workOrderReference || null, notes: input.notes || null, createdByUserId: ctx.user.id });
+        return { success: true, maintenanceId: Number(created[0].insertId) };
+      }),
+    }),
 
     transactionDetail: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32) }))
