@@ -110,10 +110,10 @@
 - [x] Map the full vehicle application journey from interest through identity verification, payment, digital agreement, approval, and vehicle release.
 - [x] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
-- [ ] Add a configuration-gated AWS Face Liveness session and result-verification boundary in US East, with no browser AWS credentials or retained biometric result payloads.
+- [x] Add a configuration-gated AWS Face Liveness session and result-verification boundary in US East, with no browser AWS credentials or retained biometric result payloads.
 - [x] Create a dedicated least-privilege AWS IAM configuration for Face Liveness through the authorized AWS session, rather than using root credentials.
 - [ ] Create a scoped short-lived browser credential role limited to `rekognition:StartFaceLivenessSession`, with the DreamCarz server as its only trusted issuer.
-- [ ] Implement protected app procedures to create and verify AWS Face Liveness sessions, persisting only minimal opaque session metadata and no biometric result payloads.
+- [x] Implement protected app procedures to create and verify AWS Face Liveness sessions, persisting only minimal opaque session metadata and no biometric result payloads.
 - [ ] Wire the consent-gated customer AWS Face Liveness launch path after the scoped browser credential role is available, retaining manual review as the fallback.
 - [ ] Integrate secure CoCard gateway payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
@@ -225,6 +225,7 @@
 - [x] Expose account-owned active-rental schedule, agreement, payment, condition, and return status in My Account without displaying private provider or document data.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
+- [x] Add a customer-controlled print view for a finalized account-owned settlement statement without treating it as a receipt or collection action.
 - [x] Add an administrator-only returned-vehicle processing worklist that records manual post-return readiness decisions after condition-report and settlement review.
 - [x] Add an account-owned, read-only finalized settlement statement that never enables collection or exposes evidence, provider, or staff identifiers.
 - [x] Correct client query-string parsing so private transaction references and intended post-login destinations remain reachable in app navigation.
