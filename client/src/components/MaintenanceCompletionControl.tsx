@@ -98,6 +98,13 @@ export function MaintenanceCompletionControl() {
         </div>
       </div>) : <p className="py-4 text-xs text-gray-500">No maintenance records are logged for this Vehicle Passport.</p>}
     </div>}
+    {canLoad && !history.isLoading && <div className="mt-5 border-t border-gray-200 pt-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">Vehicle Passport activity</p>
+      <p className="mt-1 text-[11px] leading-5 text-gray-500">A compact audit timeline for recorded operations actions. Document contents, storage references, sensitive vehicle details, and customer records are not shown here.</p>
+      <div className="mt-3 divide-y divide-gray-100 border-y border-gray-200">
+        {history.data?.activities?.length ? history.data.activities.map(activity => <div key={activity.id} className="flex items-center justify-between gap-4 py-2 text-[11px]"><span className="font-semibold capitalize text-black">{activity.eventType.replaceAll(".", " ").replaceAll("_", " ")}</span><time className="shrink-0 text-gray-500">{new Date(activity.createdAt).toLocaleString()}</time></div>) : <p className="py-3 text-xs text-gray-500">No audited Vehicle Passport activity is recorded yet.</p>}
+      </div>
+    </div>}
     {message && <p className={`mt-3 text-xs ${updateStatus.error ? "text-red-600" : "text-gray-600"}`}>{message}</p>}
   </section>;
 }

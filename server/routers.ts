@@ -44,6 +44,7 @@ import {
   pricingRuleEvents,
   transactionLinks,
   vehiclePassports,
+  vehiclePassportActivityEvents,
   vehicleOperationalInspections,
   vehicleMaintenanceRecords,
   vehicleIncidentRecords,
@@ -113,6 +114,18 @@ function hasFutureRecordedInsuranceCoverage(insuranceDetails: string | null | un
   } catch {
     return false;
   }
+}
+
+async function recordVehiclePassportActivity(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  input: { vehiclePassportId: number; actorUserId: number; eventType: string; metadata?: Record<string, string> },
+) {
+  await db.insert(vehiclePassportActivityEvents).values({
+    vehiclePassportId: input.vehiclePassportId,
+    actorUserId: input.actorUserId,
+    eventType: input.eventType,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
 }
 
 async function deliverLifecycleInAppNotice(
@@ -3025,11 +3038,12 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport history is temporarily unavailable." });
         const passport = (await db.select({ id: vehiclePassports.id, vehicleId: vehiclePassports.vehicleId, vehicleName: vehiclePassports.vehicleName, readinessStatus: vehiclePassports.readinessStatus, currentOdometer: vehiclePassports.currentOdometer, fuelOrChargeLevel: vehiclePassports.fuelOrChargeLevel, updatedAt: vehiclePassports.updatedAt }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
         if (!passport) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
-        const [inspections, maintenance] = await Promise.all([
+        const [inspections, maintenance, activities] = await Promise.all([
           db.select({ id: vehicleOperationalInspections.id, transactionId: vehicleOperationalInspections.transactionId, stage: vehicleOperationalInspections.stage, status: vehicleOperationalInspections.status, odometerReading: vehicleOperationalInspections.odometerReading, fuelOrChargeLevel: vehicleOperationalInspections.fuelOrChargeLevel, tireCondition: vehicleOperationalInspections.tireCondition, cleanliness: vehicleOperationalInspections.cleanliness, damageNotes: vehicleOperationalInspections.damageNotes, reviewNote: vehicleOperationalInspections.reviewNote, hasEvidence: isNotNull(vehicleOperationalInspections.photoKeys), inspectedAt: vehicleOperationalInspections.inspectedAt, reviewedAt: vehicleOperationalInspections.reviewedAt, createdAt: vehicleOperationalInspections.createdAt }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.vehiclePassportId, passport.id)).orderBy(desc(vehicleOperationalInspections.createdAt)).limit(40),
           db.select({ id: vehicleMaintenanceRecords.id, maintenanceType: vehicleMaintenanceRecords.maintenanceType, status: vehicleMaintenanceRecords.status, dueAt: vehicleMaintenanceRecords.dueAt, completedAt: vehicleMaintenanceRecords.completedAt, odometerAtService: vehicleMaintenanceRecords.odometerAtService, vendorName: vehicleMaintenanceRecords.vendorName, workOrderReference: vehicleMaintenanceRecords.workOrderReference, notes: vehicleMaintenanceRecords.notes, hasInvoiceDocument: isNotNull(vehicleMaintenanceRecords.invoiceDocumentKey), createdAt: vehicleMaintenanceRecords.createdAt, updatedAt: vehicleMaintenanceRecords.updatedAt }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.vehiclePassportId, passport.id)).orderBy(desc(vehicleMaintenanceRecords.createdAt)).limit(40),
+          db.select({ id: vehiclePassportActivityEvents.id, eventType: vehiclePassportActivityEvents.eventType, createdAt: vehiclePassportActivityEvents.createdAt }).from(vehiclePassportActivityEvents).where(eq(vehiclePassportActivityEvents.vehiclePassportId, passport.id)).orderBy(desc(vehiclePassportActivityEvents.createdAt)).limit(40),
         ]);
-        return { passport, inspections, maintenance };
+        return { passport, inspections, maintenance, activities };
       }),
 
       save: protectedProcedure.input(z.object({
@@ -3139,6 +3153,7 @@ export const appRouter = router({
         const passport = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1);
         if (!passport[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
         const created = await db.insert(vehicleMaintenanceRecords).values({ ...input, dueAt: input.dueAt ?? null, vendorName: input.vendorName || null, workOrderReference: input.workOrderReference || null, notes: input.notes || null, createdByUserId: ctx.user.id });
+        await recordVehiclePassportActivity(db, { vehiclePassportId: passport[0].id, actorUserId: ctx.user.id, eventType: "maintenance.recorded", metadata: { maintenanceType: input.maintenanceType } });
         return { success: true, maintenanceId: Number(created[0].insertId) };
       }),
 
@@ -3150,9 +3165,10 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
-        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
+        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id, vehiclePassportId: vehicleMaintenanceRecords.vehiclePassportId }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
         if (!maintenance) throw new TRPCError({ code: "NOT_FOUND", message: "Maintenance record not found." });
         await db.update(vehicleMaintenanceRecords).set({ status: input.status, completedAt: input.status === "completed" ? input.completedAt! : null }).where(eq(vehicleMaintenanceRecords.id, maintenance.id));
+        await recordVehiclePassportActivity(db, { vehiclePassportId: maintenance.vehiclePassportId, actorUserId: ctx.user.id, eventType: "maintenance.status_updated", metadata: { status: input.status } });
         return { success: true, status: input.status, vehicleReadinessChanged: false } as const;
       }),
 
@@ -3167,13 +3183,14 @@ export const appRouter = router({
         if (!invoiceUploadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many maintenance-invoice uploads. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
-        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
+        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id, vehiclePassportId: vehicleMaintenanceRecords.vehiclePassportId }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
         if (!maintenance) throw new TRPCError({ code: "NOT_FOUND", message: "Maintenance record not found." });
         const bytes = Buffer.from(input.base64, "base64");
         if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Maintenance invoices must be between 1 byte and 8 MB." });
         const extension = input.contentType === "application/pdf" ? "pdf" : input.contentType === "image/png" ? "png" : "jpg";
         const { key } = await storagePut(`vehicle-maintenance-invoices/${maintenance.id}/invoice_${Date.now()}.${extension}`, bytes, input.contentType);
         await db.update(vehicleMaintenanceRecords).set({ invoiceDocumentKey: key }).where(eq(vehicleMaintenanceRecords.id, maintenance.id));
+        await recordVehiclePassportActivity(db, { vehiclePassportId: maintenance.vehiclePassportId, actorUserId: ctx.user.id, eventType: "maintenance.invoice_uploaded" });
         return { success: true } as const;
       }),
 

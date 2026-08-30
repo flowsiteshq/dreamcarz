@@ -373,6 +373,16 @@ export const vehiclePassports = mysqlTable("vehicle_passports", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Immutable administrator activity timeline for a private Vehicle Passport; metadata excludes document keys and customer records. */
+export const vehiclePassportActivityEvents = mysqlTable("vehicle_passport_activity_events", {
+  id: int("id").autoincrement().primaryKey(),
+  vehiclePassportId: int("vehiclePassportId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const vehicleOperationalInspections = mysqlTable("vehicle_operational_inspections", {
   id: int("id").autoincrement().primaryKey(),
   vehiclePassportId: int("vehiclePassportId").notNull(),
