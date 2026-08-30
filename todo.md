@@ -187,3 +187,26 @@
 - [x] Wire customer-visible progression into the remaining rental stages so the staged application collects required data without hidden manual step changes.
 - [x] Add regression coverage for an identity-record deletion request, resulting manual-review state, and privacy audit event.
 - [x] Expand and document concrete retention/deletion handling in the customer privacy controls and administrator manual-review flow.
+- [x] Audit the existing DreamCarz application, schema, authentication, roles, inventory, payment connection, and workflows against the DreamCarz OS master brief before modifying working systems.
+- [x] Document a modular DreamCarz OS domain model, role boundaries, non-destructive migration sequence, and staged rollout plan.
+- [x] Evolve the reusable customer profile into DreamCarz ID with protected identity, verification, membership, account-standing, transaction-history, agreement, payment-reference, and wallet views.
+- [ ] Build a provider-based identity and driver-verification layer with explicit consent, license front/back support, manual-review states, retention controls, and no homemade facial-recognition claims.
+- [ ] Build server-enforced rental eligibility rules for license validity, age, insurance, vehicle class, additional drivers, manual review, and future MVR-provider integration.
+- [ ] Complete separated rental, purchase, rent-to-buy, and swap workflows that reuse DreamCarz ID and never claim unavailable pricing or financing approvals.
+- [ ] Add configurable membership benefits that affect permitted vehicle access, discounts, deposits, credits, delivery benefits, and upgrade eligibility through transaction rules.
+- [x] Build an auditable DreamCarz wallet ledger for credits, refunds, deposits/holds, membership and referral credits, receipts, and transaction history without silent balance changes.
+- [ ] Build protected DreamCarz Vehicle Passports with vehicle lifecycle, location, readiness, acquisition, maintenance, inspection, damage, document, reservation, and utilization/revenue record support.
+- [ ] Build guided pickup and return inspections with required vehicle views, mileage, fuel/charge, secure evidence storage, and human-review-only future computer-vision architecture.
+- [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
+- [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
+- [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
+- [ ] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
+- [ ] Build a role-isolated Fleet Partner portal with authorized vehicle operations, reservations, utilization, maintenance, inspections, damage, documents, performance, and payout views.
+- [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
+- [ ] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
+- [ ] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
+- [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
+- [ ] Upgrade the DreamCarz AI concierge to use authorized live inventory and account data only, with transparent limitations and staff-escalation controls.
+- [ ] Replace static authenticated member-tier and membership-tenure labels with authorized live DreamCarz ID membership data or a neutral incomplete-profile state.
+- [ ] Apply active membership benefits to authorized transaction eligibility, pricing, deposits, credits, delivery benefits, and upgrade rules after approved benefit configurations are defined.
+- [ ] Expand RBAC, immutable audit coverage, access controls, encryption/storage safeguards, rate limits, and production monitoring across all new DreamCarz OS modules.

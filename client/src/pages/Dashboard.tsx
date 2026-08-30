@@ -2,11 +2,12 @@ import { ArrowRight, Building2, CalendarDays, Car, CheckCircle2, ClipboardCheck,
 import { Link } from "wouter";
 import DashboardShell from "@/components/DashboardShell";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { BadgeCheck } from "lucide-react";
 
 const memberActions = [
   { icon: ClipboardCheck, label: "Rental readiness", description: "Complete or review the profile steps needed before requesting a vehicle.", href: "/dashboard/rental-setup", cta: "Open rental readiness" },
   { icon: CalendarDays, label: "Reservations", description: "Request, review, and manage your available DreamCarz reservations.", href: "/dashboard/reservations", cta: "View reservations" },
-  { icon: FileText, label: "My records", description: "Review private agreements and driver-license records saved to your DreamCarz account.", href: "/dashboard/transactions", cta: "Open my records" },
+  { icon: BadgeCheck, label: "DreamCarz ID", description: "Review your private profile, live verification status, membership, wallet ledger, and saved vehicle journeys.", href: "/dashboard/dreamcarz-id", cta: "Open DreamCarz ID" },
   { icon: Compass, label: "Dream Journey", description: "Organize the member actions that support your transportation objective.", href: "/dashboard/dream-journey", cta: "Open Dream Journey" },
 ] as const;
 

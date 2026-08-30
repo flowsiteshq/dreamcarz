@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle, FileText,
-  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck
+  Bell, LogOut, Menu, TrendingUp, Trophy, Network, ClipboardCheck, ShieldCheck, BadgeCheck
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -50,6 +50,7 @@ const sidebarLinks = [
   { href: "/dashboard/rental-setup", label: "Rental Setup", icon: ClipboardCheck },
   { href: "/dashboard/membership", label: "Membership", icon: Star },
   { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
+  { href: "/dashboard/dreamcarz-id", label: "DreamCarz ID", icon: BadgeCheck },
   { href: "/dashboard/transactions", label: "My Records", icon: FileText },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/report", label: "Report an Issue", icon: AlertTriangle },
@@ -235,6 +236,7 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children, title }: DashboardShellProps) {
   const { user, isAuthenticated, loading, logout } = useAuth();
+  const dreamcarzId = trpc.dreamcarzId.overview.useQuery(undefined, { enabled: isAuthenticated, refetchOnWindowFocus: false });
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
@@ -265,8 +267,11 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   };
 
   const firstName = user?.name?.split(" ")[0] || "Member";
-  const tier = "Pro";
-  const tierGradient = tierColors[tier] || tierColors.Pro;
+  const membershipName = dreamcarzId.data?.membership?.plan.name ?? null;
+  const profileStatus = dreamcarzId.data?.profile?.profileStatus ?? "incomplete";
+  const tier = membershipName ?? "DreamCarz ID";
+  const tierGradient = membershipName ? (tierColors[membershipName] || tierColors.Pro) : "linear-gradient(90deg, #111, #4b4030)";
+  const headerStatus = membershipName ? `${membershipName} member` : `Profile ${profileStatus.replaceAll("_", " ")}`;
 
   if (loading) {
     return (
@@ -341,7 +346,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-semibold text-black truncate">{user?.name || "Member"}</p>
-              <p className="text-[10px] text-gray-400">{tier} Member</p>
+              <p className="text-[10px] capitalize text-gray-400">{headerStatus}</p>
             </div>
             <button onClick={() => logout()} className="text-gray-300 hover:text-black transition-colors">
               <LogOut size={14} />
@@ -366,9 +371,9 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider text-white" style={{ background: tierGradient }}>
-                  {tier} Member
+                  {headerStatus}
                 </span>
-                <span className="text-[11px] text-gray-400">· Member since 2026</span>
+                {dreamcarzId.data?.membership?.startsAt && <span className="text-[11px] text-gray-400">· Active since {new Date(dreamcarzId.data.membership.startsAt).getFullYear()}</span>}
               </div>
             </div>
             <div className={`hidden md:flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2.5 w-64 transition-all duration-200 ${aiFocused ? "shadow-[0_0_0_2px_rgba(0,0,0,0.1)] bg-white" : ""}`}>

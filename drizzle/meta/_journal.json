@@ -169,6 +169,13 @@
       "when": 1788046666815,
       "tag": "0023_ordinary_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1788080510218,
+      "tag": "0024_smiling_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

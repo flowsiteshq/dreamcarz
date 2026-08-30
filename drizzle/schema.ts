@@ -43,6 +43,114 @@ export const authSessions = mysqlTable("auth_sessions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// ── DreamCarz OS access, membership, eligibility, and wallet foundations ───
+
+/**
+ * Named role assignments expand the original user/admin distinction without
+ * changing existing account access. The legacy users.role field remains the
+ * compatibility bridge until all staff accounts receive explicit assignments.
+ */
+export const userRoleAssignments = mysqlTable("user_role_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "operations", "support", "manager", "administrator"]).notNull(),
+  assignedByUserId: int("assignedByUserId"),
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+}, (table) => [uniqueIndex("user_role_assignment_unique").on(table.userId, table.role)]);
+
+/** Configurable memberships are deliberately unseeded until approved plans and benefits are supplied. */
+export const membershipPlans = mysqlTable("membership_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  enrollmentFeeCents: int("enrollmentFeeCents"),
+  monthlyFeeCents: int("monthlyFeeCents"),
+  isActive: boolean("isActive").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const membershipBenefits = mysqlTable("membership_benefits", {
+  id: int("id").autoincrement().primaryKey(),
+  membershipPlanId: int("membershipPlanId").notNull(),
+  benefitType: mysqlEnum("benefitType", ["vehicle_access", "rental_discount", "deposit_adjustment", "rental_credit", "delivery_credit", "upgrade_priority", "partner_benefit", "other"]).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  configuration: text("configuration").notNull(),
+  isActive: boolean("isActive").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const customerMemberships = mysqlTable("customer_memberships", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  membershipPlanId: int("membershipPlanId").notNull(),
+  status: mysqlEnum("status", ["pending", "active", "paused", "canceled", "expired"]).default("pending").notNull(),
+  startsAt: timestamp("startsAt"),
+  endsAt: timestamp("endsAt"),
+  providerSubscriptionReference: varchar("providerSubscriptionReference", { length: 160 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const membershipEvents = mysqlTable("membership_events", {
+  id: int("id").autoincrement().primaryKey(),
+  customerMembershipId: int("customerMembershipId").notNull(),
+  actorUserId: int("actorUserId"),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  previousStatus: varchar("previousStatus", { length: 48 }),
+  nextStatus: varchar("nextStatus", { length: 48 }),
+  note: text("note"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/**
+ * A specific assessment is bound to a transaction. It records a human or
+ * provider-supported eligibility outcome without assigning fraud labels.
+ */
+export const transactionEligibilityAssessments = mysqlTable("transaction_eligibility_assessments", {
+  id: int("id").autoincrement().primaryKey(),
+  transactionId: int("transactionId").notNull().unique(),
+  status: mysqlEnum("status", ["pending", "cleared", "manual_review", "unable_to_proceed"]).default("pending").notNull(),
+  ruleSnapshot: text("ruleSnapshot"),
+  decisionReason: text("decisionReason"),
+  reviewedByUserId: int("reviewedByUserId"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** One wallet per customer; all value movement is represented by append-only ledger entries. */
+export const walletAccounts = mysqlTable("wallet_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  status: mysqlEnum("status", ["active", "restricted", "closed"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const walletLedgerEntries = mysqlTable("wallet_ledger_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 48 }).notNull().unique(),
+  walletAccountId: int("walletAccountId").notNull(),
+  userId: int("userId").notNull(),
+  transactionId: int("transactionId"),
+  entryType: mysqlEnum("entryType", ["credit", "debit", "deposit_hold", "deposit_release", "refund", "promotion", "membership_credit", "referral_credit", "adjustment"]).notNull(),
+  status: mysqlEnum("status", ["pending", "posted", "reversed", "voided"]).default("pending").notNull(),
+  amountCents: int("amountCents").notNull(),
+  description: varchar("description", { length: 255 }).notNull(),
+  providerReference: varchar("providerReference", { length: 160 }),
+  receiptKey: varchar("receiptKey", { length: 512 }),
+  createdByUserId: int("createdByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  postedAt: timestamp("postedAt"),
+  reversedAt: timestamp("reversedAt"),
+});
+
 // ── Drive Network Referral Tracking ──────────────────────────────────────────
 
 export const referralProfiles = mysqlTable("referral_profiles", {

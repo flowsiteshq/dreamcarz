@@ -26,8 +26,15 @@ import {
   serviceReportPhotos,
   serviceReportReviewEvents,
   partnerLocations,
+  userRoleAssignments,
+  membershipPlans,
+  membershipBenefits,
+  customerMemberships,
+  walletAccounts,
+  walletLedgerEntries,
+  transactionEligibilityAssessments,
 } from "../drizzle/schema";
-import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
 import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
@@ -36,6 +43,7 @@ import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
+import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
@@ -123,6 +131,116 @@ export const appRouter = router({
       ctx.res.clearCookie(DIRECT_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  dreamcarzId: router({
+    ensure: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DreamCarz ID is temporarily unavailable." });
+
+      const profile = await db.select({ id: customerProfiles.id }).from(customerProfiles).where(eq(customerProfiles.userId, ctx.user.id)).limit(1);
+      if (!profile[0]) {
+        await db.insert(customerProfiles).values({ userId: ctx.user.id, fullName: ctx.user.name ?? null, email: ctx.user.email ?? null });
+      }
+      const wallet = await db.select({ id: walletAccounts.id }).from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1);
+      if (!wallet[0]) await db.insert(walletAccounts).values({ userId: ctx.user.id });
+      return { success: true, profileCreated: !profile[0], walletCreated: !wallet[0] } as const;
+    }),
+
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DreamCarz ID is temporarily unavailable." });
+      const [profiles, activeRoles, memberships, wallets, transactions] = await Promise.all([
+        db.select().from(customerProfiles).where(eq(customerProfiles.userId, ctx.user.id)).limit(1),
+        db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))),
+        db.select({ membership: customerMemberships, plan: membershipPlans }).from(customerMemberships).innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id)).where(and(eq(customerMemberships.userId, ctx.user.id), eq(customerMemberships.status, "active"))).orderBy(desc(customerMemberships.updatedAt)).limit(1),
+        db.select().from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1),
+        db.select({ reference: vehicleTransactions.reference, transactionType: vehicleTransactions.transactionType, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(eq(vehicleTransactions.userId, ctx.user.id)).orderBy(desc(vehicleTransactions.updatedAt)).limit(12),
+      ]);
+      const membership = memberships[0] ?? null;
+      const benefits = membership
+        ? await db.select({ benefitType: membershipBenefits.benefitType, label: membershipBenefits.label, configuration: membershipBenefits.configuration }).from(membershipBenefits).where(and(eq(membershipBenefits.membershipPlanId, membership.plan.id), eq(membershipBenefits.isActive, true)))
+        : [];
+      const wallet = wallets[0] ?? null;
+      const ledgerEntries = wallet
+        ? await db.select({ reference: walletLedgerEntries.reference, entryType: walletLedgerEntries.entryType, status: walletLedgerEntries.status, amountCents: walletLedgerEntries.amountCents, description: walletLedgerEntries.description, createdAt: walletLedgerEntries.createdAt, postedAt: walletLedgerEntries.postedAt }).from(walletLedgerEntries).where(eq(walletLedgerEntries.walletAccountId, wallet.id)).orderBy(desc(walletLedgerEntries.createdAt)).limit(25)
+        : [];
+      const walletSummary = summarizeWalletLedger(ledgerEntries);
+      const profile = profiles[0] ?? null;
+      return {
+        profile,
+        roles: activeRoles.map(record => record.role),
+        membership: membership ? { ...membership.membership, plan: membership.plan, benefits } : null,
+        wallet: wallet ? { account: wallet, ...walletSummary, entries: ledgerEntries } : null,
+        transactions,
+        accountStanding: profile?.profileStatus === "restricted" || wallet?.status === "restricted" ? "restricted" : profile?.profileStatus ?? "incomplete",
+      };
+    }),
+  }),
+
+  memberships: router({
+    listActive: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({ id: membershipPlans.id, code: membershipPlans.code, name: membershipPlans.name, description: membershipPlans.description, enrollmentFeeCents: membershipPlans.enrollmentFeeCents, monthlyFeeCents: membershipPlans.monthlyFeeCents }).from(membershipPlans).where(eq(membershipPlans.isActive, true)).orderBy(membershipPlans.name);
+    }),
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const memberships = await db.select({ membership: customerMemberships, plan: membershipPlans }).from(customerMemberships).innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id)).where(and(eq(customerMemberships.userId, ctx.user.id), eq(customerMemberships.status, "active"))).orderBy(desc(customerMemberships.updatedAt)).limit(1);
+      const membership = memberships[0];
+      if (!membership) return null;
+      const benefits = await db.select({ benefitType: membershipBenefits.benefitType, label: membershipBenefits.label, configuration: membershipBenefits.configuration }).from(membershipBenefits).where(and(eq(membershipBenefits.membershipPlanId, membership.plan.id), eq(membershipBenefits.isActive, true)));
+      return { ...membership.membership, plan: membership.plan, benefits };
+    }),
+    createPlan: protectedProcedure
+      .input(z.object({ code: z.string().trim().min(2).max(64).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(2).max(120), description: z.string().trim().max(2_000).optional(), enrollmentFeeCents: z.number().int().min(0).max(10_000_000).optional(), monthlyFeeCents: z.number().int().min(0).max(10_000_000).optional(), activate: z.boolean().default(false) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Membership configuration is temporarily unavailable." });
+        const created = await db.insert(membershipPlans).values({ ...input, description: input.description || null, enrollmentFeeCents: input.enrollmentFeeCents ?? null, monthlyFeeCents: input.monthlyFeeCents ?? null, isActive: input.activate });
+        return { success: true, planId: Number(created[0].insertId) };
+      }),
+    addBenefit: protectedProcedure
+      .input(z.object({ membershipPlanId: z.number().int().positive(), benefitType: z.enum(DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES), label: z.string().trim().min(2).max(160), configuration: z.string().trim().min(2).max(5_000), activate: z.boolean().default(false) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Membership configuration is temporarily unavailable." });
+        const plan = await db.select({ id: membershipPlans.id }).from(membershipPlans).where(eq(membershipPlans.id, input.membershipPlanId)).limit(1);
+        if (!plan[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Membership plan not found." });
+        const created = await db.insert(membershipBenefits).values({ ...input, isActive: input.activate });
+        return { success: true, benefitId: Number(created[0].insertId) };
+      }),
+  }),
+
+  wallet: router({
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Wallet records are temporarily unavailable." });
+      const accounts = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1);
+      const account = accounts[0] ?? null;
+      if (!account) return { account: null, availableCreditCents: 0, activeHoldCents: 0, entries: [] };
+      const entries = await db.select().from(walletLedgerEntries).where(eq(walletLedgerEntries.walletAccountId, account.id)).orderBy(desc(walletLedgerEntries.createdAt)).limit(100);
+      return { account, ...summarizeWalletLedger(entries), entries };
+    }),
+    recordEntry: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), transactionId: z.number().int().positive().optional(), entryType: z.enum(DREAMCARZ_WALLET_ENTRY_TYPES), amountCents: z.number().int().min(1).max(10_000_000), description: z.string().trim().min(2).max(255), providerReference: z.string().trim().min(1).max(160).optional(), status: z.enum(["pending", "posted"]).default("pending") }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Wallet records are temporarily unavailable." });
+        let account = (await db.select().from(walletAccounts).where(eq(walletAccounts.userId, input.userId)).limit(1))[0];
+        if (!account) {
+          await db.insert(walletAccounts).values({ userId: input.userId });
+          account = (await db.select().from(walletAccounts).where(eq(walletAccounts.userId, input.userId)).limit(1))[0];
+        }
+        if (!account) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Wallet account could not be initialized." });
+        const reference = `${DREAMCARZ_LEDGER_REFERENCE_PREFIX}-${new Date().getFullYear()}-${nanoid(10).toUpperCase()}`;
+        await db.insert(walletLedgerEntries).values({ reference, walletAccountId: account.id, userId: input.userId, transactionId: input.transactionId ?? null, entryType: input.entryType, amountCents: input.amountCents, description: input.description, providerReference: input.providerReference ?? null, status: input.status, createdByUserId: ctx.user.id, postedAt: input.status === "posted" ? new Date() : null });
+        return { success: true, reference };
+      }),
   }),
 
   driveNetwork: router({
@@ -560,6 +678,8 @@ export const appRouter = router({
             .where(eq(customerProfiles.userId, ctx.user.id))
             .limit(1);
         }
+        const wallets = await db.select({ id: walletAccounts.id }).from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1);
+        if (!wallets[0]) await db.insert(walletAccounts).values({ userId: ctx.user.id });
 
         const profile = profiles[0];
         const withdrawnConsents = await db
@@ -602,6 +722,11 @@ export const appRouter = router({
           licenseStatus: profileVerificationReusable ? "verified" : withdrawnConsents.length > 0 ? "manual_review" : "not_started",
         });
         const transactionId = Number(created[0].insertId);
+        await db.insert(transactionEligibilityAssessments).values({
+          transactionId,
+          status: "pending",
+          ruleSnapshot: JSON.stringify({ version: "dreamcarz-eligibility-v1", requiresManualReview: true, transactionType: input.transactionType, vehicleId: input.vehicleId }),
+        });
         await db.insert(transactionEvents).values({
           transactionId,
           actorUserId: ctx.user.id,
@@ -1611,6 +1736,26 @@ export const appRouter = router({
         await db.update(vehicleTransactions).set(updates).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.review_states_updated", note: input.note || null, metadata: JSON.stringify(updates) });
         return { success: true };
+      }),
+
+    reviewEligibility: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32), status: z.enum(["cleared", "manual_review", "unable_to_proceed"]), decisionReason: z.string().trim().min(3).max(2_000), ruleSnapshot: z.string().trim().max(10_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility records are temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const assessment = (await db.select().from(transactionEligibilityAssessments).where(eq(transactionEligibilityAssessments.transactionId, transaction.id)).limit(1))[0];
+        const vehicleEligibilityStatus = input.status === "unable_to_proceed" ? "ineligible" as const : input.status;
+        await db.update(vehicleTransactions).set({ eligibilityStatus: vehicleEligibilityStatus }).where(eq(vehicleTransactions.id, transaction.id));
+        if (assessment) {
+          await db.update(transactionEligibilityAssessments).set({ status: input.status, decisionReason: input.decisionReason, ruleSnapshot: input.ruleSnapshot ?? assessment.ruleSnapshot, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(transactionEligibilityAssessments.id, assessment.id));
+        } else {
+          await db.insert(transactionEligibilityAssessments).values({ transactionId: transaction.id, status: input.status, decisionReason: input.decisionReason, ruleSnapshot: input.ruleSnapshot ?? JSON.stringify({ version: "dreamcarz-eligibility-v1", source: "manual" }), reviewedByUserId: ctx.user.id, reviewedAt: new Date() });
+        }
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "eligibility.review_recorded", fromStatus: transaction.eligibilityStatus, toStatus: vehicleEligibilityStatus, note: input.decisionReason, metadata: JSON.stringify({ assessmentStatus: input.status }) });
+        return { success: true, eligibilityStatus: vehicleEligibilityStatus };
       }),
 
     setTransactionPricing: protectedProcedure
