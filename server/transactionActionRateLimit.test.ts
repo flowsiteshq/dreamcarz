@@ -41,4 +41,16 @@ describe("DreamCarz sensitive transaction action rate limits", () => {
     expect(mockedRateLimitKey).toHaveBeenCalledWith(memberContext.req, "transaction_handoff_confirmation", "77");
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
+
+  it("throttles identity-document uploads before any private record lookup or storage operation", async () => {
+    await expect(appRouter.createCaller(memberContext as never).transactions.uploadIdentityDocument({ reference: "DCR-2026-RATE", documentType: "license_front", filename: "license.jpg", contentType: "image/jpeg", base64: "A".repeat(120), identityDocumentConsent: true })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    expect(mockedRateLimitKey).toHaveBeenCalledWith(memberContext.req, "identity_document_upload", "77");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
+  it("throttles native agreement signing attempts before any transaction or agreement lookup", async () => {
+    await expect(appRouter.createCaller(memberContext as never).transactions.signNativeAgreement({ reference: "DCR-2026-RATE", agreementId: 91, signerName: "DreamCarz Member", acknowledgesAgreement: true, electronicSignatureConsent: true })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    expect(mockedRateLimitKey).toHaveBeenCalledWith(memberContext.req, "native_agreement_signing", "77");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
 });

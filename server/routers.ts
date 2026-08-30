@@ -1580,6 +1580,8 @@ export const appRouter = router({
         biometricConsent: z.literal(true).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const documentLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "identity_document_upload", String(ctx.user.id)), limit: 12, windowMs: 60 * 60 * 1000 });
+        if (!documentLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many identity-document uploads. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure document capture is temporarily unavailable." });
         const transactions = await db.select()
@@ -1941,6 +1943,8 @@ export const appRouter = router({
     signNativeAgreement: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32), agreementId: z.number().int().positive(), signerName: z.string().trim().min(2).max(160), acknowledgesAgreement: z.literal(true), electronicSignatureConsent: z.literal(true) }))
       .mutation(async ({ ctx, input }) => {
+        const signingLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "native_agreement_signing", String(ctx.user.id)), limit: 5, windowMs: 30 * 60 * 1000 });
+        if (!signingLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many signing attempts. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Native signing is temporarily unavailable." });
         const transactionRows = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
