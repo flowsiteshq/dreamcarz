@@ -8,6 +8,7 @@ import { VehiclePassportManager } from "@/components/VehiclePassportManager";
 import { FleetIncidentQueue } from "@/components/FleetIncidentQueue";
 import { VehicleServiceLog } from "@/components/VehicleServiceLog";
 import { HandoffManager } from "@/components/HandoffManager";
+import { PricingRuleManager } from "@/components/PricingRuleManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -128,6 +129,8 @@ export default function AdminOperations() {
         <VehicleServiceLog />
 
         <HandoffManager />
+
+        <PricingRuleManager />
 
         <section className="rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-2"><ClipboardCheck size={17} className="text-[#B8860B]" /><h3 className="text-[16px] font-bold text-black">Rental Setup approvals</h3></div>

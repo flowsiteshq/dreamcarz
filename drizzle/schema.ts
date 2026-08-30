@@ -198,6 +198,32 @@ export const transactionQuoteLines = mysqlTable("transaction_quote_lines", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Pricing rules are controlled operational records. They never change a customer quote automatically. */
+export const pricingRules = mysqlTable("pricing_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  scope: mysqlEnum("scope", ["rental", "purchase", "membership", "deposit", "delivery", "other"]).notNull(),
+  status: mysqlEnum("status", ["draft", "approved", "paused", "archived"]).default("draft").notNull(),
+  configuration: text("configuration").notNull(),
+  createdByUserId: int("createdByUserId").notNull(),
+  approvedByUserId: int("approvedByUserId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** Append-only pricing-rule history preserves management approvals, pauses, and archives. */
+export const pricingRuleEvents = mysqlTable("pricing_rule_events", {
+  id: int("id").autoincrement().primaryKey(),
+  pricingRuleId: int("pricingRuleId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 32 }),
+  toStatus: varchar("toStatus", { length: 32 }),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /** Links preserve the originating rental when a customer requests a purchase or vehicle swap. */
 export const transactionLinks = mysqlTable("transaction_links", {
   id: int("id").autoincrement().primaryKey(),

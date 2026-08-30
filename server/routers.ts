@@ -37,6 +37,8 @@ import {
   transactionSchedules,
   transactionQuotes,
   transactionQuoteLines,
+  pricingRules,
+  pricingRuleEvents,
   transactionLinks,
   vehiclePassports,
   vehicleOperationalInspections,
@@ -1905,6 +1907,53 @@ export const appRouter = router({
         },
         recentTransactions: transactions.slice(0, 8),
       };
+    }),
+
+    pricingRules: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const rules = await db.select().from(pricingRules).orderBy(desc(pricingRules.updatedAt));
+        return Promise.all(rules.map(async rule => ({
+          ...rule,
+          history: await db.select().from(pricingRuleEvents).where(eq(pricingRuleEvents.pricingRuleId, rule.id)).orderBy(desc(pricingRuleEvents.createdAt)),
+        })));
+      }),
+
+      create: protectedProcedure.input(z.object({
+        name: z.string().trim().min(3).max(160),
+        scope: z.enum(["rental", "purchase", "membership", "deposit", "delivery", "other"]),
+        configuration: z.string().trim().min(2).max(12000).refine(value => {
+          try { return typeof JSON.parse(value) === "object" && JSON.parse(value) !== null; } catch { return false; }
+        }, "Enter a valid JSON configuration object."),
+        note: z.string().trim().max(1000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Pricing controls are temporarily unavailable." });
+        const created = await db.insert(pricingRules).values({ name: input.name, scope: input.scope, configuration: input.configuration, createdByUserId: ctx.user.id });
+        const pricingRuleId = Number(created[0].insertId);
+        await db.insert(pricingRuleEvents).values({ pricingRuleId, actorUserId: ctx.user.id, eventType: "pricing_rule_created", toStatus: "draft", note: input.note || null });
+        return { success: true, pricingRuleId };
+      }),
+
+      setStatus: protectedProcedure.input(z.object({
+        pricingRuleId: z.number().int().positive(),
+        nextStatus: z.enum(["approved", "paused", "archived"]),
+        note: z.string().trim().min(3).max(1000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Pricing controls are temporarily unavailable." });
+        const rule = await db.select().from(pricingRules).where(eq(pricingRules.id, input.pricingRuleId)).limit(1);
+        if (!rule[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Pricing rule not found." });
+        if (rule[0].status === "archived") throw new TRPCError({ code: "BAD_REQUEST", message: "Archived rules cannot be changed." });
+        if (rule[0].status === input.nextStatus) return { success: true, unchanged: true };
+        await db.update(pricingRules).set({ status: input.nextStatus, approvedByUserId: input.nextStatus === "approved" ? ctx.user.id : rule[0].approvedByUserId, approvedAt: input.nextStatus === "approved" ? new Date() : rule[0].approvedAt }).where(eq(pricingRules.id, input.pricingRuleId));
+        await db.insert(pricingRuleEvents).values({ pricingRuleId: input.pricingRuleId, actorUserId: ctx.user.id, eventType: `pricing_rule_${input.nextStatus}`, fromStatus: rule[0].status, toStatus: input.nextStatus, note: input.note });
+        return { success: true, unchanged: false };
+      }),
     }),
 
     transactionConsole: protectedProcedure
