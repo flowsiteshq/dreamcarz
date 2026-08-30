@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { loadStripe } from "@stripe/stripe-js";
 import { SettlementStatementPanel } from "@/components/SettlementStatementPanel";
+import { HandoffAcknowledgementPanel } from "@/components/HandoffAcknowledgementPanel";
 
 declare global {
   interface Window {
@@ -438,6 +439,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
           {location.startsWith("/dashboard/transactions") && transactionReference && <IdentityVerificationLauncher reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <PaymentMethodSetupLauncher reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <RentalConditionReportPanel reference={transactionReference} />}
+          {location.startsWith("/dashboard/transactions") && transactionReference && <HandoffAcknowledgementPanel reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <TransactionDetailsPanel reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <TransactionStepAdvance reference={transactionReference} />}
           {location.startsWith("/dashboard/transactions") && transactionReference && <NativeAgreementPanel reference={transactionReference} />}

@@ -1034,6 +1034,40 @@ export const appRouter = router({
         };
       }),
 
+    confirmHandoff: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        acknowledgesHandoff: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Handoff confirmation is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "NOT_FOUND", message: "Rental transaction not found." });
+        if (transaction.status !== "ready_for_pickup" || !hasVehicleReleaseReadiness(transaction)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must complete vehicle release before you can confirm this handoff." });
+        }
+        const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
+        if (!schedule || schedule.handoffStatus !== "arrived") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This handoff can be confirmed only after DreamCarz marks the pickup or delivery as arrived." });
+        }
+        await db.update(transactionSchedules).set({ handoffStatus: "customer_verified" }).where(eq(transactionSchedules.id, schedule.id));
+        await db.update(vehicleTransactions).set({ pickupStatus: "verified" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "handoff.customer_verified",
+          fromStatus: schedule.handoffStatus,
+          toStatus: "customer_verified",
+          metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, rentalStatusChanged: false }),
+        });
+        return { success: true, handoffStatus: "customer_verified" as const, pickupStatus: "verified" as const };
+      }),
+
     saveRentalSchedule: protectedProcedure
       .input(z.object({
         reference: z.string().trim().min(8).max(32),

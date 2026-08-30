@@ -360,4 +360,43 @@ describe("transaction intake router", () => {
     expect(JSON.stringify(result)).not.toContain("16500");
     expect(JSON.stringify(result)).not.toContain("Private review note");
   });
+
+  it("records customer handoff acknowledgement only after a released rental is marked arrived", async () => {
+    const transaction = {
+      id: 621,
+      reference: "DCR-2026-HANDOFF",
+      transactionType: "rental" as const,
+      status: "ready_for_pickup" as const,
+      identityStatus: "verified" as const,
+      licenseStatus: "verified" as const,
+      eligibilityStatus: "cleared" as const,
+      insuranceStatus: "verified" as const,
+      paymentStatus: "authorized" as const,
+      agreementStatus: "signed" as const,
+    };
+    const schedule = { id: 73, handoffStatus: "arrived" as const, pickupMethod: "delivery" as const };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([schedule]) })) })) });
+    const updateSchedule = vi.fn().mockResolvedValue(undefined);
+    const updateTransaction = vi.fn().mockResolvedValue(undefined);
+    const createEvent = vi.fn().mockResolvedValue(undefined);
+    const update = vi.fn()
+      .mockReturnValueOnce({ set: vi.fn(() => ({ where: updateSchedule })) })
+      .mockReturnValueOnce({ set: vi.fn(() => ({ where: updateTransaction })) });
+    const insert = vi.fn().mockReturnValue({ values: createEvent });
+    mockedGetDb.mockResolvedValue({ select, update, insert } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).resolves.toEqual({ success: true, handoffStatus: "customer_verified", pickupStatus: "verified" });
+    expect(updateSchedule).toHaveBeenCalled();
+    expect(updateTransaction).toHaveBeenCalled();
+    expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({ transactionId: transaction.id, actorUserId: customerContext.user.id, actorType: "customer", eventType: "handoff.customer_verified" }));
+
+    const unarrivedSelect = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ ...schedule, handoffStatus: "en_route" }]) })) })) });
+    mockedGetDb.mockResolvedValue({ select: unarrivedSelect } as never);
+    await expect(caller.transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("only after DreamCarz marks the pickup or delivery as arrived");
+  });
 });
