@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAwsFaceLivenessStatus } from "./awsFaceLiveness";
+import { createAwsFaceLivenessSession, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 
 const envKeys = [
   "AWS_ACCESS_KEY_ID",
@@ -49,5 +49,18 @@ describe("AWS Face Liveness provider state", () => {
     const status = getAwsFaceLivenessStatus();
     expect(status.configured).toBe(true);
     expect(status.mode).toBe("ready");
+  });
+
+  it("does not create a provider session while the browser credential path is intentionally unavailable", async () => {
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "dedicated-server-key");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "dedicated-server-secret");
+    vi.stubEnv("AWS_REGION", "us-east-1");
+    vi.stubEnv("AWS_FACE_LIVENESS_ENABLED", "true");
+    vi.stubEnv("AWS_FACE_LIVENESS_BROWSER_ROLE_ARN", "");
+
+    await expect(createAwsFaceLivenessSession({ clientRequestToken: "test-request-token" })).resolves.toMatchObject({
+      configured: false,
+      provider: { mode: "manual_review" },
+    });
   });
 });

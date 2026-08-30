@@ -111,8 +111,10 @@
 - [x] Extend the staged rental application to collect required applicant profile, address, driver eligibility, and document information securely.
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
 - [ ] Add a configuration-gated AWS Face Liveness session and result-verification boundary in US East, with no browser AWS credentials or retained biometric result payloads.
-- [ ] Create a dedicated least-privilege AWS IAM configuration for Face Liveness through the authorized AWS session, rather than using root credentials.
+- [x] Create a dedicated least-privilege AWS IAM configuration for Face Liveness through the authorized AWS session, rather than using root credentials.
 - [ ] Create a scoped short-lived browser credential role limited to `rekognition:StartFaceLivenessSession`, with the DreamCarz server as its only trusted issuer.
+- [ ] Implement protected app procedures to create and verify AWS Face Liveness sessions, persisting only minimal opaque session metadata and no biometric result payloads.
+- [ ] Wire the consent-gated customer AWS Face Liveness launch path after the scoped browser credential role is available, retaining manual review as the fallback.
 - [ ] Integrate secure CoCard gateway payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
 - [x] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.

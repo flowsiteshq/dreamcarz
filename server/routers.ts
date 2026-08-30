@@ -73,7 +73,7 @@ import { DREAMCARZ_ROLES, effectiveDreamCarzRoles } from "../shared/dreamcarzRol
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
-import { getAwsFaceLivenessStatus } from "./awsFaceLiveness";
+import { createAwsFaceLivenessSession, getAwsFaceLivenessResult, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
@@ -1214,6 +1214,84 @@ export const appRouter = router({
     identityProviderStatus: protectedProcedure.query(() => getIdentityProviderStatus()),
 
     awsFaceLivenessStatus: protectedProcedure.query(() => getAwsFaceLivenessStatus()),
+
+    startAwsFaceLiveness: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        identityDocumentConsent: z.literal(true),
+        biometricConsent: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        if (!consumeRateLimit({ key: rateLimitKey(ctx.req, "aws-face-liveness-start", String(ctx.user.id)), limit: 3, windowMs: 15 * 60_000 }).allowed) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many identity-session requests. Please use the manual review path or try again later." });
+        }
+        const transaction = (await db.select().from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "identity") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the saved profile steps before starting identity verification." });
+
+        const session = await createAwsFaceLivenessSession({ clientRequestToken: nanoid(32) });
+        if (!session.configured) return { started: false as const, provider: session.provider };
+        await db.insert(transactionConsents).values([
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_document", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness" },
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_biometric", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness" },
+        ]);
+        await db.update(vehicleTransactions).set({
+          status: "verification_pending",
+          identityStatus: "pending",
+          licenseStatus: "pending",
+          identityProvider: "aws_face_liveness",
+          identitySessionId: session.sessionId,
+        }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.update(customerProfiles).set({
+          profileStatus: "ready_for_verification",
+          identityStatus: "pending",
+          licenseStatus: "pending",
+          identityProvider: "aws_face_liveness",
+          identityProviderSessionId: session.sessionId,
+        }).where(eq(customerProfiles.userId, ctx.user.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "identity.aws_liveness_session_created",
+          fromStatus: transaction.status,
+          toStatus: "verification_pending",
+          metadata: JSON.stringify({ provider: "aws_face_liveness" }),
+        });
+        return { started: true as const, provider: session.provider, sessionId: session.sessionId };
+      }),
+
+    checkAwsFaceLiveness: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction || transaction.identityProvider !== "aws_face_liveness" || !transaction.identitySessionId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "An AWS Face Liveness session is not available for this transaction." });
+        }
+        const result = await getAwsFaceLivenessResult(transaction.identitySessionId);
+        if (!result.configured) return { configured: false as const, provider: result.provider, completed: false };
+        const completed = result.status === "SUCCEEDED";
+        if (completed) {
+          await db.insert(transactionEvents).values({
+            transactionId: transaction.id,
+            actorUserId: ctx.user.id,
+            actorType: "customer",
+            eventType: "identity.aws_liveness_completed",
+            metadata: JSON.stringify({ provider: "aws_face_liveness", manualReviewRequired: true }),
+          });
+        }
+        return { configured: true as const, provider: result.provider, completed };
+      }),
 
     startIdentityVerification: protectedProcedure
       .input(z.object({

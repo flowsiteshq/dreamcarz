@@ -68,8 +68,8 @@ export async function createAwsFaceLivenessSession(input: {
 
 /**
  * Reads a completed provider session for a server-side manual-review decision.
- * This helper returns only the completed state and confidence value; callers
- * must never persist images, reference images, or raw provider payloads.
+ * This helper returns only the provider completion state; callers must never
+ * persist images, reference images, confidence data, or raw provider payloads.
  */
 export async function getAwsFaceLivenessResult(sessionId: string) {
   const provider = getAwsFaceLivenessStatus();
@@ -82,6 +82,5 @@ export async function getAwsFaceLivenessResult(sessionId: string) {
     configured: true as const,
     provider,
     status: result.Status,
-    confidence: result.Confidence ?? null,
   };
 }
