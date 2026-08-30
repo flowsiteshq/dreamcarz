@@ -67,8 +67,9 @@ describe("DreamCarz Vehicle Passport operational history", () => {
   it("records a human inspection review without changing vehicle readiness", async () => {
     const reviewValues = vi.fn().mockResolvedValue(undefined);
     const db = {
-      select: vi.fn(() => terminalWithLimit([{ id: 12 }])),
+      select: vi.fn(() => terminalWithLimit([{ id: 12, vehiclePassportId: 91 }])),
       update: vi.fn(() => ({ set: vi.fn(() => ({ where: reviewValues })) })),
+      insert: vi.fn(() => ({ values: vi.fn().mockResolvedValue(undefined) })),
     };
     mockedGetDb.mockResolvedValue(db as never);
 

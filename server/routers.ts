@@ -3068,10 +3068,13 @@ export const appRouter = router({
         const existing = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
         if (existing[0]) {
           await db.update(vehiclePassports).set(values).where(eq(vehiclePassports.id, existing[0].id));
+          await recordVehiclePassportActivity(db, { vehiclePassportId: existing[0].id, actorUserId: ctx.user.id, eventType: "passport.updated", metadata: { readinessStatus: input.readinessStatus } });
           return { success: true, passportId: existing[0].id, updated: true };
         }
         const created = await db.insert(vehiclePassports).values(values);
-        return { success: true, passportId: Number(created[0].insertId), updated: false };
+        const passportId = Number(created[0].insertId);
+        await recordVehiclePassportActivity(db, { vehiclePassportId: passportId, actorUserId: ctx.user.id, eventType: "passport.created", metadata: { readinessStatus: input.readinessStatus } });
+        return { success: true, passportId, updated: false };
       }),
 
       uploadDocument: protectedProcedure.input(z.object({
@@ -3092,6 +3095,7 @@ export const appRouter = router({
         const { key } = await storagePut(`vehicle-passport-documents/${passport.id}/${input.documentType}_${Date.now()}.${extension}`, bytes, input.contentType);
         const patch = input.documentType === "registration" ? { registrationDocumentKey: key } : { insuranceDocumentKey: key };
         await db.update(vehiclePassports).set(patch).where(eq(vehiclePassports.id, passport.id));
+        await recordVehiclePassportActivity(db, { vehiclePassportId: passport.id, actorUserId: ctx.user.id, eventType: "passport.document_uploaded", metadata: { documentType: input.documentType } });
         return { success: true, documentType: input.documentType } as const;
       }),
 
@@ -3122,6 +3126,7 @@ export const appRouter = router({
         const passport = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1);
         if (!passport[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
         const created = await db.insert(vehicleOperationalInspections).values({ ...input, transactionId: input.transactionId ?? null, fuelOrChargeLevel: input.fuelOrChargeLevel || null, tireCondition: input.tireCondition || null, cleanliness: input.cleanliness || null, damageNotes: input.damageNotes || null, status: "submitted", inspectedByUserId: ctx.user.id, inspectedAt: new Date() });
+        await recordVehiclePassportActivity(db, { vehiclePassportId: passport[0].id, actorUserId: ctx.user.id, eventType: "inspection.recorded", metadata: { stage: input.stage } });
         return { success: true, inspectionId: Number(created[0].insertId) };
       }),
 
@@ -3133,9 +3138,10 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Inspection review is temporarily unavailable." });
-        const inspection = (await db.select({ id: vehicleOperationalInspections.id }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.id, input.inspectionId)).limit(1))[0];
+        const inspection = (await db.select({ id: vehicleOperationalInspections.id, vehiclePassportId: vehicleOperationalInspections.vehiclePassportId }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.id, input.inspectionId)).limit(1))[0];
         if (!inspection) throw new TRPCError({ code: "NOT_FOUND", message: "Operational inspection not found." });
         await db.update(vehicleOperationalInspections).set({ status: input.status, reviewNote: input.reviewNote?.trim() || null, reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(vehicleOperationalInspections.id, inspection.id));
+        await recordVehiclePassportActivity(db, { vehiclePassportId: inspection.vehiclePassportId, actorUserId: ctx.user.id, eventType: "inspection.reviewed", metadata: { status: input.status } });
         return { success: true, status: input.status, vehicleReadinessChanged: false };
       }),
 
