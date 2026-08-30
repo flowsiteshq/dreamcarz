@@ -2422,7 +2422,13 @@ export const appRouter = router({
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role));
       if (!roles.some(role => ["support", "operations", "manager", "administrator"].includes(role))) throw new TRPCError({ code: "FORBIDDEN", message: "DreamCarz support operations access is required." });
-      return db.select().from(supportRequests).orderBy(desc(supportRequests.updatedAt));
+      const requests = await db.select().from(supportRequests).orderBy(desc(supportRequests.updatedAt));
+      const requestIds = requests.map(request => request.id);
+      const followUps = requestIds.length ? await db.select({ id: supportRequestEvents.id, supportRequestId: supportRequestEvents.supportRequestId, customerUpdate: supportRequestEvents.customerUpdate, createdAt: supportRequestEvents.createdAt }).from(supportRequestEvents).where(inArray(supportRequestEvents.supportRequestId, requestIds)).orderBy(desc(supportRequestEvents.createdAt)) : [];
+      return requests.map(request => ({
+        ...request,
+        customerFollowUps: followUps.filter(event => event.supportRequestId === request.id && event.customerUpdate).map(event => ({ id: event.id, message: event.customerUpdate!, createdAt: event.createdAt })),
+      }));
     }),
     review: protectedProcedure.input(z.object({
       supportRequestId: z.number().int().positive(),

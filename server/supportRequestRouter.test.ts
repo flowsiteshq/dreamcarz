@@ -51,6 +51,21 @@ describe("DreamCarz support requests", () => {
     await expect(appRouter.createCaller(callerContext as never).supportRequests.queue()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("returns customer follow-ups only in the authorized support queue", async () => {
+    const staffContext = { ...callerContext, user: { ...callerContext.user, id: 8, role: "user" } };
+    const whereResult = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(result) })) });
+    const requests = [{ id: 44, reference: "SP-2026-TEST123", userId: 51, category: "general", urgency: "standard", status: "under_review", subject: "Question", description: "A member question", createdAt: new Date(), updatedAt: new Date() }];
+    const select = vi.fn()
+      .mockReturnValueOnce(whereResult([{ role: "support" }]))
+      .mockReturnValueOnce({ from: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(requests) })) })
+      .mockReturnValueOnce(selectResult([{ id: 99, supportRequestId: 44, customerUpdate: "Customer-only follow-up detail", createdAt: new Date() }]));
+    mockedGetDb.mockResolvedValue({ select } as never);
+
+    const [result] = await appRouter.createCaller(staffContext as never).supportRequests.queue();
+    expect(result.customerFollowUps).toEqual([expect.objectContaining({ message: "Customer-only follow-up detail" })]);
+    expect(result).not.toHaveProperty("internalNote");
+  });
+
   it("records a private follow-up only for an account-owned open support request", async () => {
     const eventValues = vi.fn().mockResolvedValue(undefined);
     const updateWhere = vi.fn().mockResolvedValue(undefined);
