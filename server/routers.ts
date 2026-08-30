@@ -873,6 +873,7 @@ export const appRouter = router({
       const rental = (await db.select({
         id: vehicleTransactions.id,
         reference: vehicleTransactions.reference,
+        vehicleId: vehicleTransactions.vehicleId,
         vehicleName: vehicleTransactions.vehicleName,
         vehicleImage: vehicleTransactions.vehicleImage,
         status: vehicleTransactions.status,
@@ -937,7 +938,7 @@ export const appRouter = router({
       const returnCondition = conditionForStage("return");
       return {
         reference: rental.reference,
-        vehicle: { name: rental.vehicleName, image: rental.vehicleImage },
+        vehicle: { id: rental.vehicleId, name: rental.vehicleName, image: rental.vehicleImage },
         lifecycle: {
           status: rental.status,
           activeRentalStatus: rental.activeRentalStatus,

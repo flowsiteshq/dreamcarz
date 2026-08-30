@@ -46,6 +46,6 @@ export function ActiveRentalSummary() {
         <div className="mt-5 grid gap-2"><Link href={`/dashboard/transactions?ref=${encodeURIComponent(rental.reference)}`} className="inline-flex h-11 items-center justify-center gap-2 bg-white px-4 text-sm font-semibold text-black">Manage rental <ArrowRight size={15} /></Link><Link href={`/dashboard/transactions?ref=${encodeURIComponent(rental.reference)}`} className="inline-flex h-10 items-center justify-center gap-2 border border-white/35 px-4 text-xs font-semibold text-white"><FileText size={14} /> My agreement & records</Link><Link href="/dashboard/incidents" className="inline-flex h-10 items-center justify-center gap-2 border border-white/35 px-4 text-xs font-semibold text-white"><ShieldCheck size={14} /> Report an issue or incident</Link><Link href="/dashboard/support" className="inline-flex h-10 items-center justify-center gap-2 border border-white/35 px-4 text-xs font-semibold text-white"><PhoneCall size={14} /> Contact DreamCarz</Link></div>
       </aside>
     </div>
-    <div className="mt-7 border-t border-white/20 pt-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#d1ad54]">Available next steps</p><ActiveRentalOptions reference={rental.reference} /></div>
+    <div className="mt-7 border-t border-white/20 pt-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#d1ad54]">Available next steps</p><ActiveRentalOptions reference={rental.reference} currentVehicleId={rental.vehicle.id} /></div>
   </section>;
 }

@@ -276,4 +276,53 @@ describe("transaction intake router", () => {
 
     await expect(caller.transactions.activeRentalSummary()).resolves.toBeNull();
   });
+
+  it("creates a review-gated rental swap request only for an account-owned active rental and confirmed target vehicle", async () => {
+    const source = {
+      id: 314,
+      reference: "DCR-2026-SWAP-SOURCE",
+      userId: customerContext.user.id,
+      transactionType: "rental" as const,
+      status: "active_rental" as const,
+      vehicleId: "2024-chevrolet-malibu-gray",
+      membershipPlan: "freedom",
+      contactName: "Transaction Customer",
+      contactEmail: "customer@example.com",
+      contactPhone: "3015550100",
+      addressLine1: "10001 Derekwood Lane",
+      addressLine2: null,
+      city: "Lanham",
+      state: "MD",
+      postalCode: "20706",
+      identityStatus: "verified" as const,
+      licenseStatus: "verified" as const,
+    };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([source]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) });
+    const createTarget = vi.fn().mockResolvedValue([{ insertId: 315 }]);
+    const createLink = vi.fn().mockResolvedValue(undefined);
+    const createEvents = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn()
+      .mockReturnValueOnce({ values: createTarget })
+      .mockReturnValueOnce({ values: createLink })
+      .mockReturnValueOnce({ values: createEvents });
+    mockedGetDb.mockResolvedValue({ select, insert } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.operations.requestLinkedTransaction({ reference: source.reference, linkType: "swap", targetVehicleId: "2022-chevrolet-traverse-white" })).resolves.toMatchObject({ success: true, transactionType: "rental" });
+    expect(createTarget).toHaveBeenCalledWith(expect.objectContaining({
+      userId: customerContext.user.id,
+      vehicleId: "2022-chevrolet-traverse-white",
+      vehicleName: "2022 Chevrolet Traverse",
+      status: "initiated",
+      currentStep: "dates",
+    }));
+    expect(createLink).toHaveBeenCalledWith(expect.objectContaining({ sourceTransactionId: 314, targetTransactionId: 315, linkType: "swap", requestedByUserId: customerContext.user.id }));
+
+    const unknownTargetSelect = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([source]) })) })) });
+    mockedGetDb.mockResolvedValue({ select: unknownTargetSelect } as never);
+    await expect(caller.operations.requestLinkedTransaction({ reference: source.reference, linkType: "swap", targetVehicleId: "coming-soon-vehicle" })).rejects.toThrow("Choose a confirmed DreamCarz inventory vehicle");
+  });
 });
