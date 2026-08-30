@@ -326,6 +326,44 @@ describe("transaction intake router", () => {
     await expect(caller.operations.requestLinkedTransaction({ reference: source.reference, linkType: "swap", targetVehicleId: "coming-soon-vehicle" })).rejects.toThrow("Choose a confirmed DreamCarz inventory vehicle");
   });
 
+  it("creates a review-gated purchase from an account-owned active rental without pricing or financing claims", async () => {
+    const source = {
+      id: 401,
+      reference: "DCR-2026-RENT-TO-BUY",
+      userId: customerContext.user.id,
+      transactionType: "rental" as const,
+      status: "active_rental" as const,
+      vehicleId: "2024-chevrolet-malibu-gray",
+      membershipPlan: "freedom",
+      contactName: "Transaction Customer",
+      contactEmail: "customer@example.com",
+      contactPhone: "3015550100",
+      addressLine1: "10001 Derekwood Lane",
+      addressLine2: null,
+      city: "Lanham",
+      state: "MD",
+      postalCode: "20706",
+      identityStatus: "verified" as const,
+      licenseStatus: "verified" as const,
+    };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([source]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) });
+    const createPurchase = vi.fn().mockResolvedValue([{ insertId: 402 }]);
+    const createLink = vi.fn().mockResolvedValue(undefined);
+    const createEvents = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn()
+      .mockReturnValueOnce({ values: createPurchase })
+      .mockReturnValueOnce({ values: createLink })
+      .mockReturnValueOnce({ values: createEvents });
+    mockedGetDb.mockResolvedValue({ select, insert } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.operations.requestLinkedTransaction({ reference: source.reference, linkType: "rent_to_buy" })).resolves.toMatchObject({ success: true, transactionType: "purchase", reference: expect.stringMatching(/^DCB-/) });
+    expect(createPurchase).toHaveBeenCalledWith(expect.objectContaining({ userId: customerContext.user.id, transactionType: "purchase", vehicleId: source.vehicleId, membershipPlan: source.membershipPlan, currentStep: "profile", paymentStatus: "pending" }));
+    expect(createLink).toHaveBeenCalledWith(expect.objectContaining({ sourceTransactionId: source.id, targetTransactionId: 402, linkType: "rent_to_buy", requestedByUserId: customerContext.user.id }));
+  });
+
   it("returns a finalized account-owned settlement statement without receipt, evidence, provider, or reviewer identifiers", async () => {
     const transaction = { id: 522, reference: "DCR-2026-STATEMENT", transactionType: "rental" as const, vehicleName: "2020 Chevrolet Equinox", status: "settlement_pending" as const, returnStatus: "complete" as const, settlementStatus: "complete" as const };
     const settlement = { id: 64, status: "settled" as const, currency: "USD", approvedSubtotalCents: 40000, depositAppliedCents: 25000, adjustmentsCents: 1500, finalAmountCents: 16500, summary: "Reviewed return record.", settledAt: new Date("2026-09-08T12:00:00Z"), updatedAt: new Date("2026-09-08T12:00:00Z"), receiptStorageKey: "private-receipt-key", reviewedByUserId: 1 };
