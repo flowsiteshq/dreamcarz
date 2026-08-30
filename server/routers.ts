@@ -1059,6 +1059,8 @@ export const appRouter = router({
         acknowledgesHandoff: z.literal(true),
       }))
       .mutation(async ({ ctx, input }) => {
+        const handoffLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "transaction_handoff_confirmation", String(ctx.user.id)), limit: 4, windowMs: 30 * 60 * 1000 });
+        if (!handoffLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many handoff confirmations. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Handoff confirmation is temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(and(
@@ -1262,6 +1264,8 @@ export const appRouter = router({
         note: z.string().trim().max(1_000).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        const extensionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "rental_extension_request", String(ctx.user.id)), limit: 4, windowMs: 12 * 60 * 60 * 1000 });
+        if (!extensionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many extension requests. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Extension requests are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions)
@@ -2999,6 +3003,8 @@ export const appRouter = router({
     requestLinkedTransaction: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32), linkType: z.enum(["rent_to_buy", "swap"]), targetVehicleId: z.string().trim().min(4).max(96).optional() }))
       .mutation(async ({ ctx, input }) => {
+        const linkedRequestLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "linked_transaction_request", String(ctx.user.id)), limit: 6, windowMs: 6 * 60 * 60 * 1000 });
+        if (!linkedRequestLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many rent-to-buy or swap requests. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction requests are temporarily unavailable." });
         const source = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
