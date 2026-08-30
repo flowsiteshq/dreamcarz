@@ -3141,6 +3141,34 @@ export const appRouter = router({
         await db.update(vehicleMaintenanceRecords).set({ status: input.status, completedAt: input.status === "completed" ? input.completedAt! : null }).where(eq(vehicleMaintenanceRecords.id, maintenance.id));
         return { success: true, status: input.status, vehicleReadinessChanged: false } as const;
       }),
+
+      uploadMaintenanceInvoice: protectedProcedure.input(z.object({
+        maintenanceId: z.number().int().positive(),
+        filename: z.string().trim().min(1).max(180),
+        contentType: z.enum(["application/pdf", "image/jpeg", "image/png"]),
+        base64: z.string().min(40),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
+        const maintenance = (await db.select({ id: vehicleMaintenanceRecords.id }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
+        if (!maintenance) throw new TRPCError({ code: "NOT_FOUND", message: "Maintenance record not found." });
+        const bytes = Buffer.from(input.base64, "base64");
+        if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Maintenance invoices must be between 1 byte and 8 MB." });
+        const extension = input.contentType === "application/pdf" ? "pdf" : input.contentType === "image/png" ? "png" : "jpg";
+        const { key } = await storagePut(`vehicle-maintenance-invoices/${maintenance.id}/invoice_${Date.now()}.${extension}`, bytes, input.contentType);
+        await db.update(vehicleMaintenanceRecords).set({ invoiceDocumentKey: key }).where(eq(vehicleMaintenanceRecords.id, maintenance.id));
+        return { success: true } as const;
+      }),
+
+      maintenanceInvoiceUrl: protectedProcedure.input(z.object({ maintenanceId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Maintenance records are temporarily unavailable." });
+        const maintenance = (await db.select({ invoiceDocumentKey: vehicleMaintenanceRecords.invoiceDocumentKey }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.id, input.maintenanceId)).limit(1))[0];
+        if (!maintenance?.invoiceDocumentKey) throw new TRPCError({ code: "NOT_FOUND", message: "Maintenance invoice not found." });
+        return { url: await storageGetSignedUrl(maintenance.invoiceDocumentKey) };
+      }),
     }),
 
     handoff: router({

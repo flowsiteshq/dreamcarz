@@ -5,16 +5,19 @@ vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() 
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
+import { storageGetSignedUrl, storagePut } from "./storage";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
+const mockedStorageGetSignedUrl = vi.mocked(storageGetSignedUrl);
+const mockedStoragePut = vi.mocked(storagePut);
 const terminalWithLimit = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(result) })) })) });
 const historyTerminal = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(result) })) })) })) });
 const adminContext = { user: { id: 1, name: "Administrator", email: "admin@example.com", role: "admin" }, req: { headers: {} }, res: {} };
 const memberContext = { user: { id: 77, name: "Member", email: "member@example.com", role: "user" }, req: { headers: {} }, res: {} };
 
 describe("DreamCarz Vehicle Passport operational history", () => {
-  beforeEach(() => mockedGetDb.mockReset());
+  beforeEach(() => { mockedGetDb.mockReset(); mockedStorageGetSignedUrl.mockReset(); mockedStoragePut.mockReset(); });
 
   it("allows an administrator to read a selected passport's operational history without file keys", async () => {
     const passport = { id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "inspection_due", currentOdometer: 28501, fuelOrChargeLevel: "Full", updatedAt: new Date("2026-09-02T10:00:00Z") };
@@ -83,5 +86,23 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     await expect(caller.operations.vehiclePassports.updateMaintenanceStatus({ maintenanceId: 5, status: "completed", completedAt })).resolves.toEqual({ success: true, status: "completed", vehicleReadinessChanged: false });
     expect(db.update).toHaveBeenCalled();
     expect(updateWhere).toHaveBeenCalled();
+  });
+
+  it("stores a maintenance invoice privately and returns it only through an administrator-only signed access action", async () => {
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn()
+        .mockReturnValueOnce(terminalWithLimit([{ id: 7 }]))
+        .mockReturnValueOnce(terminalWithLimit([{ invoiceDocumentKey: "private/maintenance-invoice.pdf" }])),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+    };
+    mockedGetDb.mockResolvedValue(db as never);
+    mockedStoragePut.mockResolvedValue({ key: "private/maintenance-invoice.pdf", url: "/manus-storage/private/maintenance-invoice.pdf" });
+    mockedStorageGetSignedUrl.mockResolvedValue("https://example.invalid/maintenance-invoice" as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.vehiclePassports.uploadMaintenanceInvoice({ maintenanceId: 7, filename: "invoice.pdf", contentType: "application/pdf", base64: Buffer.alloc(32, 1).toString("base64") })).resolves.toEqual({ success: true });
+    await expect(caller.operations.vehiclePassports.maintenanceInvoiceUrl({ maintenanceId: 7 })).resolves.toEqual({ url: "https://example.invalid/maintenance-invoice" });
+    expect(mockedStorageGetSignedUrl).toHaveBeenCalledWith("private/maintenance-invoice.pdf");
   });
 });
