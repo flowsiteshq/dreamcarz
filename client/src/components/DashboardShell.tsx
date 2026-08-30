@@ -54,6 +54,7 @@ const sidebarLinks = [
   { href: "/dashboard/transactions", label: "My Records", icon: FileText },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/report", label: "Report an Issue", icon: AlertTriangle },
+  { href: "/dashboard/incidents", label: "Incident Center", icon: ShieldCheck },
   { href: "/dashboard/dream-journey", label: "Dream Journey", icon: Trophy },
   { href: "/dashboard/drive-network", label: "Associate Path", icon: Network },
   { href: "/dashboard/locations", label: "Locations", icon: MapPin },

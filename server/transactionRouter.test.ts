@@ -89,6 +89,22 @@ describe("transaction intake router", () => {
     })).rejects.toThrow("Describe the trade-in vehicle");
   });
 
+  it("blocks incident reports that are not attached to the customer’s current rental", async () => {
+    const transaction = { id: 82, transactionType: "purchase" as const, status: "active_rental" as const, vehicleId: "2024-chevrolet-malibu-gray" };
+    mockedGetDb.mockResolvedValue({
+      select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })),
+    } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.incidents.report({
+      transactionReference: "DCP-2026-NOT-RENTAL",
+      incidentType: "damage",
+      severity: "standard",
+      description: "Observed damage that needs a DreamCarz review.",
+      photos: [],
+    })).rejects.toThrow("active or current rental");
+  });
+
   it("routes an account-owned identity-record deletion request to manual review and creates a privacy audit event", async () => {
     const transaction = { id: 99, status: "verification_pending" as const };
     const updateWhere = vi.fn().mockResolvedValue(undefined);

@@ -1571,6 +1571,67 @@ export const appRouter = router({
     }),
   }),
 
+  incidents: router({
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: vehicleIncidentRecords.id,
+        incidentType: vehicleIncidentRecords.incidentType,
+        severity: vehicleIncidentRecords.severity,
+        status: vehicleIncidentRecords.status,
+        reportedLocation: vehicleIncidentRecords.reportedLocation,
+        occurredAt: vehicleIncidentRecords.occurredAt,
+        description: vehicleIncidentRecords.description,
+        photoKeys: vehicleIncidentRecords.photoKeys,
+        createdAt: vehicleIncidentRecords.createdAt,
+        vehicleName: vehiclePassports.vehicleName,
+        transactionReference: vehicleTransactions.reference,
+      }).from(vehicleIncidentRecords)
+        .innerJoin(vehiclePassports, eq(vehicleIncidentRecords.vehiclePassportId, vehiclePassports.id))
+        .innerJoin(vehicleTransactions, eq(vehicleIncidentRecords.transactionId, vehicleTransactions.id))
+        .where(eq(vehicleTransactions.userId, ctx.user.id))
+        .orderBy(desc(vehicleIncidentRecords.createdAt));
+    }),
+
+    report: protectedProcedure.input(z.object({
+      transactionReference: z.string().trim().min(8).max(32),
+      incidentType: z.enum(["collision", "mechanical", "damage", "theft", "towing", "ticket_or_impound", "roadside", "other"]),
+      severity: z.enum(["standard", "urgent", "emergency"]),
+      reportedLocation: z.string().trim().max(255).optional(),
+      occurredAt: z.date().optional(),
+      policeReportReference: z.string().trim().max(160).optional(),
+      towReference: z.string().trim().max(160).optional(),
+      insuranceClaimReference: z.string().trim().max(160).optional(),
+      description: z.string().trim().min(10).max(4000),
+      photos: z.array(z.object({ filename: z.string().trim().min(1).max(160), contentType: z.enum(["image/jpeg", "image/png", "image/webp"]), base64: z.string().min(100).max(8_400_000) })).max(8).default([]),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Incident reporting is temporarily unavailable." });
+      const transactions = await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.transactionReference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1);
+      const transaction = transactions[0];
+      if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "This transaction is not available for incident reporting." });
+      if (transaction.transactionType !== "rental" || !["ready_for_pickup", "active_rental", "return_pending"].includes(transaction.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Incidents can be linked only to an active or current rental transaction." });
+      const passports = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, transaction.vehicleId)).limit(1);
+      if (!passports[0]) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must create the internal Vehicle Passport before this incident can be submitted." });
+      const incidentDraft = await db.insert(vehicleIncidentRecords).values({
+        vehiclePassportId: passports[0].id, transactionId: transaction.id, incidentType: input.incidentType, severity: input.severity, status: "reported",
+        reportedLocation: input.reportedLocation || null, occurredAt: input.occurredAt ?? new Date(), policeReportReference: input.policeReportReference || null,
+        towReference: input.towReference || null, insuranceClaimReference: input.insuranceClaimReference || null, description: input.description, reportedByUserId: ctx.user.id,
+      });
+      const incidentId = Number(incidentDraft[0].insertId);
+      const photoKeys = await Promise.all(input.photos.map(async (photo, index) => {
+        const fileName = photo.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const stored = await storagePut(`vehicle-incidents/${ctx.user.id}/${transaction.id}/${incidentId}/${index}-${fileName}`, Buffer.from(photo.base64, "base64"), photo.contentType);
+        return stored.key;
+      }));
+      if (photoKeys.length) await db.update(vehicleIncidentRecords).set({ photoKeys: JSON.stringify(photoKeys) }).where(eq(vehicleIncidentRecords.id, incidentId));
+      await db.update(vehicleTransactions).set({ conditionStatus: "review_required" }).where(eq(vehicleTransactions.id, transaction.id));
+      await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "incident.reported", fromStatus: transaction.status, toStatus: transaction.status, metadata: JSON.stringify({ incidentId, incidentType: input.incidentType, severity: input.severity, privateEvidenceCount: photoKeys.length }) });
+      return { success: true, incidentId, privateEvidenceCount: photoKeys.length };
+    }),
+  }),
+
   serviceReports: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
