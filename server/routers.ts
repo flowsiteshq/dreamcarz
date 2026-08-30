@@ -65,6 +65,7 @@ import { canMemberCancelReservation, hasValidReservationDateRange } from "../sha
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
+import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import {
   APPROVED_TRANSACTION_VEHICLES,
   canReuseProfileVerification,
@@ -747,6 +748,24 @@ export const appRouter = router({
         const wallets = await db.select({ id: walletAccounts.id }).from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1);
         if (!wallets[0]) await db.insert(walletAccounts).values({ userId: ctx.user.id });
 
+        const activeMembershipRows = await db
+          .select({ membership: customerMemberships, plan: membershipPlans })
+          .from(customerMemberships)
+          .innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id))
+          .where(and(eq(customerMemberships.userId, ctx.user.id), eq(customerMemberships.status, "active")))
+          .orderBy(desc(customerMemberships.updatedAt))
+          .limit(1);
+        const activeMembership = activeMembershipRows[0] ?? null;
+        const activeBenefits = activeMembership
+          ? await db.select({ benefitType: membershipBenefits.benefitType, label: membershipBenefits.label, configuration: membershipBenefits.configuration })
+            .from(membershipBenefits)
+            .where(and(eq(membershipBenefits.membershipPlanId, activeMembership.plan.id), eq(membershipBenefits.isActive, true)))
+          : [];
+        const membershipEffects = evaluateActiveMembershipBenefits(activeBenefits);
+        if (activeMembership && !membershipAllowsVehicle(membershipEffects, input.vehicleId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Your active membership does not currently include this confirmed vehicle. Please request an eligibility review." });
+        }
+
         const profile = profiles[0];
         const withdrawnConsents = await db
           .select({ id: transactionConsents.id })
@@ -772,7 +791,7 @@ export const appRouter = router({
           vehicleId: input.vehicleId,
           vehicleName: vehicle.vehicleName,
           vehicleImage: vehicle.image,
-          membershipPlan: input.membershipPlan ?? null,
+          membershipPlan: activeMembership?.plan.code ?? input.membershipPlan ?? null,
           ...lifecycle,
           status: initialStatus,
           currentStep: input.transactionType === "rental" ? "dates" : profileComplete ? "identity" : lifecycle.currentStep,
@@ -791,7 +810,7 @@ export const appRouter = router({
         await db.insert(transactionEligibilityAssessments).values({
           transactionId,
           status: "pending",
-          ruleSnapshot: JSON.stringify({ version: "dreamcarz-eligibility-v1", requiresManualReview: true, transactionType: input.transactionType, vehicleId: input.vehicleId }),
+          ruleSnapshot: JSON.stringify({ version: "dreamcarz-eligibility-v2", requiresManualReview: true, transactionType: input.transactionType, vehicleId: input.vehicleId, activeMembershipPlan: activeMembership?.plan.code ?? null, membershipEffects }),
         });
         await db.insert(transactionEvents).values({
           transactionId,
@@ -799,7 +818,7 @@ export const appRouter = router({
           actorType: "customer",
           eventType: "transaction.initiated",
           toStatus: initialStatus,
-          metadata: JSON.stringify({ vehicleId: input.vehicleId, transactionType: input.transactionType, membershipPlan: input.membershipPlan ?? null, profileVerificationReused: profileVerificationReusable, manualReviewRequired: withdrawnConsents.length > 0 }),
+          metadata: JSON.stringify({ vehicleId: input.vehicleId, transactionType: input.transactionType, membershipPlan: activeMembership?.plan.code ?? input.membershipPlan ?? null, membershipEffects, profileVerificationReused: profileVerificationReusable, manualReviewRequired: withdrawnConsents.length > 0 }),
         });
         return { success: true, resumed: false, reference, transactionType: input.transactionType };
       }),
