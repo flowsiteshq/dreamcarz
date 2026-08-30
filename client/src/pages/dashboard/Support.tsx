@@ -1,88 +1,35 @@
 import DashboardShell from "@/components/DashboardShell";
-import { Headphones, Phone, Mail, MessageSquare, ChevronRight, Clock } from "lucide-react";
+import { ChevronRight, Clock3, Mail, MessageSquareText, Phone, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 const faqs = [
-  { q: "How do I extend my current rental?", a: "Call us at (301) 772-2500 or use the 'Extend Rental' button on your dashboard. Extensions are subject to vehicle availability." },
-  { q: "How do I earn DCP points?", a: "You may earn DCP through qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful referrals, and anniversary activity." },
-  { q: "What is Transportation Power?", a: "Transportation Power is your DCP balance multiplied by your tier multiplier — it represents the real-dollar value you can apply toward vehicle purchases or rentals." },
-  { q: "How does Credit Free work?", a: "Credit Free starts day 1 for qualifying members and may provide access without traditional credit-score requirements. Approval is based on ability to pay and other applicable factors." },
-  { q: "Can I swap my vehicle mid-rental?", a: "Pro and Elite members can request a vehicle swap. Contact our concierge team to check availability and process the swap." },
+  { q: "How do I extend my current rental?", a: "Use the Extend Rental control in your active rental or My Records. DreamCarz reviews every extension before changing your return schedule." },
+  { q: "How do I request a vehicle swap?", a: "Open the active rental summary and choose a confirmed DreamCarz vehicle for review. A request does not change the current rental or promise availability." },
+  { q: "Where can I find agreement and payment status?", a: "Open My Records for your private transaction journey. Payment status is shown without payment credentials or provider identifiers." },
+  { q: "What should I do after a collision or urgent vehicle issue?", a: "If anyone may be in danger, contact emergency services first. Then use the Safety & Incident Center to record the issue and any available supporting information." },
+  { q: "How do membership benefits apply?", a: "Only active, explicitly configured DreamCarz benefits apply. Vehicle access, pricing, and eligibility remain subject to the transaction review." },
 ];
 
 export default function Support() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [message, setMessage] = useState("");
+  const [category, setCategory] = useState<"general" | "account" | "membership" | "reservation" | "transaction" | "payment" | "vehicle" | "incident" | "other">("general");
+  const [urgency, setUrgency] = useState<"standard" | "urgent">("standard");
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const utils = trpc.useUtils();
+  const requests = trpc.supportRequests.listMine.useQuery(undefined, { refetchOnWindowFocus: false });
+  const create = trpc.supportRequests.create.useMutation({ onSuccess: () => { setSubject(""); setDescription(""); setCategory("general"); setUrgency("standard"); void utils.supportRequests.listMine.invalidate(); } });
+  const submit = (event: React.FormEvent) => { event.preventDefault(); if (subject.trim().length >= 3 && description.trim().length >= 10) create.mutate({ category, urgency, subject: subject.trim(), description: description.trim() }); };
 
-  return (
-    <DashboardShell title="Support">
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>Support</h2>
-          <p className="text-sm text-gray-400 mt-0.5">We're here to help with vehicles, DCP, service, membership, and your freedom journey.</p>
-        </div>
+  return <DashboardShell title="Support"><div className="space-y-6"><div><h2 className="text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>Support</h2><p className="mt-0.5 text-sm text-gray-500">Record a private request, review your request history, or choose the appropriate DreamCarz service path.</p></div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3"><a href="tel:3017722500" className="rounded-2xl border border-gray-100 bg-white p-5 transition-shadow hover:shadow-md"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-black"><Phone size={16} className="text-white" /></div><p className="text-[11px] uppercase tracking-wider text-gray-400">Call DreamCarz</p><p className="mb-3 text-[13px] font-semibold text-black">(301) 772-2500</p><span className="text-[11px] font-semibold text-black underline underline-offset-4">Call during published hours</span></a><a href="mailto:support@dreamcarz.com" className="rounded-2xl border border-gray-100 bg-white p-5 transition-shadow hover:shadow-md"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-black"><Mail size={16} className="text-white" /></div><p className="text-[11px] uppercase tracking-wider text-gray-400">Email DreamCarz</p><p className="mb-3 text-[13px] font-semibold text-black">support@dreamcarz.com</p><span className="text-[11px] font-semibold text-black underline underline-offset-4">Open email</span></a><Link href="/dashboard/incidents" className="rounded-2xl border border-[#d8d1c4] bg-[#faf9f6] p-5 transition-shadow hover:shadow-md"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-black"><ShieldAlert size={16} className="text-[#d0a73a]" /></div><p className="text-[11px] uppercase tracking-wider text-gray-500">Vehicle emergency or incident</p><p className="mb-3 text-[13px] font-semibold text-black">Safety & Incident Center</p><span className="text-[11px] font-semibold text-black underline underline-offset-4">Open incident workflow</span></Link></div>
 
-        {/* Contact options */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { icon: Phone, label: "Call Us", value: "(301) 772-2500", action: "tel:3017722500", cta: "Call Now" },
-            { icon: Mail, label: "Email Us", value: "support@dreamcarz.com", action: "mailto:support@dreamcarz.com", cta: "Send Email" },
-            { icon: MessageSquare, label: "Live Chat", value: "Available Mon–Sat", action: "#", cta: "Start Chat" },
-          ].map((c, i) => {
-            const Icon = c.icon;
-            return (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center mb-3">
-                  <Icon size={16} className="text-white" />
-                </div>
-                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-0.5">{c.label}</p>
-                <p className="text-[13px] font-semibold text-black mb-3">{c.value}</p>
-                <a href={c.action} className="block w-full text-center py-2 bg-black text-white text-[11px] font-semibold rounded-full hover:bg-gray-900 transition-colors">{c.cta}</a>
-              </div>
-            );
-          })}
-        </div>
+    <form onSubmit={submit} className="rounded-2xl border border-gray-100 bg-white p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><MessageSquareText size={17} className="text-[#B8860B]" /><h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Send a private support request</h3></div><p className="mt-1 text-[11px] leading-5 text-gray-500">This records a request for DreamCarz review. It does not start live chat or promise a response time. Do not include card details, license numbers, or passwords.</p></div><div className="flex items-center gap-1 text-[11px] text-gray-500"><Clock3 size={12} />Status appears here after review.</div></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><label className="text-[11px] font-semibold text-gray-600">Topic<select value={category} onChange={event => setCategory(event.target.value as typeof category)} className="mt-1 h-10 w-full border border-gray-200 bg-white px-3 text-sm text-black"><option value="general">General</option><option value="account">Account</option><option value="membership">Membership</option><option value="reservation">Reservation</option><option value="transaction">Transaction</option><option value="payment">Payment status</option><option value="vehicle">Vehicle</option><option value="incident">Incident follow-up</option><option value="other">Other</option></select></label><label className="text-[11px] font-semibold text-gray-600">Priority<select value={urgency} onChange={event => setUrgency(event.target.value as typeof urgency)} className="mt-1 h-10 w-full border border-gray-200 bg-white px-3 text-sm text-black"><option value="standard">Standard</option><option value="urgent">Urgent</option></select></label><label className="text-[11px] font-semibold text-gray-600">Subject<input value={subject} onChange={event => setSubject(event.target.value)} maxLength={160} placeholder="Brief subject" className="mt-1 h-10 w-full border border-gray-200 bg-white px-3 text-sm text-black outline-none focus:border-black" /></label></div><label className="mt-3 block text-[11px] font-semibold text-gray-600">How can DreamCarz help?<textarea value={description} onChange={event => setDescription(event.target.value)} maxLength={4000} rows={5} placeholder="Describe the question or issue without private card or identity credentials." className="mt-1 w-full resize-none border border-gray-200 bg-gray-50 p-3 text-[13px] text-black outline-none focus:border-black" /></label><div className="mt-3 flex items-center justify-between gap-3"><p className="text-[11px] text-gray-400">At least 10 characters are required.</p><button type="submit" disabled={create.isPending || subject.trim().length < 3 || description.trim().length < 10} className="rounded-full bg-black px-5 py-2 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{create.isPending ? "Recording…" : "Record support request"}</button></div>{create.error && <p className="mt-3 text-[11px] text-red-600">{create.error.message}</p>}{create.data && <p className="mt-3 text-[11px] font-medium text-[#8a6710]">Request {create.data.reference} was recorded for DreamCarz review.</p>}</form>
 
-        {/* Quick message */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-[14px] font-bold text-black mb-4" style={{ fontFamily: "var(--font-display)" }}>Send a Message</h3>
-          <textarea
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            placeholder="Describe your issue or question..."
-            className="w-full h-28 p-3 bg-gray-50 rounded-xl text-[13px] text-black placeholder-gray-300 outline-none resize-none border border-gray-100 focus:border-gray-300 transition-colors"
-          />
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-[11px] text-gray-400 flex items-center gap-1"><Clock size={11} /> Typical response: under 2 hours</p>
-            <button disabled={!message.trim()} className={`px-5 py-2 text-[12px] font-semibold rounded-full transition-colors ${message.trim() ? "bg-black text-white hover:bg-gray-900" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
-              Send Message
-            </button>
-          </div>
-        </div>
+    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white"><div className="border-b border-gray-50 px-6 py-4"><h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Your support requests</h3></div><div className="divide-y divide-gray-50">{requests.data?.map(request => <article key={request.id} className="px-6 py-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[12px] font-bold text-black">{request.reference} · {request.subject}</p><span className="border border-gray-200 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-600">{request.status.replaceAll("_", " ")}</span></div><p className="mt-1 text-[11px] text-gray-500">{request.category.replaceAll("_", " ")} · {new Date(request.updatedAt).toLocaleDateString()}</p>{request.customerUpdate && <p className="mt-3 border-l-2 border-[#B8860B] pl-3 text-[12px] leading-5 text-gray-700">{request.customerUpdate}</p>}</article>)}{!requests.isLoading && !requests.data?.length && <p className="px-6 py-5 text-[12px] text-gray-400">No support requests have been recorded from this account.</p>}</div></section>
 
-        {/* FAQ */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-50">
-            <h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Frequently Asked Questions</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {faqs.map((faq, i) => (
-              <div key={i}>
-                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors">
-                  <span className="text-[13px] font-medium text-black pr-4">{faq.q}</span>
-                  <ChevronRight size={14} className={`text-gray-400 flex-shrink-0 transition-transform ${openFaq === i ? "rotate-90" : ""}`} />
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-4">
-                    <p className="text-[12px] text-gray-500 leading-relaxed">{faq.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </DashboardShell>
-  );
+    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white"><div className="border-b border-gray-50 px-6 py-4"><h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Frequently Asked Questions</h3></div><div className="divide-y divide-gray-50">{faqs.map((faq, index) => <div key={faq.q}><button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)} className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"><span className="pr-4 text-[13px] font-medium text-black">{faq.q}</span><ChevronRight size={14} className={`flex-shrink-0 text-gray-400 transition-transform ${openFaq === index ? "rotate-90" : ""}`} /></button>{openFaq === index && <div className="px-6 pb-4"><p className="text-[12px] leading-relaxed text-gray-500">{faq.a}</p></div>}</div>)}</div></section>
+  </div></DashboardShell>;
 }

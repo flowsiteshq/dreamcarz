@@ -218,6 +218,38 @@ export const communicationEvents = mysqlTable("communication_events", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Account-owned requests keep general member support separate from vehicle evidence and payment records. */
+export const supportRequests = mysqlTable("support_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 32 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  category: mysqlEnum("category", ["general", "account", "membership", "reservation", "transaction", "payment", "vehicle", "incident", "other"]).default("general").notNull(),
+  urgency: mysqlEnum("urgency", ["standard", "urgent"]).default("standard").notNull(),
+  status: mysqlEnum("status", ["submitted", "under_review", "resolved", "closed"]).default("submitted").notNull(),
+  subject: varchar("subject", { length: 160 }).notNull(),
+  description: text("description").notNull(),
+  relatedTransactionId: int("relatedTransactionId"),
+  assignedToUserId: int("assignedToUserId"),
+  customerUpdate: text("customerUpdate"),
+  internalNote: text("internalNote"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** Append-only support events preserve the member-visible update separately from internal operations notes. */
+export const supportRequestEvents = mysqlTable("support_request_events", {
+  id: int("id").autoincrement().primaryKey(),
+  supportRequestId: int("supportRequestId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 32 }),
+  toStatus: varchar("toStatus", { length: 32 }),
+  customerUpdate: text("customerUpdate"),
+  internalNote: text("internalNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ── DreamCarz OS rental and purchase transaction engine ────────────────────
 
 /** Planned journey details remain outside the core transaction so saved requests can change safely. */

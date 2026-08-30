@@ -51,6 +51,8 @@ import {
   communicationPreferences,
   customerNotifications,
   communicationEvents,
+  supportRequests,
+  supportRequestEvents,
   rentalExtensionRequests,
   transactionSettlements,
   transactionAdjustments,
@@ -2149,6 +2151,86 @@ export const appRouter = router({
         }
         return { success: true, reference };
       }),
+  }),
+
+  supportRequests: router({
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const requests = await db.select().from(supportRequests).where(eq(supportRequests.userId, ctx.user.id)).orderBy(desc(supportRequests.updatedAt));
+      const requestIds = requests.map(request => request.id);
+      const events = requestIds.length ? await db.select({ id: supportRequestEvents.id, supportRequestId: supportRequestEvents.supportRequestId, eventType: supportRequestEvents.eventType, fromStatus: supportRequestEvents.fromStatus, toStatus: supportRequestEvents.toStatus, customerUpdate: supportRequestEvents.customerUpdate, createdAt: supportRequestEvents.createdAt }).from(supportRequestEvents).where(inArray(supportRequestEvents.supportRequestId, requestIds)).orderBy(desc(supportRequestEvents.createdAt)) : [];
+      return requests.map(request => ({
+        id: request.id,
+        reference: request.reference,
+        category: request.category,
+        urgency: request.urgency,
+        status: request.status,
+        subject: request.subject,
+        description: request.description,
+        customerUpdate: request.customerUpdate,
+        relatedTransactionId: request.relatedTransactionId,
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt,
+        resolvedAt: request.resolvedAt,
+        history: events.filter(event => event.supportRequestId === request.id).map(event => ({
+          id: event.id,
+          supportRequestId: event.supportRequestId,
+          eventType: event.eventType,
+          fromStatus: event.fromStatus,
+          toStatus: event.toStatus,
+          customerUpdate: event.customerUpdate,
+          createdAt: event.createdAt,
+        })),
+      }));
+    }),
+    create: protectedProcedure.input(z.object({
+      category: z.enum(["general", "account", "membership", "reservation", "transaction", "payment", "vehicle", "incident", "other"]),
+      urgency: z.enum(["standard", "urgent"]),
+      subject: z.string().trim().min(3).max(160),
+      description: z.string().trim().min(10).max(4_000),
+      relatedTransactionReference: z.string().trim().max(48).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const requestLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "support_request", String(ctx.user.id)), limit: 6, windowMs: 15 * 60_000 });
+      if (!requestLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before sending another support request." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support requests are temporarily unavailable." });
+      const transaction = input.relatedTransactionReference ? (await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.relatedTransactionReference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0] : undefined;
+      if (input.relatedTransactionReference && !transaction) throw new TRPCError({ code: "NOT_FOUND", message: "That transaction is not available for this support request." });
+      const reference = `SP-${new Date().getFullYear()}-${nanoid(7).toUpperCase()}`;
+      const inserted = await db.insert(supportRequests).values({ reference, userId: ctx.user.id, category: input.category, urgency: input.urgency, subject: input.subject, description: input.description, relatedTransactionId: transaction?.id ?? null });
+      const supportRequestId = Number(inserted[0].insertId);
+      await db.insert(supportRequestEvents).values({ supportRequestId, actorUserId: ctx.user.id, eventType: "support_request.submitted", toStatus: "submitted", customerUpdate: "Your request was recorded for DreamCarz review." });
+      return { success: true, reference } as const;
+    }),
+    queue: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support operations are temporarily unavailable." });
+      const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role));
+      if (!roles.some(role => ["support", "operations", "manager", "administrator"].includes(role))) throw new TRPCError({ code: "FORBIDDEN", message: "DreamCarz support operations access is required." });
+      return db.select().from(supportRequests).orderBy(desc(supportRequests.updatedAt));
+    }),
+    review: protectedProcedure.input(z.object({
+      supportRequestId: z.number().int().positive(),
+      status: z.enum(["submitted", "under_review", "resolved", "closed"]),
+      customerUpdate: z.string().trim().min(3).max(2_000).optional(),
+      internalNote: z.string().trim().min(3).max(2_000).optional(),
+      assignedToUserId: z.number().int().positive().nullable().optional(),
+    }).refine(input => Boolean(input.customerUpdate || input.internalNote || input.assignedToUserId !== undefined || input.status), { message: "Add a review change before saving." })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support operations are temporarily unavailable." });
+      const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role));
+      if (!roles.some(role => ["support", "operations", "manager", "administrator"].includes(role))) throw new TRPCError({ code: "FORBIDDEN", message: "DreamCarz support operations access is required." });
+      const request = (await db.select().from(supportRequests).where(eq(supportRequests.id, input.supportRequestId)).limit(1))[0];
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Support request not found." });
+      const resolvedAt = ["resolved", "closed"].includes(input.status) ? new Date() : null;
+      await db.update(supportRequests).set({ status: input.status, customerUpdate: input.customerUpdate ?? request.customerUpdate, internalNote: input.internalNote ?? request.internalNote, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId, resolvedAt }).where(eq(supportRequests.id, request.id));
+      await db.insert(supportRequestEvents).values({ supportRequestId: request.id, actorUserId: ctx.user.id, eventType: "support_request.reviewed", fromStatus: request.status, toStatus: input.status, customerUpdate: input.customerUpdate ?? null, internalNote: input.internalNote ?? null });
+      if (input.customerUpdate) await deliverLifecycleInAppNotice(db, { userId: request.userId, title: "DreamCarz support update", body: "A support request has an update in your private Support center.", actionPath: "/dashboard/support", relatedTransactionId: request.relatedTransactionId ?? 0 });
+      return { success: true } as const;
+    }),
   }),
 
   partners: router({
