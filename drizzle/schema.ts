@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -58,6 +58,17 @@ export const userRoleAssignments = mysqlTable("user_role_assignments", {
   assignedAt: timestamp("assignedAt").defaultNow().notNull(),
   revokedAt: timestamp("revokedAt"),
 }, (table) => [uniqueIndex("user_role_assignment_unique").on(table.userId, table.role)]);
+
+/** Immutable administrative history for a granted, restored, or revoked operational role. */
+export const roleAssignmentEvents = mysqlTable("role_assignment_events", {
+  id: int("id").autoincrement().primaryKey(),
+  roleAssignmentId: int("roleAssignmentId").notNull(),
+  targetUserId: int("targetUserId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "operations", "support", "manager", "administrator"]).notNull(),
+  eventType: mysqlEnum("eventType", ["role_granted", "role_restored", "role_revoked"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("role_assignment_events_target_created_idx").on(table.targetUserId, table.createdAt)]);
 
 /** Configurable memberships are deliberately unseeded until approved plans and benefits are supplied. */
 export const membershipPlans = mysqlTable("membership_plans", {

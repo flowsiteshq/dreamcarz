@@ -28,6 +28,7 @@ import {
   serviceReportReviewEvents,
   partnerLocations,
   userRoleAssignments,
+  roleAssignmentEvents,
   membershipPlans,
   membershipBenefits,
   customerMemberships,
@@ -397,11 +398,14 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
         const existing = await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role))).limit(1);
         if (existing[0]) {
+          if (!existing[0].revokedAt) return { success: true, restored: false, alreadyActive: true };
           await db.update(userRoleAssignments).set({ revokedAt: null, assignedByUserId: ctx.user.id, assignedAt: new Date() }).where(eq(userRoleAssignments.id, existing[0].id));
-          return { success: true, restored: Boolean(existing[0].revokedAt) };
+          await db.insert(roleAssignmentEvents).values({ roleAssignmentId: existing[0].id, targetUserId: input.userId, actorUserId: ctx.user.id, role: input.role, eventType: "role_restored" });
+          return { success: true, restored: true, alreadyActive: false };
         }
-        await db.insert(userRoleAssignments).values({ userId: input.userId, role: input.role, assignedByUserId: ctx.user.id });
-        return { success: true, restored: false };
+        const created = await db.insert(userRoleAssignments).values({ userId: input.userId, role: input.role, assignedByUserId: ctx.user.id });
+        await db.insert(roleAssignmentEvents).values({ roleAssignmentId: Number(created[0].insertId), targetUserId: input.userId, actorUserId: ctx.user.id, role: input.role, eventType: "role_granted" });
+        return { success: true, restored: false, alreadyActive: false };
       }),
     revoke: protectedProcedure
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
@@ -412,6 +416,7 @@ export const appRouter = router({
         const assignment = (await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role), isNull(userRoleAssignments.revokedAt))).limit(1))[0];
         if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Active role assignment not found." });
         await db.update(userRoleAssignments).set({ revokedAt: new Date() }).where(eq(userRoleAssignments.id, assignment.id));
+        await db.insert(roleAssignmentEvents).values({ roleAssignmentId: assignment.id, targetUserId: input.userId, actorUserId: ctx.user.id, role: input.role, eventType: "role_revoked" });
         return { success: true };
       }),
   }),

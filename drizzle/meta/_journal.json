@@ -295,6 +295,13 @@
       "when": 1788092875024,
       "tag": "0041_wild_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1788094041976,
+      "tag": "0042_nebulous_colonel_america",
+      "breakpoints": true
     }
   ]
 }
