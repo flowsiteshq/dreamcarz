@@ -132,10 +132,36 @@ function RentalConditionReportPanel({ reference }: { reference: string }) {
   const [message, setMessage] = useState("");
   const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
   const submit = trpc.transactions.submitConditionReport.useMutation({ onSuccess: () => transaction.refetch() });
+  const uploadEvidence = trpc.transactions.uploadConditionEvidence.useMutation({ onSuccess: () => transaction.refetch() });
   const record = transaction.data?.transaction;
   const stage = record?.currentStep === "pickup" ? "pickup" as const : "return" as const;
   const eligible = record?.transactionType === "rental" && (record.currentStep === "pickup" || record.currentStep === "active_rental" || record.currentStep === "return");
   if (!eligible) return null;
+  const evidenceViews = [
+    ["front", "Front exterior"],
+    ["rear", "Rear exterior"],
+    ["driver_side", "Driver side"],
+    ["passenger_side", "Passenger side"],
+    ["interior", "Interior"],
+    ["odometer", "Odometer"],
+  ] as const;
+  const storedViews = new Set((transaction.data?.conditionEvidence ?? []).filter(item => item.stage === stage).map(item => item.view));
+  const uploadFile = async (view: typeof evidenceViews[number][0], file?: File) => {
+    if (!file) return;
+    if (file.size > 6 * 1024 * 1024) { setMessage("Each condition image must be 6 MB or smaller."); return; }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setMessage("Use a JPEG, PNG, or WebP image."); return; }
+    try {
+      setMessage("");
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("The image could not be read."));
+        reader.readAsDataURL(file);
+      });
+      await uploadEvidence.mutateAsync({ reference, stage, view, filename: file.name, contentType: file.type as "image/jpeg" | "image/png" | "image/webp", base64: dataUrl.split(",")[1] ?? "" });
+      setMessage(`${evidenceViews.find(item => item[0] === view)?.[1]} saved securely.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "The condition image could not be saved. Please try again."); }
+  };
   const save = async () => {
     const parsedOdometer = odometerReading.trim() ? Number(odometerReading) : undefined;
     if (parsedOdometer !== undefined && (!Number.isInteger(parsedOdometer) || parsedOdometer < 0)) { setMessage("Enter a valid non-negative whole-number odometer reading."); return; }
@@ -146,7 +172,7 @@ function RentalConditionReportPanel({ reference }: { reference: string }) {
       setMessage(`${stage === "pickup" ? "Pickup" : "Return"} condition report submitted for DreamCarz review.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "The condition report could not be saved. Please try again."); }
   };
-  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">{stage} condition record</p><h2 className="mt-2 font-display text-xl font-bold">{stage === "pickup" ? "Document the vehicle at handoff" : "Document the vehicle at return"}</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Record observed mileage, fuel level, and notes. This creates an account-bound inspection record; it is not a final settlement or damage determination.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-xs font-semibold text-gray-700">Odometer reading <input value={odometerReading} onChange={event => setOdometerReading(event.target.value)} inputMode="numeric" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label><label className="grid gap-1 text-xs font-semibold text-gray-700">Fuel level <input value={fuelLevel} onChange={event => setFuelLevel(event.target.value)} placeholder="Example: Full" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label></div><label className="mt-3 grid gap-1 text-xs font-semibold text-gray-700">Condition notes <textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={3} placeholder="Note any observed condition concerns" className="border border-gray-300 bg-white p-3 text-sm font-normal text-black" /></label><button type="button" disabled={submit.isPending} onClick={() => void save()} className="mt-4 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{submit.isPending ? "Saving report…" : `Submit ${stage} report`}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">{stage} condition record</p><h2 className="mt-2 font-display text-xl font-bold">{stage === "pickup" ? "Document the vehicle at handoff" : "Document the vehicle at return"}</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Add six labeled vehicle views, then record mileage, fuel level, and notes. Evidence is private to the transaction and is reviewed by DreamCarz; it is not a final damage or settlement determination.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{evidenceViews.map(([view, label]) => <label key={view} className="border border-gray-200 bg-white p-3 text-xs font-semibold text-black"><span className="block">{label}</span><span className={`mt-1 block text-[10px] ${storedViews.has(view) ? "text-emerald-700" : "text-gray-500"}`}>{storedViews.has(view) ? "Saved securely" : "Required"}</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadEvidence.isPending} onChange={event => void uploadFile(view, event.currentTarget.files?.[0])} className="mt-2 block w-full text-[10px] font-normal text-gray-600 file:mr-2 file:border-0 file:bg-black file:px-2 file:py-1 file:text-[10px] file:font-semibold file:text-white" /></label>)}</div><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-xs font-semibold text-gray-700">Odometer reading <input value={odometerReading} onChange={event => setOdometerReading(event.target.value)} inputMode="numeric" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label><label className="grid gap-1 text-xs font-semibold text-gray-700">Fuel level <input value={fuelLevel} onChange={event => setFuelLevel(event.target.value)} placeholder="Example: Full" className="h-10 border border-gray-300 bg-white px-3 text-sm font-normal text-black" /></label></div><label className="mt-3 grid gap-1 text-xs font-semibold text-gray-700">Condition notes <textarea value={notes} onChange={event => setNotes(event.target.value)} maxLength={2000} rows={3} placeholder="Note any observed condition concerns" className="border border-gray-300 bg-white p-3 text-sm font-normal text-black" /></label><button type="button" disabled={submit.isPending || storedViews.size < evidenceViews.length} onClick={() => void save()} className="mt-4 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{submit.isPending ? "Saving report…" : `Submit ${stage} report`}</button>{storedViews.size < evidenceViews.length && <p className="mt-2 text-[10px] text-gray-500">All six evidence views are required before this report can be submitted.</p>}{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
 }
 
 function TransactionDetailsPanel({ reference }: { reference: string }) {

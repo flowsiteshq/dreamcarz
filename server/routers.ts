@@ -1006,6 +1006,43 @@ export const appRouter = router({
         .orderBy(desc(vehicleTransactions.updatedAt));
     }),
 
+    uploadConditionEvidence: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        stage: z.enum(["pickup", "return"]),
+        view: z.enum(["front", "rear", "driver_side", "passenger_side", "interior", "odometer"]),
+        filename: z.string().trim().min(1).max(120),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z.string().min(100).max(8_400_000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Condition evidence storage is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Vehicle condition evidence is available only for rental transactions." });
+        const pickupAllowed = input.stage === "pickup" && transaction.status === "ready_for_pickup";
+        const returnAllowed = input.stage === "return" && ["active_rental", "return_pending"].includes(transaction.status);
+        if (!pickupAllowed && !returnAllowed) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Condition evidence is not available at the current rental lifecycle stage." });
+        const rawBytes = Buffer.from(input.base64, "base64");
+        if (rawBytes.length > 6 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Each condition image must be 6 MB or smaller." });
+        const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
+        const { key } = await storagePut(`transaction-documents/${ctx.user.id}/${transaction.id}/condition_${input.stage}_${input.view}_${Date.now()}.${extension}`, rawBytes, input.contentType);
+        const inserted = await db.insert(transactionDocuments).values({
+          transactionId: transaction.id,
+          userId: ctx.user.id,
+          documentType: "condition_photo",
+          conditionStage: input.stage,
+          conditionEvidenceView: input.view,
+          storageKey: key,
+          originalFilename: input.filename,
+          contentType: input.contentType,
+          status: "pending",
+        });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "condition.evidence_uploaded", fromStatus: transaction.status, toStatus: transaction.status, metadata: JSON.stringify({ stage: input.stage, view: input.view, documentId: Number(inserted[0].insertId) }) });
+        return { success: true, documentId: Number(inserted[0].insertId) };
+      }),
+
     submitConditionReport: protectedProcedure
       .input(z.object({
         reference: z.string().trim().min(8).max(32),
@@ -1026,6 +1063,13 @@ export const appRouter = router({
         const pickupAllowed = input.stage === "pickup" && transaction.status === "ready_for_pickup";
         const returnAllowed = input.stage === "return" && ["active_rental", "return_pending"].includes(transaction.status);
         if (!pickupAllowed && !returnAllowed) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This condition report is not available at the current rental lifecycle stage." });
+        const requiredEvidenceViews = ["front", "rear", "driver_side", "passenger_side", "interior", "odometer"] as const;
+        const evidence = await db.select({ id: transactionDocuments.id, view: transactionDocuments.conditionEvidenceView, storageKey: transactionDocuments.storageKey })
+          .from(transactionDocuments)
+          .where(and(eq(transactionDocuments.transactionId, transaction.id), eq(transactionDocuments.documentType, "condition_photo"), eq(transactionDocuments.conditionStage, input.stage)));
+        const submittedViews = new Set(evidence.map(record => record.view).filter((view): view is typeof requiredEvidenceViews[number] => Boolean(view)));
+        const missingViews = requiredEvidenceViews.filter(view => !submittedViews.has(view));
+        if (missingViews.length > 0) throw new TRPCError({ code: "PRECONDITION_FAILED", message: `Add the required ${missingViews.map(view => view.replace("_", " ")).join(", ")} condition photo view${missingViews.length === 1 ? "" : "s"} before submitting this report.` });
         await db.insert(vehicleConditionReports).values({
           transactionId: transaction.id,
           stage: input.stage,
@@ -1033,6 +1077,7 @@ export const appRouter = router({
           odometerReading: input.odometerReading,
           fuelLevel: input.fuelLevel,
           notes: input.notes,
+          photoKeys: JSON.stringify(evidence.map(record => record.storageKey)),
           status: "submitted",
         });
         const isReturn = input.stage === "return";
@@ -1048,7 +1093,7 @@ export const appRouter = router({
           eventType: `condition.${input.stage}_report_submitted`,
           fromStatus: transaction.status,
           toStatus: isReturn && transaction.status === "active_rental" ? "return_pending" : transaction.status,
-          metadata: JSON.stringify({ stage: input.stage, hasOdometerReading: input.odometerReading !== undefined, hasFuelLevel: Boolean(input.fuelLevel), hasNotes: Boolean(input.notes) }),
+          metadata: JSON.stringify({ stage: input.stage, hasOdometerReading: input.odometerReading !== undefined, hasFuelLevel: Boolean(input.fuelLevel), hasNotes: Boolean(input.notes), evidenceViewCount: submittedViews.size }),
         });
         return { success: true };
       }),
@@ -1292,12 +1337,16 @@ export const appRouter = router({
           .from(customerProfiles)
           .where(eq(customerProfiles.userId, ctx.user.id))
           .limit(1);
-        const [schedules, quotes, links] = await Promise.all([
+        const [schedules, quotes, links, conditionEvidence] = await Promise.all([
           db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1),
           db.select().from(transactionQuotes).where(eq(transactionQuotes.transactionId, transaction.id)).orderBy(desc(transactionQuotes.version)),
           db.select().from(transactionLinks).where(and(eq(transactionLinks.sourceTransactionId, transaction.id), eq(transactionLinks.requestedByUserId, ctx.user.id))).orderBy(desc(transactionLinks.createdAt)),
+          db.select({ id: transactionDocuments.id, stage: transactionDocuments.conditionStage, view: transactionDocuments.conditionEvidenceView, originalFilename: transactionDocuments.originalFilename, createdAt: transactionDocuments.createdAt })
+            .from(transactionDocuments)
+            .where(and(eq(transactionDocuments.transactionId, transaction.id), eq(transactionDocuments.documentType, "condition_photo")))
+            .orderBy(desc(transactionDocuments.createdAt)),
         ]);
-        return { transaction, profile: profiles[0] ?? null, schedule: schedules[0] ?? null, quotes, links };
+        return { transaction, profile: profiles[0] ?? null, schedule: schedules[0] ?? null, quotes, links, conditionEvidence };
       }),
 
     saveProfile: protectedProcedure

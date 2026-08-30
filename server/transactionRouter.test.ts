@@ -105,6 +105,22 @@ describe("transaction intake router", () => {
     })).rejects.toThrow("active or current rental");
   });
 
+  it("requires all six labeled vehicle views before a pickup condition report can be finalized", async () => {
+    const transaction = { id: 83, transactionType: "rental" as const, status: "ready_for_pickup" as const };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(customerContext as never);
+
+    await expect(caller.transactions.submitConditionReport({
+      reference: "DCR-2026-CONDITION",
+      stage: "pickup",
+      odometerReading: 12000,
+      fuelLevel: "Full",
+    })).rejects.toThrow("required front, rear, driver side, passenger side, interior, odometer condition photo views");
+  });
+
   it("routes an account-owned identity-record deletion request to manual review and creates a privacy audit event", async () => {
     const transaction = { id: 99, status: "verification_pending" as const };
     const updateWhere = vi.fn().mockResolvedValue(undefined);

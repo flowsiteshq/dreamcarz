@@ -655,6 +655,8 @@ export const transactionDocuments = mysqlTable("transaction_documents", {
   originalFilename: varchar("originalFilename", { length: 255 }).notNull(),
   contentType: varchar("contentType", { length: 128 }).notNull(),
   status: mysqlEnum("status", ["pending", "accepted", "rejected", "redacted"]).default("pending").notNull(),
+  conditionStage: mysqlEnum("conditionStage", ["pickup", "return"]),
+  conditionEvidenceView: mysqlEnum("conditionEvidenceView", ["front", "rear", "driver_side", "passenger_side", "interior", "odometer"]),
   expiresAt: timestamp("expiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

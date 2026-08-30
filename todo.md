@@ -198,6 +198,7 @@
 - [x] Build an auditable DreamCarz wallet ledger for credits, refunds, deposits/holds, membership and referral credits, receipts, and transaction history without silent balance changes.
 - [ ] Build protected DreamCarz Vehicle Passports with vehicle lifecycle, location, readiness, acquisition, maintenance, inspection, damage, document, reservation, and utilization/revenue record support.
 - [ ] Build guided pickup and return inspections with required vehicle views, mileage, fuel/charge, secure evidence storage, and human-review-only future computer-vision architecture.
+- [x] Require structured pickup and return evidence labels for front, rear, driver side, passenger side, interior, and odometer views before a condition report can be finalized.
 - [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
 - [ ] Build an active-rental customer experience for current vehicle, return details, agreement, payments, extension, swap, rent-to-buy, support, roadside, incident, and contact actions.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
