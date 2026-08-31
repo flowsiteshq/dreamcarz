@@ -57,4 +57,16 @@ describe("fleetPartner.overview activity", () => {
     expect(incidentProjection).not.toHaveProperty("reportedLocation");
     expect(incidentProjection).not.toHaveProperty("description");
   });
+
+  it("rejects likely card numbers before Fleet Partner maintenance text is stored", async () => {
+    mockedGetDb.mockResolvedValue({} as never);
+
+    await expect(appRouter.createCaller(fleetPartnerContext as never).fleetPartner.requestMaintenance({ vehiclePassportId: 8, maintenanceType: "repair", notes: "Charge 4111 1111 1111 1111 for repair" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects labeled driver-license values before Fleet Partner incident text is stored", async () => {
+    mockedGetDb.mockResolvedValue({} as never);
+
+    await expect(appRouter.createCaller(fleetPartnerContext as never).fleetPartner.reportIncident({ vehiclePassportId: 8, incidentType: "damage", severity: "standard", description: "Driver license number: AB-12345 was reported." })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

@@ -124,10 +124,14 @@ function containsRestrictedSupportContent(value: string) {
   return likelyCardNumber || likelyPassword || likelyLicenseNumber;
 }
 
-function assertSafeSupportContent(value: string) {
+function assertSafeRestrictedContent(value: string, destination: "support message" | "operational report") {
   if (containsRestrictedSupportContent(value)) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Please remove payment-card numbers, passwords, and driver-license numbers before sending this support message." });
+    throw new TRPCError({ code: "BAD_REQUEST", message: `Please remove payment-card numbers, passwords, and driver-license numbers before sending this ${destination}.` });
   }
+}
+
+function assertSafeSupportContent(value: string) {
+  assertSafeRestrictedContent(value, "support message");
 }
 
 async function recordVehiclePassportActivity(
@@ -2570,6 +2574,7 @@ export const appRouter = router({
       damageNotes: z.string().trim().max(2_000).optional(),
     })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (input.damageNotes) assertSafeRestrictedContent(input.damageNotes, "operational report");
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
       if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
@@ -2588,6 +2593,7 @@ export const appRouter = router({
       odometerAtService: z.number().int().nonnegative().optional(),
     })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      assertSafeRestrictedContent(input.notes, "operational report");
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
       if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
@@ -2607,6 +2613,7 @@ export const appRouter = router({
       reportedLocation: z.string().trim().max(255).optional(),
     })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      assertSafeRestrictedContent(input.description, "operational report");
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
       if (!roles.includes("fleet_partner") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Fleet Partner access is required." });
