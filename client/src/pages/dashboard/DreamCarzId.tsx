@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { BadgeCheck, Car, CreditCard, FileText, Loader2, ShieldCheck, Sparkles, Wallet } from "lucide-react";
+import { BadgeCheck, Car, CreditCard, FileText, Loader2, Mail, MapPin, Phone, ShieldCheck, Sparkles, UserRound, Wallet } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { trpc } from "@/lib/trpc";
 
@@ -55,6 +55,18 @@ export default function DreamCarzId() {
 
         <section className="grid border-y border-gray-200 sm:grid-cols-3">
           {verificationItems.map(([label, status]) => <div key={label} className="border-b border-gray-200 px-0 py-5 last:border-b-0 sm:border-b-0 sm:border-r sm:px-6 sm:first:pl-0 sm:last:border-r-0"><BadgeCheck className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-sm font-bold text-black">{label}</p><p className="mt-1 text-sm text-gray-500">{formatStatus(status)}</p></div>)}
+        </section>
+
+        <section className="border-y border-gray-200 py-7">
+          <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Your profile</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em] text-black">Information you can revisit.</h3><p className="mt-3 max-w-sm text-sm leading-6 text-gray-600">These are the contact details saved to your protected DreamCarz account. License images, biometric results, payment details, and private document links are intentionally not shown here.</p></div>
+            <div className="grid gap-px border border-gray-200 bg-gray-200 sm:grid-cols-2">
+              <div className="bg-white p-5"><UserRound className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Name</p><p className="mt-1 text-sm font-bold text-black">{profile?.fullName || "Not saved yet"}</p></div>
+              <div className="bg-white p-5"><Mail className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Email</p><p className="mt-1 break-words text-sm font-bold text-black">{profile?.email || "Not saved yet"}</p></div>
+              <div className="bg-white p-5"><Phone className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Phone</p><p className="mt-1 text-sm font-bold text-black">{profile?.phone || "Not saved yet"}</p></div>
+              <div className="bg-white p-5"><MapPin className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Address</p><p className="mt-1 text-sm font-bold leading-5 text-black">{profile?.addressLine1 ? [profile.addressLine1, profile.addressLine2, [profile.city, profile.state, profile.postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "Not saved yet"}</p></div>
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">

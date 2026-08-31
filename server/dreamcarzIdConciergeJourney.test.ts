@@ -42,4 +42,24 @@ describe("DreamCarz ID concierge journey projection", () => {
     expect(JSON.stringify(overview.conciergeJourney)).not.toContain("identityProviderSessionId");
     expect(JSON.stringify(overview.conciergeJourney)).not.toContain("payment");
   });
+
+  it("selects a response-minimized profile projection without birth dates or provider session identifiers", async () => {
+    const select = vi.fn()
+      .mockReturnValueOnce(chain([{ id: 1, profileStatus: "incomplete", identityStatus: "not_started", licenseStatus: "not_started" }]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([]));
+    vi.mocked(getDb).mockResolvedValue({ select } as never);
+
+    await appRouter.createCaller(context as never).dreamcarzId.overview();
+
+    const profileFields = select.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(profileFields).toHaveProperty("email");
+    expect(profileFields).toHaveProperty("addressLine1");
+    expect(profileFields).not.toHaveProperty("dateOfBirth");
+    expect(profileFields).not.toHaveProperty("identityProviderSessionId");
+    expect(profileFields).not.toHaveProperty("identityProvider");
+  });
 });

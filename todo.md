@@ -334,3 +334,5 @@
 - [x] Persist customer-approved contact details and vehicle preferences to the account-owned DreamCarz profile without copying identity documents, biometric data, or payment data.
 - [x] Add a member profile-review surface that shows saved concierge information, outstanding onboarding steps, and resumable transaction handoffs.
 - [x] Add a rate-limited public AI concierge response that recommends only confirmed inventory, never stores chat text, and refuses sensitive data or transactional decisions.
+- [x] Add an account-owned DreamCarz ID profile snapshot that shows saved customer-approved contact information and preferences without exposing private documents, biometrics, or payment data.
+- [x] Minimize the DreamCarz ID browser profile response to exclude birth dates and identity-provider session identifiers while retaining account-owned contact and status fields.
