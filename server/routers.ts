@@ -3812,6 +3812,10 @@ export const appRouter = router({
       .input(z.object({ reference: z.string().trim().min(8).max(32), status: z.enum(["cleared", "manual_review", "unable_to_proceed"]), decisionReason: z.string().trim().min(3).max(2_000), ruleSnapshot: z.string().trim().max(10_000).optional(), eligibilityPolicyId: z.number().int().positive().optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const eligibilityReviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "eligibility_review", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!eligibilityReviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many eligibility reviews. Please try again later." });
+        assertSafeRestrictedContent(input.decisionReason, "operational report");
+        if (input.ruleSnapshot) assertSafeRestrictedContent(input.ruleSnapshot, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Eligibility records are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];

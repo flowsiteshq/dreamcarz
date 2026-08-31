@@ -115,7 +115,7 @@
 - [x] Create a scoped short-lived browser credential role limited to `rekognition:StartFaceLivenessSession`, with the DreamCarz server as its only trusted issuer.
 - [x] Prepare a configuration-gated server broker for short-lived Face Liveness browser credentials without issuing credentials until the scoped role exists.
 - [x] Implement protected app procedures to create and verify AWS Face Liveness sessions, persisting only minimal opaque session metadata and no biometric result payloads.
-- [ ] Wire the consent-gated customer AWS Face Liveness launch path after the scoped browser credential role is available, retaining manual review as the fallback.
+- [x] Wire the consent-gated customer AWS Face Liveness launch path after the scoped browser credential role is available, retaining manual review as the fallback.
 - [ ] Integrate secure CoCard gateway payment collection for applicable membership and vehicle charges without storing card data in DreamCarz.
 - [x] Build native DreamCarz rental and purchase agreement delivery, controlled signing, storage, and audit tracking; use the supplied addendum only after legal review.
 - [x] Connect approved applications, verified identity, payment status, and signed agreement status to vehicle release and administrator operations.
@@ -314,3 +314,4 @@
 - [x] Apply a bounded per-account rate limit before secure private-document link lookup or signed URL generation, preserving existing ownership checks and minimal access audits.
 - [x] Apply a bounded per-account rate limit before account-owned DreamCarz ID record listings, without returning storage keys or changing document visibility.
 - [x] Configure the approved scoped AWS browser role and explicit browser-flow gate, then verify consent-gated readiness without starting a biometric session.
+- [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before eligibility-review record access or storage.
