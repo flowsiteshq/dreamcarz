@@ -3686,7 +3686,7 @@ export const appRouter = router({
         } else {
           await db.insert(transactionEligibilityAssessments).values({ transactionId: transaction.id, status: input.status, decisionReason: input.decisionReason, ruleSnapshot: policySnapshot, reviewedByUserId: ctx.user.id, reviewedAt: new Date() });
         }
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "eligibility.review_recorded", fromStatus: transaction.eligibilityStatus, toStatus: vehicleEligibilityStatus, note: input.decisionReason, metadata: JSON.stringify({ assessmentStatus: input.status, eligibilityPolicyId: policy?.id ?? null }) });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "eligibility.review_recorded", fromStatus: transaction.eligibilityStatus, toStatus: vehicleEligibilityStatus, note: input.decisionReason, metadata: JSON.stringify({ assessmentStatus: input.status, eligibilityPolicyId: policy?.id ?? null, eligibilityPolicyVersion: policy?.version ?? null }) });
         return { success: true, eligibilityStatus: vehicleEligibilityStatus };
       }),
 

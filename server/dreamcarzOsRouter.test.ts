@@ -181,5 +181,6 @@ describe("DreamCarz OS foundation router", () => {
     expect(serializedCalls).toContain("RENTAL-MD");
     expect(serializedCalls).toContain("administrator_review");
     expect(serializedCalls).toContain("manual_review");
+    expect(serializedCalls).toContain('\\"eligibilityPolicyVersion\\":\\"2026.1\\"');
   });
 });

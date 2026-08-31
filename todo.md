@@ -205,6 +205,7 @@
 - [x] Evolve the reusable customer profile into DreamCarz ID with protected identity, verification, membership, account-standing, transaction-history, agreement, payment-reference, and wallet views.
 - [ ] Build a provider-based identity and driver-verification layer with explicit consent, license front/back support, manual-review states, retention controls, and no homemade facial-recognition claims.
 - [ ] Build server-enforced rental eligibility rules for license validity, age, insurance, vehicle class, additional drivers, manual review, and future MVR-provider integration.
+- [x] Record the active eligibility policy version when an authorized administrator makes a manual eligibility decision, without creating automatic approvals.
 - [x] Require a valid future recorded insurance coverage date before rental release or customer handoff, while retaining administrator-only insurance verification.
 - [x] Require each customer-added rental driver to complete separate identity and license review before a rental can be released or its handoff acknowledged.
 - [x] Add private proof-of-insurance upload, protected administrator review, and release-gated manual status decisions without insurance sales or automated coverage determinations.
