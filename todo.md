@@ -304,3 +304,4 @@
 - [x] Apply bounded per-account rate limits to identity-document upload and native agreement-signing actions without blocking consent withdrawal or safety reporting.
 - [x] Add immutable administrator role-assignment audit events for role granted, restored, and revoked actions without changing role privileges.
 - [x] Apply per-account rate limits to rental extension, linked transaction, and handoff acknowledgement requests while leaving safety incident reporting accessible.
+- [x] Validate the scoped AWS Face Liveness browser-role trust, start-only policy, and dedicated server exact-role assumption path without creating a biometric session or retaining temporary credentials.

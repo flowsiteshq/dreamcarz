@@ -1,11 +1,26 @@
 # AWS Face Liveness Setup Status
 
-**Date:** 2026-08-30  
-**Region:** `us-east-1`  
-**Status:** In progress; no customer biometric session has been created.
+**Date:** 2026-08-31
+**Region:** `us-east-1`
+**Status:** IAM identity and temporary-role validation completed; customer camera verification remains disabled.
 
-DreamCarz now has a dedicated IAM user for the server-side Face Liveness boundary. Console access is disabled. Its policy is limited to the backend actions required to create a Face Liveness session and retrieve its result. The user’s credentials were placed only in protected server settings and a harmless nonexistent-session lookup verified that the configured identity is the dedicated service user.
+DreamCarz has a dedicated server-side IAM user for the Face Liveness boundary. Console access is disabled for that identity, and its existing server permissions remain limited to the backend actions required to create a Face Liveness session and retrieve a result. Its protected server credentials were previously verified through a harmless nonexistent-session lookup.
 
-The next configuration step creates a separate temporary browser credential role. Its trust policy has been restored to allow only the dedicated DreamCarz server user to issue credentials. Its inline policy now permits only `rekognition:StartFaceLivenessSession` against the service-supported all-resources scope; it does not permit session creation, result retrieval, image access, S3 access, or unrelated AWS actions.
+The separate browser credential role, `dreamcarz-face-liveness-browser`, was created and its trust policy permits assumption only by `dreamcarz-face-liveness-server`. Its inline role policy permits only `rekognition:StartFaceLivenessSession` on `*`. The dedicated server user's inline policy now permits only `sts:AssumeRole` on the exact browser role ARN; no broader role-assumption permission was granted.
 
-The customer camera flow remains disabled pending the temporary-role completion, server-side assume-role configuration, explicit customer consent UI, and manual-review-only result handling. DreamCarz must not retain raw selfie video, reference images, audit images, or long-term credentials in browser code.
+On 2026-08-31, a server-side validation confirmed that the protected server identity could assume the scoped browser role using a 15-minute session and a further restrictive session policy. The validation created no Face Liveness session, did not invoke Rekognition, and neither printed nor persisted temporary credentials, session tokens, session identifiers, images, video, confidence data, or raw provider responses. The temporary validation script was removed immediately after the successful check.
+
+## Activation boundary
+
+This validation completes only the AWS IAM prerequisite. DreamCarz must continue to treat the customer camera flow as **disabled**. The production application has not been configured with the browser-role ARN, does not issue browser credentials, and does not create a biometric session.
+
+Before any customer-facing activation, the application must implement and verify all of the following controls:
+
+- a protected credential-broker procedure limited to the signed-in account's owned pending identity transaction;
+- explicit, recorded customer consent before any provider session is created or browser credential is issued;
+- account-level rate limits and deterministic success/error coverage for the broker;
+- official browser Face Liveness client integration that receives only short-lived scoped credentials;
+- server-only result lookup followed by manual review, with no automatic face-to-ID matching, eligibility approval, or retention of raw biometric media; and
+- privacy, audit, accessibility, and visual review of the completed customer flow.
+
+No customer biometric session has been created, and this record does not establish legal, regulatory, security-certification, identity-matching, eligibility, or approval outcomes.
