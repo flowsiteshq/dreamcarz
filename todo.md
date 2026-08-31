@@ -273,6 +273,7 @@
 - [x] Add an account-scoped in-app notification mark-all-read action without affecting other members or external delivery channels.
 - [x] Replace the static Support message form with account-owned support requests and administrator review controls, without response-time promises or unconfigured live chat.
 - [x] Allow a customer to add a private follow-up only to an account-owned open support request, retaining the message solely in the protected support history.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before authorized staff support updates are stored.
 - [x] Show customer-authored private support follow-ups only in the authorized DreamCarz support queue, never on public or cross-account surfaces.
 - [x] Reject likely payment-card numbers, passwords, and driver-license numbers before customer support requests or follow-ups are stored.
 - [x] Add automatic opt-out-aware in-app notices for rental extension, handoff, and settlement decisions while leaving email, SMS, and push unconfigured.

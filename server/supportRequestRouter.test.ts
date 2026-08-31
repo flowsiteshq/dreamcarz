@@ -74,6 +74,16 @@ describe("DreamCarz support requests", () => {
     expect(result).not.toHaveProperty("internalNote");
   });
 
+  it("rejects likely sensitive content before an authorized staff support update is stored", async () => {
+    const staffContext = { ...callerContext, user: { ...callerContext.user, id: 8, role: "user" } };
+    const whereResult = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(result) })) });
+    const select = vi.fn().mockReturnValueOnce(whereResult([{ role: "support" }]));
+    mockedGetDb.mockResolvedValue({ select } as never);
+
+    await expect(appRouter.createCaller(staffContext as never).supportRequests.review({ supportRequestId: 44, status: "under_review", customerUpdate: "Card number 4111 1111 1111 1111" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
   it("records a private follow-up only for an account-owned open support request", async () => {
     const eventValues = vi.fn().mockResolvedValue(undefined);
     const updateWhere = vi.fn().mockResolvedValue(undefined);

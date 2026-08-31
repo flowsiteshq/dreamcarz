@@ -2470,6 +2470,8 @@ export const appRouter = router({
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role));
       if (!roles.some(role => ["support", "operations", "manager", "administrator"].includes(role))) throw new TRPCError({ code: "FORBIDDEN", message: "DreamCarz support operations access is required." });
+      if (input.customerUpdate) assertSafeRestrictedContent(input.customerUpdate, "support message");
+      if (input.internalNote) assertSafeRestrictedContent(input.internalNote, "operational report");
       const request = (await db.select().from(supportRequests).where(eq(supportRequests.id, input.supportRequestId)).limit(1))[0];
       if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Support request not found." });
       const resolvedAt = ["resolved", "closed"].includes(input.status) ? new Date() : null;
