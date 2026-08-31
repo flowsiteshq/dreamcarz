@@ -317,3 +317,4 @@
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before eligibility-review record access or storage.
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before transaction-state review record access or storage.
 - [x] Apply a bounded per-administrator rate limit before secure transaction-record lookup, audit creation, or signed URL generation.
+- [x] Code-split the official Face Liveness browser component so its client bundle loads only after an eligible customer begins the consent-gated flow.

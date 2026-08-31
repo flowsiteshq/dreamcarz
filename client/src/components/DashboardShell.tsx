@@ -1,9 +1,7 @@
 /* Shared shell layout for all dashboard sidebar pages */
 import AIConcierge from "@/components/AIConcierge";
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FaceLivenessDetectorCore, type AwsCredentialProvider } from "@aws-amplify/ui-react-liveness";
-import "@aws-amplify/ui-react-liveness/styles.css";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle, FileText,
@@ -14,6 +12,8 @@ import { trpc } from "@/lib/trpc";
 import { loadStripe } from "@stripe/stripe-js";
 import { SettlementStatementPanel } from "@/components/SettlementStatementPanel";
 import { HandoffAcknowledgementPanel } from "@/components/HandoffAcknowledgementPanel";
+
+const AwsFaceLivenessDetector = lazy(() => import("@/components/AwsFaceLivenessDetector").then(module => ({ default: module.AwsFaceLivenessDetector })));
 
 declare global {
   interface Window {
@@ -129,11 +129,6 @@ function AwsFaceLivenessLauncher({ reference, region }: { reference: string; reg
   const requestCredentials = trpc.transactions.requestAwsFaceLivenessBrowserCredentials.useMutation();
   const checkResult = trpc.transactions.checkAwsFaceLiveness.useMutation();
 
-  const credentialProvider = useCallback<AwsCredentialProvider>(async () => {
-    if (!handoff) throw new Error("A current temporary credential handoff is required.");
-    return handoff.credentials;
-  }, [handoff]);
-
   const begin = async () => {
     if (!consents.document || !consents.biometric) {
       setMessage("Please acknowledge both the document and biometric verification consents before continuing.");
@@ -172,7 +167,7 @@ function AwsFaceLivenessLauncher({ reference, region }: { reference: string; reg
 
   const isPreparing = startSession.isPending || requestCredentials.isPending;
   if (handoff) {
-    return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-white p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Face Liveness verification</p><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Follow the on-screen prompts. A canceled or incomplete session cannot be reused; DreamCarz will retain only the minimum status needed for manual review.</p><div className="mt-4 max-w-xl"><FaceLivenessDetectorCore sessionId={handoff.sessionId} region={region} config={{ credentialProvider }} onAnalysisComplete={handleAnalysisComplete} onUserCancel={() => { setHandoff(null); setMessage("The liveness session was canceled. You may use manual review or begin a new session."); }} onError={() => { setHandoff(null); setMessage("The liveness session could not be completed. You may use manual review or begin a new session."); }} /></div>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+    return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-white p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Face Liveness verification</p><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Follow the on-screen prompts. A canceled or incomplete session cannot be reused; DreamCarz will retain only the minimum status needed for manual review.</p><div className="mt-4 max-w-xl"><Suspense fallback={<p className="border border-[#d8d1c4] bg-[#f7f5f0] p-4 text-xs text-gray-600">Loading the secure camera verification component…</p>}><AwsFaceLivenessDetector sessionId={handoff.sessionId} region={region} credentials={handoff.credentials} onAnalysisComplete={handleAnalysisComplete} onUserCancel={() => { setHandoff(null); setMessage("The liveness session was canceled. You may use manual review or begin a new session."); }} onError={() => { setHandoff(null); setMessage("The liveness session could not be completed. You may use manual review or begin a new session."); }} /></Suspense></div>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
   }
 
   return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">AWS Face Liveness</p><h2 className="mt-2 font-display text-xl font-bold">Confirm your presence for identity review.</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">A short video selfie is processed by AWS Face Liveness to support DreamCarz identity review. It does not automatically approve identity, eligibility, payment, or vehicle release. DreamCarz does not retain the raw selfie video, reference image, audit images, or permanent AWS credentials.</p><label className="mt-4 flex max-w-3xl gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.document} onChange={event => setConsents(current => ({ ...current, document: event.target.checked }))} className="mt-0.5 accent-black" />I consent to secure document verification for this transaction.</label><label className="mt-3 flex max-w-3xl gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.biometric} onChange={event => setConsents(current => ({ ...current, biometric: event.target.checked }))} className="mt-0.5 accent-black" />I separately consent to AWS Face Liveness processing for this transaction and understand DreamCarz will use manual review.</label><button type="button" disabled={isPreparing} onClick={() => void begin()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{isPreparing ? "Preparing secure session…" : "Begin Face Liveness"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
