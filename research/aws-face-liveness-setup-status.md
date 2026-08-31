@@ -14,12 +14,20 @@ On 2026-08-31, a server-side validation confirmed that the protected server iden
 
 This validation completes the AWS IAM prerequisite and DreamCarz now includes a protected server-session and credential-broker handoff. The server-created session procedure is available only to the signed-in owner of a transaction at the identity step, records document and biometric consent before the provider call, and persists only the opaque provider session identifier. The credential broker applies a per-account rate limit before private lookup and returns a temporary start-only credential only for that same owned pending session with active, unwithdrawn document and biometric consent. Its audit event contains no credential material. Deterministic tests cover the rate-limit, unavailable-transaction, missing-consent, disabled-provider, successful temporary-credential, server-session ordering, and provider-error paths.
 
-DreamCarz must continue to treat the customer camera flow as **disabled**. The production application has not been configured with the browser-role ARN or the separate browser-flow setting, and no customer interface calls the broker. The adapter requires a distinct browser-flow enablement setting in addition to server credentials, the role ARN, and the base provider setting before it can create a session or issue short-lived browser credentials. Administrator launch readiness distinguishes a prepared temporary-credential path from an enabled customer camera flow.
+DreamCarz must continue to treat the customer camera flow as **disabled**. The production application has not been configured with the browser-role ARN or the separate browser-flow setting. The official `FaceLivenessDetectorCore` browser component is integrated behind those server status checks; when deliberately enabled in the future, it first creates the server-side session, receives a short-lived credential handoff only for that session, and clears its in-memory handoff after completion, cancellation, or error. The adapter requires a distinct browser-flow enablement setting in addition to server credentials, the role ARN, and the base provider setting before it can create a session or issue short-lived browser credentials. Administrator launch readiness distinguishes a prepared temporary-credential path from an enabled customer camera flow.
 
 Before any customer-facing activation, the application must implement and verify all of the following remaining controls:
 
-- official browser Face Liveness client integration that receives only short-lived scoped credentials;
+- production-safe browser and device testing of the official Face Liveness component, including cancellation, failure, retry, and accessibility paths;
 - server-only result lookup followed by manual review, with no automatic face-to-ID matching, eligibility approval, or retention of raw biometric media; and
 - privacy, audit, accessibility, and visual review of the completed customer flow.
 
 No customer biometric session has been created, and this record does not establish legal, regulatory, security-certification, identity-matching, eligibility, or approval outcomes.
+
+## Official implementation references
+
+The integration design follows AWS documentation describing a server-created `CreateFaceLivenessSession` session, a browser-side `StartFaceLivenessSession` stream using temporary scoped credentials, and server-side retrieval of results. AWS also documents that sessions are single-use and expire after three minutes, so a canceled or failed customer attempt must receive a newly created session rather than reuse an existing one.
+
+- Amazon Rekognition, [Detecting face liveness](https://docs.aws.amazon.com/rekognition/latest/dg/face-liveness.html)
+- Amazon Rekognition, [CreateFaceLivenessSession API](https://docs.aws.amazon.com/rekognition/latest/APIReference/API_CreateFaceLivenessSession.html)
+- Amplify UI, [Face Liveness for React](https://ui.docs.amplify.aws/react/connected-components/liveness)

@@ -1,7 +1,9 @@
 /* Shared shell layout for all dashboard sidebar pages */
 import AIConcierge from "@/components/AIConcierge";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { FaceLivenessDetectorCore, type AwsCredentialProvider } from "@aws-amplify/ui-react-liveness";
+import "@aws-amplify/ui-react-liveness/styles.css";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
   MapPin, Headphones, Settings, ChevronRight, ArrowUp, Sparkles, AlertTriangle, FileText,
@@ -84,6 +86,7 @@ function IdentityVerificationLauncher({ reference }: { reference: string }) {
 
   if (!provider.data?.configured) {
     if (!awsFaceLiveness.data?.serverCredentialsConfigured) return null;
+    if (awsFaceLiveness.data.configured) return <AwsFaceLivenessLauncher reference={reference} region={awsFaceLiveness.data.region} />;
     return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Identity verification status</p><h2 className="mt-2 font-display text-xl font-bold">Face Liveness is being prepared</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz has prepared a server-side AWS Face Liveness connection. The live-selfie verification experience remains disabled until temporary browser credentials and the final consent flow are configured. Your private document upload and manual review path remain available; no biometric check has been started.</p></section>;
   }
 
@@ -106,6 +109,73 @@ function IdentityVerificationLauncher({ reference }: { reference: string }) {
   };
 
   return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Configured provider option</p><h2 className="mt-2 font-display text-xl font-bold">Verify with Stripe Identity</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz receives only the provider result needed for this transaction. Your verification session is tied to this account and must be completed by you.</p><label className="mt-4 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.document} onChange={event => setConsents(current => ({ ...current, document: event.target.checked }))} className="mt-0.5 accent-black" />I consent to secure document verification for this transaction.</label><label className="mt-3 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.biometric} onChange={event => setConsents(current => ({ ...current, biometric: event.target.checked }))} className="mt-0.5 accent-black" />I separately consent to a live-selfie/biometric comparison performed by the configured provider.</label><button type="button" disabled={start.isPending} onClick={() => void launch()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Preparing secure session…" : "Begin secure identity verification"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+}
+
+type AwsLivenessHandoff = {
+  sessionId: string;
+  credentials: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken: string;
+    expiration: Date;
+  };
+};
+
+function AwsFaceLivenessLauncher({ reference, region }: { reference: string; region: string }) {
+  const [consents, setConsents] = useState({ document: false, biometric: false });
+  const [handoff, setHandoff] = useState<AwsLivenessHandoff | null>(null);
+  const [message, setMessage] = useState("");
+  const startSession = trpc.transactions.startAwsFaceLiveness.useMutation();
+  const requestCredentials = trpc.transactions.requestAwsFaceLivenessBrowserCredentials.useMutation();
+  const checkResult = trpc.transactions.checkAwsFaceLiveness.useMutation();
+
+  const credentialProvider = useCallback<AwsCredentialProvider>(async () => {
+    if (!handoff) throw new Error("A current temporary credential handoff is required.");
+    return handoff.credentials;
+  }, [handoff]);
+
+  const begin = async () => {
+    if (!consents.document || !consents.biometric) {
+      setMessage("Please acknowledge both the document and biometric verification consents before continuing.");
+      return;
+    }
+    try {
+      setMessage("");
+      const session = await startSession.mutateAsync({ reference, identityDocumentConsent: true, biometricConsent: true });
+      if (!session.started) {
+        setMessage("Face Liveness is not configured. Your transaction remains available for manual review.");
+        return;
+      }
+      const credentialResponse = await requestCredentials.mutateAsync({ reference });
+      if (!credentialResponse.granted) {
+        setMessage("Temporary browser access is unavailable. Your transaction remains available for manual review.");
+        return;
+      }
+      setHandoff({ sessionId: credentialResponse.sessionId, credentials: credentialResponse.credentials });
+    } catch {
+      setMessage("A secure Face Liveness session could not be prepared. You may use the manual review path or try again later.");
+    }
+  };
+
+  const handleAnalysisComplete = async () => {
+    try {
+      const result = await checkResult.mutateAsync({ reference });
+      setMessage(result.completed
+        ? "Your liveness check was received. DreamCarz will use manual review before making any identity or eligibility decision."
+        : "DreamCarz has not received a completed liveness result. You may use manual review or begin a new session.");
+    } catch {
+      setMessage("DreamCarz could not confirm a completed liveness result. You may use manual review or begin a new session.");
+    } finally {
+      setHandoff(null);
+    }
+  };
+
+  const isPreparing = startSession.isPending || requestCredentials.isPending;
+  if (handoff) {
+    return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-white p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Face Liveness verification</p><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">Follow the on-screen prompts. A canceled or incomplete session cannot be reused; DreamCarz will retain only the minimum status needed for manual review.</p><div className="mt-4 max-w-xl"><FaceLivenessDetectorCore sessionId={handoff.sessionId} region={region} config={{ credentialProvider }} onAnalysisComplete={handleAnalysisComplete} onUserCancel={() => { setHandoff(null); setMessage("The liveness session was canceled. You may use manual review or begin a new session."); }} onError={() => { setHandoff(null); setMessage("The liveness session could not be completed. You may use manual review or begin a new session."); }} /></div>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+  }
+
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">AWS Face Liveness</p><h2 className="mt-2 font-display text-xl font-bold">Confirm your presence for identity review.</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">A short video selfie is processed by AWS Face Liveness to support DreamCarz identity review. It does not automatically approve identity, eligibility, payment, or vehicle release. DreamCarz does not retain the raw selfie video, reference image, audit images, or permanent AWS credentials.</p><label className="mt-4 flex max-w-3xl gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.document} onChange={event => setConsents(current => ({ ...current, document: event.target.checked }))} className="mt-0.5 accent-black" />I consent to secure document verification for this transaction.</label><label className="mt-3 flex max-w-3xl gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.biometric} onChange={event => setConsents(current => ({ ...current, biometric: event.target.checked }))} className="mt-0.5 accent-black" />I separately consent to AWS Face Liveness processing for this transaction and understand DreamCarz will use manual review.</label><button type="button" disabled={isPreparing} onClick={() => void begin()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{isPreparing ? "Preparing secure session…" : "Begin Face Liveness"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
 }
 
 function PaymentMethodSetupLauncher({ reference }: { reference: string }) {
