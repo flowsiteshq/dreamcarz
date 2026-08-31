@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-31
 **Region:** `us-east-1`
-**Status:** IAM identity, temporary-role validation, and protected configuration completed; no customer biometric session has been created.
+**Status:** IAM identity, temporary-role validation, protected configuration, and one explicitly authorized account-owned camera validation completed; the resulting transaction is in manual review.
 
 DreamCarz has a dedicated server-side IAM user for the Face Liveness boundary. Console access is disabled for that identity, and its existing server permissions remain limited to the backend actions required to create a Face Liveness session and retrieve a result. Its protected server credentials were previously verified through a harmless nonexistent-session lookup.
 
@@ -16,15 +16,17 @@ This validation completes the AWS IAM prerequisite and DreamCarz now includes a 
 
 On 2026-08-31, DreamCarz's approved protected configuration loaded the browser-role reference and the separate browser-flow gate. A lightweight protected status test confirmed the adapter reports ready without contacting Rekognition, creating a Face Liveness session, issuing browser credentials, or recording biometric data. The official `FaceLivenessDetectorCore` browser component is conditionally available only to the signed-in owner of a transaction at the identity step after both consents are recorded. It first creates the server-side session, receives a short-lived credential handoff only for that session, and clears its in-memory handoff after completion, cancellation, or error. Administrator launch readiness distinguishes the configured credential path from the remaining customer-flow validation work.
 
+On 2026-08-31, the account owner completed one authorized camera validation in an account-owned rental transaction after the transaction-specific document and biometric consents were recorded. Minimal application audit indicators confirm one server-created session, one temporary browser-credential handoff, and one completed provider result. The application did not persist or expose the session identifier, credentials, images, video, confidence data, or raw provider response in browser-facing records.
+
+The completed result was then routed to **manual review** through an idempotent account-owned reconciliation using only the existing minimal completion audit; it made no additional provider request and did not create another session or credential handoff. The transaction remains in manual review, while license, eligibility, payment, agreement, and vehicle-release status remain pending. A member-facing transaction panel now states this boundary explicitly.
+
 Before DreamCarz treats the customer flow as launch-ready, the application must complete and verify all of the following remaining controls:
 
 - production-safe browser and device testing of the official Face Liveness component, including cancellation, failure, retry, and accessibility paths;
 - server-only result lookup followed by manual review, with no automatic face-to-ID matching, eligibility approval, or retention of raw biometric media; and
 - privacy, audit, accessibility, and visual review of the completed customer flow.
 
-On 2026-08-31, DreamCarz authorized one account-owned camera validation. The test was deferred because the browser did not have an authenticated session for the transaction owner. No transaction data was altered to bypass normal workflow steps, and the attempt did not create a Face Liveness session, issue browser credentials, request camera access, or process biometric data. The remaining validation must begin only after the transaction owner signs in and personally accepts both in-app consents.
-
-No customer biometric session has been created, and this record does not establish legal, regulatory, security-certification, identity-matching, eligibility, approval, or launch-readiness outcomes.
+This record does not establish legal, regulatory, security-certification, identity-matching, driver-license verification, eligibility, payment, agreement, vehicle-release, approval, or launch-readiness outcomes.
 
 ## Official implementation references
 

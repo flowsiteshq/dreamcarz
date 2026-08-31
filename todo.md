@@ -319,8 +319,11 @@
 - [x] Apply a bounded per-administrator rate limit before secure transaction-record lookup, audit creation, or signed URL generation.
 - [x] Code-split the official Face Liveness browser component so its client bundle loads only after an eligible customer begins the consent-gated flow.
 - [x] Apply a bounded per-administrator rate limit before rental-application review record access or storage, retaining existing restricted-content safeguards.
-- [ ] Conduct one explicitly authorized, account-owned Face Liveness camera validation with recorded consent, manual-review-only handling, and no raw biometric retention.
+- [x] Conduct one explicitly authorized, account-owned Face Liveness camera validation with recorded consent, manual-review-only handling, and no raw biometric retention.
 - [x] Add deterministic release-gate regression coverage for incomplete verification, agreement, insurance, and additional-driver requirements without creating a customer transaction.
 - [x] Require an exact approved CoCard product SKU before an administrator can create a transaction quote or persist customer-facing financial terms.
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before lifecycle-status changes access or store private transaction data.
 - [x] Connect the legacy rental-application review state to a clear transaction-bound rental setup entry point without carrying identity documents or biometric consent across flows.
+- [x] Move a completed account-owned AWS Face Liveness result to manual review with a minimal audit event, without automatically approving identity, license, eligibility, or vehicle release.
+- [x] Reconcile an existing account-owned Face Liveness completion audit to manual review without a new provider call, session, credential handoff, or automatic approval.
+- [x] Present completed account-owned Face Liveness outcomes as manual review in the member transaction journey without implying verification or vehicle release approval.

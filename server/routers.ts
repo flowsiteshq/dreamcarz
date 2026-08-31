@@ -1424,16 +1424,62 @@ export const appRouter = router({
         const result = await getAwsFaceLivenessResult(transaction.identitySessionId);
         if (!result.configured) return { configured: false as const, provider: result.provider, completed: false };
         const completed = result.status === "SUCCEEDED";
-        if (completed) {
+        const alreadyRoutedToManualReview = transaction.status === "manual_review" && transaction.identityStatus === "manual_review";
+        if (completed && !alreadyRoutedToManualReview) {
+          await db.update(vehicleTransactions).set({
+            status: "manual_review",
+            identityStatus: "manual_review",
+          }).where(eq(vehicleTransactions.id, transaction.id));
+          await db.update(customerProfiles).set({
+            profileStatus: "manual_review",
+            identityStatus: "manual_review",
+          }).where(eq(customerProfiles.userId, ctx.user.id));
           await db.insert(transactionEvents).values({
             transactionId: transaction.id,
             actorUserId: ctx.user.id,
             actorType: "customer",
             eventType: "identity.aws_liveness_completed",
+            fromStatus: transaction.status,
+            toStatus: "manual_review",
             metadata: JSON.stringify({ provider: "aws_face_liveness", manualReviewRequired: true }),
           });
         }
         return { configured: true as const, provider: result.provider, completed };
+      }),
+
+    reconcileAwsFaceLivenessManualReview: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .mutation(async ({ ctx, input }) => {
+        const reconciliationLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "aws_face_liveness_manual_review_reconcile", String(ctx.user.id)), limit: 3, windowMs: 15 * 60_000 });
+        if (!reconciliationLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many identity-review reconciliation requests. Please try again later." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction || transaction.identityProvider !== "aws_face_liveness" || !transaction.identitySessionId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "An AWS Face Liveness session is not available for this transaction." });
+        }
+        const completedEvent = (await db.select({ id: transactionEvents.id }).from(transactionEvents).where(and(
+          eq(transactionEvents.transactionId, transaction.id),
+          eq(transactionEvents.eventType, "identity.aws_liveness_completed"),
+        )).limit(1))[0];
+        if (!completedEvent) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A completed Face Liveness review event is required before reconciliation." });
+        if (transaction.status === "manual_review" && transaction.identityStatus === "manual_review") return { reconciled: false as const, status: "manual_review" as const };
+
+        await db.update(vehicleTransactions).set({ status: "manual_review", identityStatus: "manual_review" }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.update(customerProfiles).set({ profileStatus: "manual_review", identityStatus: "manual_review" }).where(eq(customerProfiles.userId, ctx.user.id));
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "system",
+          eventType: "identity.aws_liveness_manual_review_reconciled",
+          fromStatus: transaction.status,
+          toStatus: "manual_review",
+          metadata: JSON.stringify({ provider: "aws_face_liveness", source: "existing_completion_audit", manualReviewRequired: true }),
+        });
+        return { reconciled: true as const, status: "manual_review" as const };
       }),
 
     startIdentityVerification: protectedProcedure

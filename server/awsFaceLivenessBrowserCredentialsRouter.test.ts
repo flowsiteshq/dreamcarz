@@ -14,7 +14,7 @@ vi.mock("./awsFaceLiveness", () => ({
   getAwsFaceLivenessStatus: vi.fn(),
 }));
 
-import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
+import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, getAwsFaceLivenessResult, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 import { getDb } from "./db";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import { appRouter } from "./routers";
@@ -22,6 +22,7 @@ import { appRouter } from "./routers";
 const mockedGetDb = vi.mocked(getDb);
 const mockedCreateCredentials = vi.mocked(createAwsFaceLivenessBrowserCredentials);
 const mockedCreateSession = vi.mocked(createAwsFaceLivenessSession);
+const mockedGetResult = vi.mocked(getAwsFaceLivenessResult);
 const mockedProviderStatus = vi.mocked(getAwsFaceLivenessStatus);
 const mockedConsumeRateLimit = vi.mocked(consumeRateLimit);
 const mockedRateLimitKey = vi.mocked(rateLimitKey);
@@ -40,20 +41,23 @@ function pendingOwnedSession() {
   };
 }
 
-function databaseFor({ transaction = pendingOwnedSession(), consents = ["identity_document", "identity_biometric"] as string[] } = {}) {
+function databaseFor({ transaction = pendingOwnedSession(), consents = ["identity_document", "identity_biometric"] as string[], completionEvents = [{ id: 91 }] as { id: number }[] } = {}) {
   const values = vi.fn().mockResolvedValue(undefined);
+  const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
   const transactionLimit = vi.fn().mockResolvedValue(transaction ? [transaction] : []);
   const select = vi.fn((projection?: unknown) => {
-    if (projection) return { from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(consents.map(consentType => ({ consentType }))) })) };
+    if (projection && "consentType" in (projection as Record<string, unknown>)) return { from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(consents.map(consentType => ({ consentType }))) })) };
+    if (projection && "id" in (projection as Record<string, unknown>)) return { from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(completionEvents) })) })) };
     return { from: vi.fn(() => ({ where: vi.fn(() => ({ limit: transactionLimit })) })) };
   });
   return {
     values,
+    set,
     transactionLimit,
     db: {
       select,
       insert: vi.fn(() => ({ values })),
-      update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) })),
+      update: vi.fn(() => ({ set })),
     },
   };
 }
@@ -156,5 +160,37 @@ describe("AWS Face Liveness browser credential broker", () => {
     ]));
     expect(values.mock.invocationCallOrder[0]).toBeLessThan(mockedCreateSession.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER);
     expect(db.update).toHaveBeenCalledTimes(2);
+  });
+
+  it("routes a successful provider result only to manual review without approving identity, license, eligibility, or release", async () => {
+    const transaction = { ...pendingOwnedSession(), status: "verification_pending", licenseStatus: "pending", eligibilityStatus: "pending" };
+    const { db, set, values } = databaseFor({ transaction });
+    mockedGetDb.mockResolvedValue(db as never);
+    mockedGetResult.mockResolvedValue({ configured: true, provider, status: "SUCCEEDED" });
+
+    await expect(appRouter.createCaller(memberContext as never).transactions.checkAwsFaceLiveness({ reference: "DCR-2026-LIVE" })).resolves.toMatchObject({ configured: true, completed: true });
+
+    expect(set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: "manual_review", identityStatus: "manual_review" }));
+    expect(set).toHaveBeenNthCalledWith(2, expect.objectContaining({ profileStatus: "manual_review", identityStatus: "manual_review" }));
+    const auditEvent = values.mock.calls[0]?.[0] as { toStatus?: string; metadata?: string };
+    expect(auditEvent).toMatchObject({ toStatus: "manual_review" });
+    expect(auditEvent.metadata).toContain("manualReviewRequired");
+    expect(auditEvent.metadata).not.toContain("6bb0b0be");
+  });
+
+  it("reconciles only an existing completion audit into account-owned manual review without another provider call", async () => {
+    const transaction = { ...pendingOwnedSession(), status: "verification_pending", licenseStatus: "pending", eligibilityStatus: "pending" };
+    const { db, set, values } = databaseFor({ transaction });
+    mockedGetDb.mockResolvedValue(db as never);
+
+    await expect(appRouter.createCaller(memberContext as never).transactions.reconcileAwsFaceLivenessManualReview({ reference: "DCR-2026-LIVE" })).resolves.toEqual({ reconciled: true, status: "manual_review" });
+
+    expect(mockedGetResult).not.toHaveBeenCalled();
+    expect(set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: "manual_review", identityStatus: "manual_review" }));
+    expect(set).toHaveBeenNthCalledWith(2, expect.objectContaining({ profileStatus: "manual_review", identityStatus: "manual_review" }));
+    const auditEvent = values.mock.calls[0]?.[0] as { eventType?: string; metadata?: string };
+    expect(auditEvent.eventType).toBe("identity.aws_liveness_manual_review_reconciled");
+    expect(auditEvent.metadata).toContain("existing_completion_audit");
+    expect(auditEvent.metadata).not.toContain("6bb0b0be");
   });
 });
