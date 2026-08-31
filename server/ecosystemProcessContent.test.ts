@@ -23,6 +23,7 @@ describe("DreamCarz ecosystem process content", () => {
 
   it("shows the Tesla Model 3 hero and every vehicle in the supplied current inventory", () => {
     const home = source("client/src/pages/Home.tsx");
+    const homeConcierge = source("client/src/components/HomeConcierge.tsx");
 
     expect(home).toContain("files.manuscdn.com");
     expect(home).toContain("gyIfJAbATfYnyeYI");
@@ -44,7 +45,7 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain('color: "Black"');
     expect(home).toContain('color: "White"');
     expect(home).toContain("Rent or buy");
-    expect(home).toContain('aria-label="Find your vehicle path"');
+    expect(homeConcierge).toContain('aria-label="Ask DreamCarz Concierge"');
   });
 
   it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
@@ -174,6 +175,7 @@ describe("DreamCarz ecosystem process content", () => {
 
   it("gives homepage actions concrete destinations and resets scroll on every route change", () => {
     const home = source("client/src/pages/Home.tsx");
+    const homeConcierge = source("client/src/components/HomeConcierge.tsx");
     const app = source("client/src/App.tsx");
 
     for (const destination of [
@@ -181,14 +183,15 @@ describe("DreamCarz ecosystem process content", () => {
       'href="/fleet?intent=buy"',
       'href="/pricing"',
       'href="/contact"',
-      'navigate("/fleet?intent=rent")',
-      'navigate("/fleet?intent=buy")',
-      'navigate("/pricing")',
-      'navigate(isAuthenticated ? "/dashboard" : "/login")',
-      '`/vehicle?id=${vehicle.id}`',
     ]) {
       expect(home).toContain(destination);
     }
+
+    expect(home).toContain("<HomeConcierge />");
+    expect(homeConcierge).toContain('navigate("/pricing")');
+    expect(homeConcierge).toContain("startLogin();");
+    expect(homeConcierge).toContain("beginTransaction.mutateAsync");
+    expect(homeConcierge).toContain("/dashboard/rental-setup?ref=${encodeURIComponent(result.reference)}");
 
     expect(app).toContain('window.scrollTo({ top: 0, left: 0, behavior: "auto" })');
     expect(app).toContain("function ScrollToTop()");

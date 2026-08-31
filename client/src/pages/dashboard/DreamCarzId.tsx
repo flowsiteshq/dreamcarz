@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { BadgeCheck, Car, CreditCard, FileText, Loader2, ShieldCheck, Wallet } from "lucide-react";
+import { BadgeCheck, Car, CreditCard, FileText, Loader2, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import { trpc } from "@/lib/trpc";
 
@@ -30,7 +30,7 @@ export default function DreamCarzId() {
     return <DashboardShell title="DreamCarz ID"><div className="mx-auto max-w-6xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">Your DreamCarz ID is temporarily unavailable. Please try again or contact DreamCarz support.</div></DashboardShell>;
   }
 
-  const { profile, membership, wallet, transactions, accountStanding } = overview.data;
+  const { profile, membership, wallet, transactions, conciergeJourney, accountStanding } = overview.data;
   const verificationItems = [
     ["Identity", profile?.identityStatus],
     ["Driver license", profile?.licenseStatus],
@@ -71,9 +71,20 @@ export default function DreamCarzId() {
           </article>
         </section>
 
+        <section className="border-y border-gray-200 py-7">
+          <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Concierge snapshot</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em] text-black">Your saved starting point.</h3><p className="mt-3 max-w-sm text-sm leading-6 text-gray-600">These are only the vehicle-path choices you asked DreamCarz to save. Identity documents, biometric data, and payment details are not shown here.</p></div>
+            <div className="grid gap-px border border-gray-200 bg-gray-200 sm:grid-cols-3">{conciergeJourney ? <><div className="bg-white p-5"><Sparkles className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Path</p><p className="mt-1 text-sm font-bold text-black">{formatStatus(conciergeJourney.intent)}</p></div><div className="bg-white p-5"><Car className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Vehicle choice</p><p className="mt-1 text-sm font-bold text-black">{conciergeJourney.selectedVehicleName ?? "Not selected"}</p></div><div className="bg-white p-5"><BadgeCheck className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Timing</p><p className="mt-1 text-sm font-bold text-black">{formatStatus(conciergeJourney.timeline)}</p></div></> : <div className="bg-white p-5 sm:col-span-3"><p className="text-sm font-semibold text-black">No concierge choices saved yet.</p><p className="mt-2 text-sm text-gray-600">Start a conversation on the home page and save a confirmed vehicle path when you are ready.</p><Link href="/" className="mt-4 inline-flex text-sm font-semibold underline underline-offset-4">Open DreamCarz Concierge →</Link></div>}</div>
+          </div>
+        </section>
+
         <section className="grid gap-7 border-t border-gray-200 pt-8 lg:grid-cols-[0.75fr_1.25fr]">
           <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Your activity</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em] text-black">Saved vehicle journeys.</h3><p className="mt-4 text-sm leading-6 text-gray-600">Continue a saved rental or purchase flow, then access agreements and secure documents from My Records.</p><div className="mt-6 flex flex-wrap gap-3"><Link href="/dashboard/transactions" className="inline-flex h-10 items-center gap-2 bg-black px-4 text-sm font-semibold text-white"><FileText className="h-4 w-4" /> My records</Link><Link href="/fleet" className="inline-flex h-10 items-center gap-2 border border-black px-4 text-sm font-semibold text-black"><Car className="h-4 w-4" /> Explore vehicles</Link></div></div>
-          <div className="divide-y divide-gray-200 border-y border-gray-200">{transactions.length ? transactions.map(transaction => <Link key={transaction.reference} href={`/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`} className="flex items-center justify-between gap-4 py-5"><div><p className="text-sm font-bold text-black">{transaction.vehicleName}</p><p className="mt-1 text-xs uppercase tracking-[0.12em] text-gray-500">{transaction.transactionType} · {formatStatus(transaction.status)}</p></div><span className="text-sm font-semibold text-[#a8832d]">Open →</span></Link>) : <div className="py-8"><CreditCard className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-sm font-semibold text-black">No vehicle transaction has been started.</p><p className="mt-2 text-sm text-gray-500">Choose a confirmed vehicle to begin a saved rental or purchase journey.</p></div>}</div>
+          <div className="divide-y divide-gray-200 border-y border-gray-200">{transactions.length ? transactions.map(transaction => {
+            const canResume = ["initiated", "verification_pending", "manual_review", "payment_pending", "agreement_pending"].includes(transaction.status);
+            const href = canResume ? `/dashboard/rental-setup?ref=${encodeURIComponent(transaction.reference)}` : `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`;
+            return <Link key={transaction.reference} href={href} className="flex items-center justify-between gap-4 py-5"><div><p className="text-sm font-bold text-black">{transaction.vehicleName}</p><p className="mt-1 text-xs uppercase tracking-[0.12em] text-gray-500">{transaction.transactionType} · {formatStatus(transaction.status)}</p></div><span className="text-sm font-semibold text-[#a8832d]">{canResume ? "Resume setup →" : "Open record →"}</span></Link>;
+          }) : <div className="py-8"><CreditCard className="h-5 w-5 text-[#a8832d]" /><p className="mt-3 text-sm font-semibold text-black">No vehicle transaction has been started.</p><p className="mt-2 text-sm text-gray-500">Choose a confirmed vehicle to begin a saved rental or purchase journey.</p></div>}</div>
         </section>
       </div>
     </DashboardShell>

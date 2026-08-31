@@ -1,9 +1,9 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import Footer from "@/components/Footer";
+import { HomeConcierge } from "@/components/HomeConcierge";
 import Navigation from "@/components/Navigation";
-import { ArrowRight, BadgeCheck, Car, CircleDollarSign, Gift, Headphones, MapPin, Search, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
-import { FormEvent, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { ArrowRight, BadgeCheck, Car, CircleDollarSign, Gift, Headphones, MapPin, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
+import { Link } from "wouter";
 
 const currentInventory = [
   { id: "2024-chevrolet-malibu-gray", year: "2024", make: "Chevrolet", model: "Malibu", color: "Gray", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/ogLykrxMFWpmsTbU.png" },
@@ -16,7 +16,6 @@ const currentInventory = [
   { id: "2020-chevrolet-equinox-black", year: "2020", make: "Chevrolet", model: "Equinox", color: "Black", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
 ] as const;
 
-const promptSuggestions = ["Rent this weekend", "Buy under $30K", "Luxury SUV", "How membership works"] as const;
 const choices = [
   { icon: Car, eyebrow: "Rent", title: "Rent a vehicle", description: "Choose the vehicle that fits your schedule and submit a rental request for review.", cta: "Browse rentals", href: "/fleet?intent=rent", image: currentInventory[1].image },
   { icon: CircleDollarSign, eyebrow: "Buy", title: "Buy a vehicle", description: "Explore confirmed vehicles and start a purchase inquiry when you find your match.", cta: "Shop vehicles", href: "/fleet?intent=buy", image: currentInventory[4].image },
@@ -36,19 +35,6 @@ const support = [
 ] as const;
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
-  const [prompt, setPrompt] = useState("");
-  const handlePrompt = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = prompt.trim().toLowerCase();
-    if (!query) return;
-    if (query.includes("buy")) navigate("/fleet?intent=buy");
-    else if (query.includes("rent") || query.includes("car") || query.includes("vehicle") || query.includes("suv")) navigate("/fleet?intent=rent");
-    else if (query.includes("member") || query.includes("price") || query.includes("plan")) navigate("/pricing");
-    else navigate(isAuthenticated ? "/dashboard" : "/login");
-  };
-
   return <div className="min-h-screen bg-white text-black">
     <Navigation />
     <main>
@@ -57,7 +43,7 @@ export default function Home() {
           <div className="flex min-h-[455px] flex-col justify-center px-7 py-12 sm:px-11 lg:min-h-[515px] lg:px-12"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">Freedom. Choice. Value.</p><h1 className="mt-4 max-w-md font-display text-5xl font-bold leading-[0.91] tracking-[-0.06em] sm:text-6xl lg:text-7xl">Drive what<br />moves you.</h1><p className="mt-5 max-w-md text-sm leading-relaxed text-gray-600 sm:text-base">Rent it. Buy it. Or unlock more as a DreamCarz member. Start with a real vehicle and choose a clear path forward.</p><div className="mt-7 flex flex-wrap gap-3"><Link href="/fleet?intent=rent" className="inline-flex h-11 items-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white transition-transform active:scale-[0.97]">Rent a car <ArrowRight size={15} /></Link><Link href="/fleet?intent=buy" className="inline-flex h-11 items-center gap-2 rounded-full border border-black px-5 text-sm font-semibold text-black transition-colors hover:bg-black hover:text-white">Buy a car <ArrowRight size={15} /></Link></div><Link href="/pricing" className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#a5802a] underline underline-offset-4">Explore membership <ArrowRight size={14} /></Link></div>
           <div className="relative flex min-h-[365px] items-center justify-center overflow-hidden bg-[#f4f0e8] lg:min-h-[515px]"><div className="absolute inset-x-12 top-10 h-36 border border-[#d6b85f]/40 sm:inset-x-16" /><img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/gyIfJAbATfYnyeYI.png" alt="White Tesla Model 3 in a DreamCarz studio setting" className="relative z-10 h-full min-h-[365px] w-full object-cover lg:min-h-[515px]" /></div>
         </div>
-        <div className="mx-auto -mt-5 max-w-6xl pb-7 sm:-mt-7"><form onSubmit={handlePrompt} className="relative z-20 flex flex-col gap-3 border border-[#e6e0d7] bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.05)] sm:flex-row sm:items-center sm:p-4"><div className="flex min-w-0 flex-1 items-center gap-3"><Search className="shrink-0 text-[#b08b35]" size={18} /><input value={prompt} onChange={(event) => setPrompt(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-gray-400" placeholder="What are you looking for?  I need an SUV under $700/month…" /></div><button type="submit" aria-label="Find your vehicle path" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black text-white transition-transform active:scale-[0.97]"><ArrowRight size={17} /></button></form><div className="mt-3 flex flex-wrap gap-2 px-1">{promptSuggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => setPrompt(suggestion)} className="rounded-full border border-[#e7e2d9] bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 transition-colors hover:border-black hover:text-black">{suggestion}</button>)}</div></div>
+        <HomeConcierge />
         <div className="mx-auto max-w-7xl pb-7"><div className="grid overflow-hidden border border-[#e7e1d7] bg-white md:grid-cols-4">{benefits.map((benefit, index) => { const Icon = benefit.icon; return <div key={benefit.title} className={`flex gap-3 p-4 ${index < benefits.length - 1 ? "border-b border-[#e7e1d7] md:border-b-0 md:border-r" : ""}`}><Icon className="mt-0.5 shrink-0 text-[#b08b35]" size={18} /><div><p className="text-xs font-bold">{benefit.title}</p><p className="mt-1 text-[11px] leading-relaxed text-gray-500">{benefit.detail}</p></div></div>; })}</div></div>
       </section>
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-20"><div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">One destination. More possibilities.</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Choose your path.</h2></div><div className="mt-10 grid gap-5 md:grid-cols-3">{choices.map((choice) => { const Icon = choice.icon; return <article key={choice.title} className="overflow-hidden border border-gray-200 bg-white"><div className="h-44 overflow-hidden bg-[#f2eee6]"><img src={choice.image} alt="" className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" /></div><div className="relative p-6"><span className="absolute -top-5 grid h-10 w-10 place-items-center rounded-full bg-black text-white"><Icon size={17} /></span><p className="pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b08b35]">{choice.eyebrow}</p><h3 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em]">{choice.title}</h3><p className="mt-3 min-h-[66px] text-sm leading-relaxed text-gray-500">{choice.description}</p><Link href={choice.href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">{choice.cta} <ArrowRight size={14} /></Link></div></article>; })}</div></section>

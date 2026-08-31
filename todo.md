@@ -330,3 +330,7 @@
 - [x] Present a completed Face Liveness result as a distinct completed liveness check while clearly keeping license, eligibility, insurance, payment, agreement, and release decisions pending.
 - [x] Clarify the member account-header status when an account is awaiting separate identity review, without implying a failed liveness check or approval.
 - [x] Remove the residual Stripe Identity launch branch so AWS Face Liveness and manual review are the only identity-verification paths while CoCard remains the payment boundary.
+- [x] Replace the home-page search prompt with a guided DreamCarz concierge that uses only confirmed inventory and safely routes members into rental or purchase onboarding.
+- [x] Persist customer-approved contact details and vehicle preferences to the account-owned DreamCarz profile without copying identity documents, biometric data, or payment data.
+- [x] Add a member profile-review surface that shows saved concierge information, outstanding onboarding steps, and resumable transaction handoffs.
+- [x] Add a rate-limited public AI concierge response that recommends only confirmed inventory, never stores chat text, and refuses sensitive data or transactional decisions.

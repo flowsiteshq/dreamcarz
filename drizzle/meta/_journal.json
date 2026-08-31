@@ -330,6 +330,13 @@
       "when": 1788137416023,
       "tag": "0046_mature_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1788204701154,
+      "tag": "0047_glossy_whizzer",
+      "breakpoints": true
     }
   ]
 }

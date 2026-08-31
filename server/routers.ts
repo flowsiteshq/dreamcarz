@@ -13,6 +13,7 @@ import {
   rentalApplications,
   rentalApplicationDocuments,
   customerProfiles,
+  conciergeJourneyPreferences,
   reservationRequests,
   vehicleInquiries,
   vehicleTransactions,
@@ -275,6 +276,118 @@ export const appRouter = router({
   }),
 
   concierge: router({
+    confirmedVehicles: publicProcedure.query(() => Object.entries(APPROVED_TRANSACTION_VEHICLES).map(([vehicleId, vehicle]) => ({
+      vehicleId,
+      vehicleName: vehicle.vehicleName,
+      image: vehicle.image,
+      vehicleClass: vehicleId.includes("traverse") || vehicleId.includes("equinox") ? "suv" as const : "sedan" as const,
+    }))),
+
+    publicGuide: publicProcedure
+      .input(z.object({ question: z.string().trim().min(2).max(240) }))
+      .mutation(async ({ ctx, input }) => {
+        const guidanceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "public_concierge_guidance", "guest"), limit: 12, windowMs: 60 * 60_000 });
+        if (!guidanceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before asking DreamCarz Concierge another question." });
+        const containsSensitiveInput = /\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b(?:card|cvv|password|passcode|pin|license\s*(?:number|#)?|driver'?s\s*license)\b/i.test(input.question);
+        if (containsSensitiveInput) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "For your privacy, do not enter contact, payment, license, password, or government-identification details in DreamCarz Concierge. Sign in and use the protected onboarding steps when you are ready." });
+        }
+        const inventory = Object.entries(APPROVED_TRANSACTION_VEHICLES).map(([vehicleId, vehicle]) => ({
+          vehicleId,
+          vehicleName: vehicle.vehicleName,
+          vehicleClass: vehicleId.includes("traverse") || vehicleId.includes("equinox") ? "suv" as const : "sedan" as const,
+        }));
+        const vehicleIds = inventory.map(vehicle => vehicle.vehicleId);
+        const fallback = {
+          answer: "I can help you compare the confirmed DreamCarz vehicles and choose a rental or purchase journey. I cannot quote prices, promise availability, make a payment or eligibility decision, or collect private information here.",
+          intent: "explore" as const,
+          vehicleClass: null,
+          nextPrompt: "Would you like to compare sedans or SUVs?",
+          recommendedVehicleIds: vehicleIds,
+          source: "fallback" as const,
+        };
+        try {
+          const { data: models } = await listLLMModels();
+          const model = models.find(candidate => candidate.id === "claude-haiku-4-5")?.id ?? models.find(candidate => candidate.id === "gpt-5-mini")?.id ?? models.find(candidate => candidate.id.startsWith("gpt-5"))?.id;
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            const response = await invokeLLM({
+              model,
+              maxTokens: 500,
+              messages: [
+                { role: "system", content: "You are DreamCarz Concierge for a public vehicle discovery page. Chat text is temporary and must not be treated as a record. Use only the CONFIRMED_INVENTORY supplied below. Never invent a vehicle, price, payment, availability, eligibility, financing, insurance, contract, timing, vehicle release, policy, or approval. Never ask for or repeat names, email, phone, address, driver license, government ID, biometric, password, PIN, or card information; direct the visitor to sign in and protected onboarding instead. Keep the answer under 420 characters, answer the question warmly, and propose a non-sensitive next vehicle-selection question. Return vehicleClass as sedan, suv, or all when no vehicle-class filter should apply." },
+                { role: "user", content: `QUESTION: ${input.question}\n\nCONFIRMED_INVENTORY: ${JSON.stringify(inventory)}\n\nReturn only the requested structured response.` },
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: "public_dreamcarz_concierge_guidance",
+                  strict: true,
+                  schema: {
+                    type: "object",
+                    properties: {
+                      answer: { type: "string" },
+                      intent: { type: "string", enum: ["rental", "purchase", "membership", "explore"] },
+                      vehicleClass: { type: "string", enum: ["sedan", "suv", "all"] },
+                      nextPrompt: { type: "string" },
+                      recommendedVehicleIds: { type: "array", items: { type: "string", enum: vehicleIds }, maxItems: 4 },
+                    },
+                    required: ["answer", "intent", "vehicleClass", "nextPrompt", "recommendedVehicleIds"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+            });
+            const content = response.choices?.[0]?.message.content;
+            if (typeof content !== "string") continue;
+            let parsed: Record<string, unknown>;
+            try { parsed = JSON.parse(content) as Record<string, unknown>; } catch { continue; }
+            const answer = typeof parsed.answer === "string" ? parsed.answer.trim().slice(0, 420) : "";
+            const intent = ["rental", "purchase", "membership", "explore"].includes(String(parsed.intent)) ? parsed.intent as "rental" | "purchase" | "membership" | "explore" : "explore";
+            const vehicleClass = parsed.vehicleClass === "sedan" || parsed.vehicleClass === "suv" ? parsed.vehicleClass : null;
+            const nextPrompt = typeof parsed.nextPrompt === "string" ? parsed.nextPrompt.trim().slice(0, 200) : fallback.nextPrompt;
+            const recommendedVehicleIds = Array.isArray(parsed.recommendedVehicleIds) ? parsed.recommendedVehicleIds.filter((vehicleId): vehicleId is string => typeof vehicleId === "string" && vehicleIds.includes(vehicleId)).slice(0, 4) : [];
+            const unsupportedClaim = /\$\s*\d|(?:price|pricing|rate|quote)\s+(?:is|of|at)\b|(?:approved|eligible|guaranteed|released)\s+(?:for|to)\b|(?:available|availability)\s+(?:today|now|this\s+week)\b/i.test(`${answer} ${nextPrompt}`);
+            if (!answer || unsupportedClaim) continue;
+            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const };
+          }
+          return fallback;
+        } catch {
+          console.warn("[DreamCarz Concierge] Public guidance unavailable");
+          return fallback;
+        }
+      }),
+
+    saveJourneyPreference: protectedProcedure
+      .input(z.object({
+        intent: z.enum(["rental", "purchase", "membership", "explore"]),
+        preferredVehicleClass: z.enum(["sedan", "suv"]).nullable(),
+        selectedVehicleId: z.string().trim().min(2).max(96).nullable(),
+        timeline: z.enum(["exploring", "soon", "this_week"]).nullable(),
+        confirmSave: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const saveLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "concierge_journey_preference", String(ctx.user.id)), limit: 12, windowMs: 60 * 60_000 });
+        if (!saveLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before updating your DreamCarz concierge preferences again." });
+        if (input.selectedVehicleId && !isApprovedTransactionVehicle(input.selectedVehicleId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Select a confirmed DreamCarz inventory vehicle." });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DreamCarz concierge preferences are temporarily unavailable." });
+        const selectedVehicle = input.selectedVehicleId ? APPROVED_TRANSACTION_VEHICLES[input.selectedVehicleId as keyof typeof APPROVED_TRANSACTION_VEHICLES] : null;
+        const values = {
+          intent: input.intent,
+          preferredVehicleClass: input.preferredVehicleClass,
+          selectedVehicleId: input.selectedVehicleId,
+          selectedVehicleName: selectedVehicle?.vehicleName ?? null,
+          timeline: input.timeline,
+          savedAt: new Date(),
+        };
+        const existing = await db.select({ id: conciergeJourneyPreferences.id }).from(conciergeJourneyPreferences).where(eq(conciergeJourneyPreferences.userId, ctx.user.id)).limit(1);
+        if (existing[0]) await db.update(conciergeJourneyPreferences).set(values).where(eq(conciergeJourneyPreferences.id, existing[0].id));
+        else await db.insert(conciergeJourneyPreferences).values({ userId: ctx.user.id, ...values });
+        return { success: true, preference: values };
+      }),
+
     guide: protectedProcedure.input(z.object({ question: z.string().trim().min(2).max(800) })).mutation(async ({ ctx, input }) => {
       const guidanceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "concierge_guidance", String(ctx.user.id)), limit: 18, windowMs: 60 * 60 * 1000 });
       if (!guidanceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before asking DreamCarz Concierge another question." });
@@ -367,12 +480,13 @@ export const appRouter = router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DreamCarz ID is temporarily unavailable." });
-      const [profiles, activeRoles, memberships, wallets, transactions] = await Promise.all([
+      const [profiles, activeRoles, memberships, wallets, transactions, conciergePreferences] = await Promise.all([
         db.select().from(customerProfiles).where(eq(customerProfiles.userId, ctx.user.id)).limit(1),
         db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))),
         db.select({ membership: customerMemberships, plan: membershipPlans }).from(customerMemberships).innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id)).where(and(eq(customerMemberships.userId, ctx.user.id), eq(customerMemberships.status, "active"))).orderBy(desc(customerMemberships.updatedAt)).limit(1),
         db.select().from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1),
         db.select({ reference: vehicleTransactions.reference, transactionType: vehicleTransactions.transactionType, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(eq(vehicleTransactions.userId, ctx.user.id)).orderBy(desc(vehicleTransactions.updatedAt)).limit(12),
+        db.select().from(conciergeJourneyPreferences).where(eq(conciergeJourneyPreferences.userId, ctx.user.id)).limit(1),
       ]);
       const membership = memberships[0] ?? null;
       const benefits = membership
@@ -390,6 +504,7 @@ export const appRouter = router({
         membership: membership ? { ...membership.membership, plan: membership.plan, benefits } : null,
         wallet: wallet ? { account: wallet, ...walletSummary, entries: ledgerEntries } : null,
         transactions,
+        conciergeJourney: conciergePreferences[0] ?? null,
         accountStanding: profile?.profileStatus === "restricted" || wallet?.status === "restricted" ? "restricted" : profile?.profileStatus ?? "incomplete",
       };
     }),

@@ -604,6 +604,23 @@ export const customerProfiles = mysqlTable("customer_profiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * A customer-confirmed vehicle-path preference captured by DreamCarz Concierge.
+ * Free-form chat content, payment data, identity documents, biometric material,
+ * government identifiers, and addresses are intentionally excluded.
+ */
+export const conciergeJourneyPreferences = mysqlTable("concierge_journey_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  intent: mysqlEnum("intent", ["rental", "purchase", "membership", "explore"]).default("explore").notNull(),
+  preferredVehicleClass: mysqlEnum("preferredVehicleClass", ["sedan", "suv"]),
+  selectedVehicleId: varchar("selectedVehicleId", { length: 96 }),
+  selectedVehicleName: varchar("selectedVehicleName", { length: 160 }),
+  timeline: mysqlEnum("timeline", ["exploring", "soon", "this_week"]),
+  savedAt: timestamp("savedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ── Vehicle Reservation Requests ────────────────────────────────────────────
 
 export const reservationRequests = mysqlTable("reservation_requests", {
