@@ -9,6 +9,7 @@ import {
   referrals,
   commissions,
   associateLeads,
+  associateLeadActivityEvents,
   rentalApplications,
   rentalApplicationDocuments,
   customerProfiles,
@@ -2637,11 +2638,12 @@ export const appRouter = router({
       const profile = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
       const leads = await db.select().from(associateLeads).where(eq(associateLeads.associateUserId, ctx.user.id)).orderBy(desc(associateLeads.updatedAt));
       const referralsForAssociate = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id)).orderBy(desc(referrals.createdAt));
-      const [commissionRecords, conversionEvents] = await Promise.all([
+      const [commissionRecords, conversionEvents, leadActivity] = await Promise.all([
         db.select().from(commissions).where(eq(commissions.userId, ctx.user.id)).orderBy(desc(commissions.month)),
         db.select({ id: referralConversionEvents.id, referralId: referralConversionEvents.referralId, eventType: referralConversionEvents.eventType, createdAt: referralConversionEvents.createdAt }).from(referralConversionEvents).where(eq(referralConversionEvents.referrerUserId, ctx.user.id)).orderBy(desc(referralConversionEvents.createdAt)),
+        db.select({ id: associateLeadActivityEvents.id, leadId: associateLeadActivityEvents.leadId, eventType: associateLeadActivityEvents.eventType, status: associateLeadActivityEvents.status, createdAt: associateLeadActivityEvents.createdAt }).from(associateLeadActivityEvents).where(eq(associateLeadActivityEvents.associateUserId, ctx.user.id)).orderBy(desc(associateLeadActivityEvents.createdAt)),
       ]);
-      return { profile, leads, referrals: referralsForAssociate, commissionRecords, conversionEvents, roles };
+      return { profile, leads, referrals: referralsForAssociate, commissionRecords, conversionEvents, leadActivity, roles };
     }),
     ensureProfile: protectedProcedure.mutation(async ({ ctx }) => {
       const db = await getDb();
@@ -2670,7 +2672,9 @@ export const appRouter = router({
       if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
       const result = await db.insert(associateLeads).values({ associateUserId: ctx.user.id, ...input });
-      return { id: Number(result[0].insertId) };
+      const leadId = Number(result[0].insertId);
+      await db.insert(associateLeadActivityEvents).values({ associateUserId: ctx.user.id, leadId, eventType: "lead_created", status: "new" });
+      return { id: leadId };
     }),
     updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -2682,6 +2686,7 @@ export const appRouter = router({
       const lead = (await db.select().from(associateLeads).where(eq(associateLeads.id, input.id)).limit(1))[0];
       if (!lead || (lead.associateUserId !== ctx.user.id && ctx.user.role !== "admin")) throw new TRPCError({ code: "FORBIDDEN", message: "This lead is not available to this account." });
       await db.update(associateLeads).set({ status: input.status, notes: input.notes ?? lead.notes }).where(eq(associateLeads.id, input.id));
+      await db.insert(associateLeadActivityEvents).values({ associateUserId: lead.associateUserId, leadId: lead.id, eventType: "status_updated", status: input.status });
       return { success: true };
     }),
   }),

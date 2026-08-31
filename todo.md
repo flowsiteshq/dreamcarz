@@ -256,6 +256,7 @@
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
 - [x] Allow an Associate to update only the status of their own consented leads, without creating a customer outcome, application decision, or commission entitlement.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before private Associate lead notes are stored.
+- [x] Add an immutable account-owned Associate lead activity timeline for lead creation and status updates without contact details or note contents in event metadata.
 - [x] Add privacy-safe, non-financial Associate referral conversion milestones for new account registration and customer-initiated rental or purchase transactions.
 - [x] Capture a validated Associate referral code at new-account registration and preserve the attribution without allowing self-referrals or arbitrary reassignment.
 - [x] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.

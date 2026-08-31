@@ -502,6 +502,16 @@ export const associateLeads = mysqlTable("associate_leads", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Immutable, account-owned Associate lead activity without prospect contact details or note content. */
+export const associateLeadActivityEvents = mysqlTable("associate_lead_activity_events", {
+  id: int("id").autoincrement().primaryKey(),
+  associateUserId: int("associateUserId").notNull(),
+  leadId: int("leadId").notNull(),
+  eventType: mysqlEnum("eventType", ["lead_created", "status_updated"]).notNull(),
+  status: mysqlEnum("status", ["new", "contacted", "qualified", "converted", "closed"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("associate_lead_activity_owner_idx").on(table.associateUserId, table.createdAt), index("associate_lead_activity_lead_idx").on(table.leadId, table.createdAt)]);
+
 // ── Rental Onboarding & Identity Verification ───────────────────────────────
 
 export const rentalApplications = mysqlTable("rental_applications", {
