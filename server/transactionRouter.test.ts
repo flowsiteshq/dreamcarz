@@ -157,6 +157,10 @@ describe("transaction intake router", () => {
     })).rejects.toThrow("required front, rear, driver side, passenger side, interior, odometer condition photo views");
   });
 
+  it("rejects likely payment-card content before customer condition report notes are stored", async () => {
+    await expect(appRouter.createCaller(customerContext as never).transactions.submitConditionReport({ reference: "DCR-2026-CONDITION", stage: "pickup", notes: "Card number 4111 1111 1111 1111" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("records a complete customer return inspection as submitted for human review and moves the rental to return pending", async () => {
     const transaction = { id: 84, transactionType: "rental" as const, status: "active_rental" as const, currentStep: "active_rental" as const };
     const evidence = ["front", "rear", "driver_side", "passenger_side", "interior", "odometer"].map((view, index) => ({ id: index + 1, view, storageKey: `private/condition/${view}.jpg` }));

@@ -125,7 +125,7 @@ function containsRestrictedSupportContent(value: string) {
   return likelyCardNumber || likelyPassword || likelyLicenseNumber;
 }
 
-function assertSafeRestrictedContent(value: string, destination: "support message" | "operational report" | "private lead note") {
+function assertSafeRestrictedContent(value: string, destination: "support message" | "operational report" | "private lead note" | "condition report") {
   if (containsRestrictedSupportContent(value)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: `Please remove payment-card numbers, passwords, and driver-license numbers before sending this ${destination}.` });
   }
@@ -1581,6 +1581,7 @@ export const appRouter = router({
         notes: z.string().trim().max(2_000).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        if (input.notes) assertSafeRestrictedContent(input.notes, "condition report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle condition reporting is temporarily unavailable." });
         const transactions = await db.select().from(vehicleTransactions)

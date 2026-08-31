@@ -239,6 +239,7 @@
 - [x] Replace condition-report photo storage-key responses with controlled evidence-presence indicators and existing on-demand record access.
 - [x] Add audited account-scoped condition-report evidence access without returning storage keys or exposing evidence across accounts.
 - [x] Apply a bounded account-specific rate limit to condition-evidence uploads while allowing the six required pickup and six required return views.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before customer condition-report notes are stored.
 - [x] Remove raw payment-provider identifiers and agreement storage keys from administrator transaction-detail responses while retaining masked statuses and controlled record access.
 - [x] Record a minimal immutable audit event whenever an authorized administrator requests a secure transaction document link, without storing the document contents, storage key, or signed URL.
 - [x] Correct client query-string parsing so private transaction references and intended post-login destinations remain reachable in app navigation.
