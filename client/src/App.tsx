@@ -2,11 +2,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import Concierge from "./pages/Concierge";
 import Membership from "./pages/Membership";
 import Pricing from "./pages/Pricing";
 import Fleet from "./pages/Fleet";
@@ -44,6 +43,12 @@ import AssociatePortal from "./pages/dashboard/AssociatePortal";
 import CommandCenter from "./pages/dashboard/CommandCenter";
 import NotificationsCenter from "./pages/dashboard/NotificationsCenter";
 
+const Concierge = lazy(() => import("./pages/Concierge"));
+
+function ConciergeRoute() {
+  return <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#f8f7f4] text-black"><div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#a8832d]">DreamCarz Concierge</p><p className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">Preparing your vehicle path.</p></div></div>}><Concierge /></Suspense>;
+}
+
 function ScrollToTop() {
   const [location] = useLocation();
 
@@ -59,7 +64,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/concierge" component={Concierge} />
+      <Route path="/concierge" component={ConciergeRoute} />
       <Route path="/membership" component={Membership} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/fleet" component={Fleet} />

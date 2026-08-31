@@ -341,3 +341,4 @@
 - [x] Greet signed-in members by first name in the dedicated DreamCarz Concierge and offer their saved account-owned vehicle path without exposing private profile fields.
 - [x] Upgrade the dedicated DreamCarz Concierge with adaptive question states, a visible progress rail, visual recommendation transitions, and a streamlined saved-path handoff without collecting sensitive information in chat.
 - [x] Route public Rent and Buy entry actions into the dedicated DreamCarz Concierge with an explicit preselected intent, preserving vehicle-first guided discovery.
+- [x] Load the dedicated DreamCarz Concierge route on demand behind a concise brand-consistent loading state to keep the public home experience responsive.
