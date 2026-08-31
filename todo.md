@@ -316,3 +316,4 @@
 - [x] Configure the approved scoped AWS browser role and explicit browser-flow gate, then verify consent-gated readiness without starting a biometric session.
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before eligibility-review record access or storage.
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before transaction-state review record access or storage.
+- [x] Apply a bounded per-administrator rate limit before secure transaction-record lookup, audit creation, or signed URL generation.

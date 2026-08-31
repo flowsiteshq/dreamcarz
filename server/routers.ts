@@ -3919,6 +3919,8 @@ export const appRouter = router({
       .input(z.object({ transactionId: z.number().int().positive(), source: z.enum(["document", "agreement"]), recordId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const secureRecordLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_secure_transaction_record_link", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!secureRecordLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many secure transaction record requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
         const transactions = await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(eq(vehicleTransactions.id, input.transactionId)).limit(1);
