@@ -107,6 +107,13 @@ describe("service-report router workflow", () => {
     expect(eventValues).toHaveBeenNthCalledWith(2, { reportId: 88, reviewerId: 1, status: "resolved", note: "Repair completed." });
   });
 
+  it("rejects likely password content before an authorized service-report review note is stored", async () => {
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.reviewServiceReport({ id: 88, status: "under_review", reviewNote: "Password: not-for-this-record" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("rejects a member attempting to change a service-report status", async () => {
     const caller = appRouter.createCaller(memberContext as never);
     await expect(caller.operations.reviewServiceReport({ id: 88, status: "resolved" })).rejects.toMatchObject({ code: "FORBIDDEN" });

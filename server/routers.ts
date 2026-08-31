@@ -3807,6 +3807,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["under_review", "assigned", "resolved", "closed"]), reviewNote: z.string().trim().max(2_000).optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.reviewNote) assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
         await db.update(serviceReports).set({ status: input.status, reviewNote: input.reviewNote || null, reviewedAt: new Date() }).where(eq(serviceReports.id, input.id));
