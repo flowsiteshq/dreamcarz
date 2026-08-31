@@ -3937,6 +3937,8 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "needs_attention", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const rentalApplicationReviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "rental_application_review", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!rentalApplicationReviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many rental application reviews. Please try again later." });
         if (input.reviewNote) assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
