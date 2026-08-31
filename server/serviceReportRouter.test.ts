@@ -77,6 +77,18 @@ describe("service-report router workflow", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
+  it("rejects likely payment-card content before vehicle service-report text is stored", async () => {
+    const caller = appRouter.createCaller(memberContext as never);
+
+    await expect(caller.serviceReports.create({
+      category: "Incident",
+      description: "Card number 4111 1111 1111 1111",
+      urgency: "urgent",
+      photos: [],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("persists the administrator, status, and note across multi-step service-report review transitions", async () => {
     const where = vi.fn().mockResolvedValue({ affectedRows: 1 });
     const set = vi.fn(() => ({ where }));

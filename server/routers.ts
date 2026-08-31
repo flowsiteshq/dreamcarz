@@ -2340,6 +2340,8 @@ export const appRouter = router({
         })).max(8),
       }))
       .mutation(async ({ ctx, input }) => {
+        assertSafeRestrictedContent(input.description, "operational report");
+        if (input.reportedLocation) assertSafeRestrictedContent(input.reportedLocation, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service reporting is temporarily unavailable." });
         const activeReservations = await db

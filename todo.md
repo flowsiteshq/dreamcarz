@@ -282,6 +282,7 @@
 - [x] Replace static authenticated member-tier and membership-tenure labels with authorized live DreamCarz ID membership data or a neutral incomplete-profile state.
 - [ ] Apply active membership benefits to authorized transaction eligibility, pricing, deposits, credits, delivery benefits, and upgrade rules after approved benefit configurations are defined.
 - [ ] Expand RBAC, immutable audit coverage, access controls, encryption/storage safeguards, rate limits, and production monitoring across all new DreamCarz OS modules.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before customer vehicle service-report text is stored.
 - [x] Apply a bounded per-administrator rate limit to Vehicle Passport maintenance invoice uploads.
 - [x] Record immutable transaction audit events when a customer requests a signed private transaction record, without logging document contents, storage keys, or signed URLs.
 - [x] Apply bounded per-account rate limits to identity-document upload and native agreement-signing actions without blocking consent withdrawal or safety reporting.
