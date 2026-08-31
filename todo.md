@@ -313,3 +313,4 @@
 - [x] Apply a bounded per-account rate limit before private return-settlement statement lookup, without changing reviewed figures or initiating collection activity.
 - [x] Apply a bounded per-account rate limit before secure private-document link lookup or signed URL generation, preserving existing ownership checks and minimal access audits.
 - [x] Apply a bounded per-account rate limit before account-owned DreamCarz ID record listings, without returning storage keys or changing document visibility.
+- [x] Configure the approved scoped AWS browser role and explicit browser-flow gate, then verify consent-gated readiness without starting a biometric session.
