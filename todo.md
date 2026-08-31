@@ -308,3 +308,4 @@
 - [x] Add a consent-recorded, account-owned pending-identity gate and rate limit before the server can request temporary Face Liveness browser credentials.
 - [x] Add deterministic broker success and failure coverage without exposing temporary credentials or activating the customer camera flow.
 - [x] Distinguish prepared AWS IAM credentials from enabled browser camera flow in the administrator launch-readiness projection.
+- [x] Align the future Face Liveness broker with server-created opaque sessions and short-lived browser StartFaceLivenessSession credentials, without activating the customer camera flow.

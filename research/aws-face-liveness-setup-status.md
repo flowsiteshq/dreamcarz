@@ -12,14 +12,13 @@ On 2026-08-31, a server-side validation confirmed that the protected server iden
 
 ## Activation boundary
 
-This validation completes the AWS IAM prerequisite and DreamCarz now includes a protected credential-broker procedure. The procedure is available only to the signed-in owner of a pending identity transaction at the identity step; it records document and biometric consent before requesting credentials, applies a per-account rate limit before private lookup, and records an issuance audit event that contains no credential material. Deterministic tests cover the rate-limit, unavailable-transaction, disabled-provider, successful temporary-credential, and provider-error paths.
+This validation completes the AWS IAM prerequisite and DreamCarz now includes a protected server-session and credential-broker handoff. The server-created session procedure is available only to the signed-in owner of a transaction at the identity step, records document and biometric consent before the provider call, and persists only the opaque provider session identifier. The credential broker applies a per-account rate limit before private lookup and returns a temporary start-only credential only for that same owned pending session with active, unwithdrawn document and biometric consent. Its audit event contains no credential material. Deterministic tests cover the rate-limit, unavailable-transaction, missing-consent, disabled-provider, successful temporary-credential, server-session ordering, and provider-error paths.
 
 DreamCarz must continue to treat the customer camera flow as **disabled**. The production application has not been configured with the browser-role ARN or the separate browser-flow setting, and no customer interface calls the broker. The adapter requires a distinct browser-flow enablement setting in addition to server credentials, the role ARN, and the base provider setting before it can create a session or issue short-lived browser credentials. Administrator launch readiness distinguishes a prepared temporary-credential path from an enabled customer camera flow.
 
 Before any customer-facing activation, the application must implement and verify all of the following remaining controls:
 
 - official browser Face Liveness client integration that receives only short-lived scoped credentials;
-- controlled registration of the resulting opaque provider session ID to the same owned transaction;
 - server-only result lookup followed by manual review, with no automatic face-to-ID matching, eligibility approval, or retention of raw biometric media; and
 - privacy, audit, accessibility, and visual review of the completed customer flow.
 

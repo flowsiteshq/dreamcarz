@@ -1309,11 +1309,7 @@ export const appRouter = router({
     awsFaceLivenessStatus: protectedProcedure.query(() => getAwsFaceLivenessStatus()),
 
     requestAwsFaceLivenessBrowserCredentials: protectedProcedure
-      .input(z.object({
-        reference: z.string().trim().min(8).max(32),
-        identityDocumentConsent: z.literal(true),
-        biometricConsent: z.literal(true),
-      }))
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
       .mutation(async ({ ctx, input }) => {
         const credentialLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "aws_face_liveness_browser_credentials", String(ctx.user.id)), limit: 3, windowMs: 15 * 60_000 });
         if (!credentialLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many identity-verification requests. Please use the manual review path or try again later." });
@@ -1326,17 +1322,25 @@ export const appRouter = router({
         )).limit(1))[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (transaction.currentStep !== "identity") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the saved profile steps before starting identity verification." });
-        if (!["not_started", "pending", "requires_input", "manual_review"].includes(transaction.identityStatus)) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction is not awaiting identity verification." });
+        if (transaction.identityProvider !== "aws_face_liveness" || !transaction.identitySessionId || transaction.identityStatus !== "pending") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A pending DreamCarz Face Liveness session is required before temporary browser credentials can be issued." });
         }
 
         const provider = getAwsFaceLivenessStatus();
         if (!provider.configured) return { granted: false as const, provider };
 
-        await db.insert(transactionConsents).values([
-          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_document", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness_browser_broker" },
-          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_biometric", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness_browser_broker" },
-        ]);
+        const activeConsents = await db.select({ consentType: transactionConsents.consentType })
+          .from(transactionConsents)
+          .where(and(
+            eq(transactionConsents.transactionId, transaction.id),
+            eq(transactionConsents.userId, ctx.user.id),
+            isNull(transactionConsents.withdrawnAt),
+            inArray(transactionConsents.consentType, ["identity_document", "identity_biometric"]),
+          ));
+        const consentTypes = new Set(activeConsents.map(consent => consent.consentType));
+        if (!consentTypes.has("identity_document") || !consentTypes.has("identity_biometric")) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Active document and biometric consent are required before temporary browser credentials can be issued." });
+        }
         const credentials = await createAwsFaceLivenessBrowserCredentials();
         if (!credentials.configured) return { granted: false as const, provider: credentials.provider };
 
@@ -1347,7 +1351,7 @@ export const appRouter = router({
           eventType: "identity.aws_liveness_browser_credentials_issued",
           metadata: JSON.stringify({ provider: "aws_face_liveness", credentialScope: "start_face_liveness_only", temporary: true }),
         });
-        return { granted: true as const, provider: credentials.provider, credentials: credentials.credentials };
+        return { granted: true as const, provider: credentials.provider, sessionId: transaction.identitySessionId, credentials: credentials.credentials };
       }),
 
     startAwsFaceLiveness: protectedProcedure
