@@ -394,9 +394,10 @@ export const appRouter = router({
       .input(z.object({ code: z.string().trim().min(2).max(64).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(2).max(120), description: z.string().trim().max(2_000).optional(), enrollmentFeeCents: z.number().int().min(0).max(10_000_000).optional(), monthlyFeeCents: z.number().int().min(0).max(10_000_000).optional(), activate: z.boolean().default(false) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.activate) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Membership plans remain draft-only until approved plan configurations are defined." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Membership configuration is temporarily unavailable." });
-        const created = await db.insert(membershipPlans).values({ ...input, description: input.description || null, enrollmentFeeCents: input.enrollmentFeeCents ?? null, monthlyFeeCents: input.monthlyFeeCents ?? null, isActive: input.activate });
+        const created = await db.insert(membershipPlans).values({ ...input, description: input.description || null, enrollmentFeeCents: input.enrollmentFeeCents ?? null, monthlyFeeCents: input.monthlyFeeCents ?? null, isActive: false });
         return { success: true, planId: Number(created[0].insertId) };
       }),
     addBenefit: protectedProcedure

@@ -17,4 +17,9 @@ describe("DreamCarz membership benefit governance", () => {
     await expect(appRouter.createCaller(adminContext as never).memberships.addBenefit({ membershipPlanId: 1, benefitType: "rental_discount", label: "Unapproved discount", configuration: JSON.stringify({ amountCents: 100 }), activate: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
+
+  it("rejects membership plan activation before unapproved pricing can reach the database", async () => {
+    await expect(appRouter.createCaller(adminContext as never).memberships.createPlan({ code: "UNAPPROVED", name: "Unapproved plan", enrollmentFeeCents: 100, monthlyFeeCents: 100, activate: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
 });
