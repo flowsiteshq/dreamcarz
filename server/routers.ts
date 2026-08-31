@@ -3748,6 +3748,7 @@ export const appRouter = router({
           ? (await db.select({ key: transactionDocuments.storageKey }).from(transactionDocuments).where(and(eq(transactionDocuments.id, input.recordId), eq(transactionDocuments.transactionId, input.transactionId))).limit(1))[0]
           : (await db.select({ key: transactionAgreements.signedDocumentKey }).from(transactionAgreements).where(and(eq(transactionAgreements.id, input.recordId), eq(transactionAgreements.transactionId, input.transactionId))).limit(1))[0];
         if (!record?.key) throw new TRPCError({ code: "NOT_FOUND", message: "A secure record is not available for this item." });
+        await db.insert(transactionEvents).values({ transactionId: input.transactionId, actorUserId: ctx.user.id, actorType: "admin", eventType: "secure_record.access_requested", metadata: JSON.stringify({ source: input.source }) });
         return { url: await storageGetSignedUrl(record.key) };
       }),
 

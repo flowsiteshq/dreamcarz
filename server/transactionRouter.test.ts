@@ -617,4 +617,18 @@ describe("transaction intake router", () => {
     expect(detail.transaction.paymentProviderTransactionId).toBe("redacted");
     expect(detail.agreements[0]).toMatchObject({ signedDocumentKey: "redacted", hasSignedDocument: true, hasProviderEnvelope: true, hasSignerAudit: true });
   });
+
+  it("records a minimal administrator audit event before returning a secure transaction record link", async () => {
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ id: 910 }]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ key: "private-document-storage-key" }]) })) })) });
+    const auditValues = vi.fn().mockResolvedValue(undefined);
+    mockedGetDb.mockResolvedValue({ select, insert: vi.fn(() => ({ values: auditValues })) } as never);
+    mockedStorageGetSignedUrl.mockResolvedValue("https://example.test/private-record" as never);
+    const adminContext = { ...customerContext, user: { ...customerContext.user, id: 1, role: "admin" } };
+
+    await expect(appRouter.createCaller(adminContext as never).operations.getTransactionRecordLink({ transactionId: 910, source: "document", recordId: 44 })).resolves.toEqual({ url: "https://example.test/private-record" });
+    expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({ transactionId: 910, actorUserId: 1, actorType: "admin", eventType: "secure_record.access_requested" }));
+    expect(JSON.stringify(auditValues.mock.calls)).not.toContain("private-document-storage-key");
+  });
 });
