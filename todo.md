@@ -336,3 +336,7 @@
 - [x] Add a rate-limited public AI concierge response that recommends only confirmed inventory, never stores chat text, and refuses sensitive data or transactional decisions.
 - [x] Add an account-owned DreamCarz ID profile snapshot that shows saved customer-approved contact information and preferences without exposing private documents, biometrics, or payment data.
 - [x] Minimize the DreamCarz ID browser profile response to exclude birth dates and identity-provider session identifiers while retaining account-owned contact and status fields.
+- [x] Move the full guided DreamCarz Concierge into its own dedicated discovery page with conversational controls and visual cards for confirmed vehicles.
+- [x] Replace the dense home-page concierge panel with a premium entry point that directs members into the dedicated concierge page without losing safe onboarding handoffs.
+- [x] Greet signed-in members by first name in the dedicated DreamCarz Concierge and offer their saved account-owned vehicle path without exposing private profile fields.
+- [x] Upgrade the dedicated DreamCarz Concierge with adaptive question states, a visible progress rail, visual recommendation transitions, and a streamlined saved-path handoff without collecting sensitive information in chat.

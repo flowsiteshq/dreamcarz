@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Concierge from "./pages/Concierge";
 import Membership from "./pages/Membership";
 import Pricing from "./pages/Pricing";
 import Fleet from "./pages/Fleet";
@@ -58,6 +59,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/concierge" component={Concierge} />
       <Route path="/membership" component={Membership} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/fleet" component={Fleet} />
