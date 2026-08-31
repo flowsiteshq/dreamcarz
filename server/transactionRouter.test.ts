@@ -262,6 +262,28 @@ describe("transaction intake router", () => {
     expect(JSON.stringify(insertValues.mock.calls)).not.toContain(signedAgreement.signedDocumentKey);
   });
 
+  it("returns an account-owned condition evidence link only after recording a storage-key-free access event", async () => {
+    const conditionEvidence = { transactionId: 37, storageKey: "private/transaction-37/condition-return-front.jpg" };
+    const select = vi.fn().mockReturnValueOnce({
+      from: vi.fn(() => ({
+        innerJoin: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([conditionEvidence]) })) })),
+      })),
+    });
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 92 }]);
+    mockedGetDb.mockResolvedValue({ select, insert: vi.fn(() => ({ values: insertValues })) } as never);
+    mockedStorageGetSignedUrl.mockResolvedValue("https://example.invalid/private-condition-record" as never);
+
+    await expect(appRouter.createCaller(customerContext as never).transactions.getRecordLink({ recordType: "condition_evidence", id: 18 })).resolves.toEqual({ url: "https://example.invalid/private-condition-record" });
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({
+      transactionId: 37,
+      actorUserId: customerContext.user.id,
+      actorType: "customer",
+      eventType: "record.access_requested",
+      metadata: JSON.stringify({ recordType: "condition_evidence" }),
+    }));
+    expect(JSON.stringify(insertValues.mock.calls)).not.toContain(conditionEvidence.storageKey);
+  });
+
   it("prepares and signs a native agreement with a private artifact and immutable audit event", async () => {
     const transaction = { id: 19, reference: "DCR-2026-NATIVE", transactionType: "rental" as const, vehicleName: "2024 Chevrolet Malibu", contactName: "Transaction Customer", status: "agreement_pending" as const, currentStep: "review" };
     const template = { id: 4, agreementType: "rental" as const, version: "rental-2026.1", content: "Agreement for {{CUSTOMER_NAME}} and {{VEHICLE_NAME}}, reference {{TRANSACTION_REFERENCE}}.", legalApprovedAt: new Date(), legalApprovalReference: "Counsel memo 2026-01", isActive: true };

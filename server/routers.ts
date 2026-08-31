@@ -1689,7 +1689,7 @@ export const appRouter = router({
     }),
 
     getRecordLink: protectedProcedure
-      .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "transaction_insurance_document", "agreement"]), id: z.number().int().positive() }))
+      .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "transaction_insurance_document", "condition_evidence", "agreement"]), id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
@@ -1701,7 +1701,7 @@ export const appRouter = router({
           if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Driver-license record not found." });
           return { url: await storageGetSignedUrl(documents[0].storageKey) };
         }
-        if (input.recordType === "transaction_license_document" || input.recordType === "transaction_insurance_document") {
+        if (input.recordType === "transaction_license_document" || input.recordType === "transaction_insurance_document" || input.recordType === "condition_evidence") {
           const documents = await db.select({ storageKey: transactionDocuments.storageKey, transactionId: transactionDocuments.transactionId })
             .from(transactionDocuments)
             .innerJoin(vehicleTransactions, eq(transactionDocuments.transactionId, vehicleTransactions.id))
@@ -1710,10 +1710,12 @@ export const appRouter = router({
               eq(vehicleTransactions.userId, ctx.user.id),
               input.recordType === "transaction_insurance_document"
                 ? eq(transactionDocuments.documentType, "insurance_card")
-                : inArray(transactionDocuments.documentType, ["license_front", "license_back"]),
+                : input.recordType === "condition_evidence"
+                  ? eq(transactionDocuments.documentType, "condition_photo")
+                  : inArray(transactionDocuments.documentType, ["license_front", "license_back"]),
           ))
           .limit(1);
-          if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: input.recordType === "transaction_insurance_document" ? "Insurance record not found." : "Driver-license record not found." });
+        if (!documents[0]) throw new TRPCError({ code: "NOT_FOUND", message: input.recordType === "transaction_insurance_document" ? "Insurance record not found." : input.recordType === "condition_evidence" ? "Condition evidence record not found." : "Driver-license record not found." });
           await db.insert(transactionEvents).values({
             transactionId: documents[0].transactionId,
             actorUserId: ctx.user.id,
