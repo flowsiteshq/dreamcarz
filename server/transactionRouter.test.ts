@@ -50,6 +50,7 @@ describe("transaction intake router", () => {
     const caller = appRouter.createCaller(customerContext as never);
     await expect(caller.operations.createTransactionQuote({
       reference: "DCR-2026-QUOTE",
+      cocardProductSku: "DREAMCARZ-APPROVED-SKU",
       lines: [{ lineType: "base_rental", label: "Verified rental charge", amountCents: 10000, isConditional: false }],
     })).rejects.toThrow("Administrator access is required");
   });

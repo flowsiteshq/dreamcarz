@@ -3859,7 +3859,7 @@ export const appRouter = router({
         reference: z.string().trim().min(8).max(32),
         currency: z.literal("USD").default("USD"),
         validUntil: z.coerce.date().optional(),
-        cocardProductSku: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/, "Use the exact CoCard Product Manager SKU.").optional(),
+        cocardProductSku: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/, "Use the exact CoCard Product Manager SKU."),
         lines: z.array(z.object({
           lineType: z.enum(["base_rental", "membership_discount", "tax", "fee", "protection", "deposit_authorization", "credit", "purchase_price", "trade_in_credit", "down_payment", "other"]),
           label: z.string().trim().min(2).max(160),
@@ -3882,7 +3882,7 @@ export const appRouter = router({
         const created = await db.insert(transactionQuotes).values({ transactionId: transaction.id, version: quoteVersion, status: "approved", currency: input.currency, totalDueNowCents, conditionalTotalCents, validUntil: input.validUntil ?? null, approvedByUserId: ctx.user.id, approvedAt: new Date() });
         const quoteId = Number(created[0].insertId);
         await db.insert(transactionQuoteLines).values(input.lines.map(line => ({ transactionQuoteId: quoteId, ...line })));
-        await db.update(vehicleTransactions).set({ pricingSnapshot: JSON.stringify({ quoteId, version: quoteVersion, currency: input.currency, totalDueNowCents, conditionalTotalCents, validUntil: input.validUntil?.toISOString() ?? null }), cocardProductSku: input.cocardProductSku ?? transaction.cocardProductSku }).where(eq(vehicleTransactions.id, transaction.id));
+        await db.update(vehicleTransactions).set({ pricingSnapshot: JSON.stringify({ quoteId, version: quoteVersion, currency: input.currency, totalDueNowCents, conditionalTotalCents, validUntil: input.validUntil?.toISOString() ?? null }), cocardProductSku: input.cocardProductSku }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "pricing.quote_approved", metadata: JSON.stringify({ quoteId, version: quoteVersion, totalDueNowCents, conditionalTotalCents, lineCount: input.lines.length, cocardProductSkuRecorded: Boolean(input.cocardProductSku) }) });
         return { success: true, quoteId, version: quoteVersion, totalDueNowCents, conditionalTotalCents };
       }),

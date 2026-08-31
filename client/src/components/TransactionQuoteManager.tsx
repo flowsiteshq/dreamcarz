@@ -37,10 +37,14 @@ export function TransactionQuoteManager({ detail }: { detail: any }) {
       setFormError("Enter a clear label and a valid dollar amount for every quote line.");
       return;
     }
+    if (!sku.trim()) {
+      setFormError("Enter the exact approved CoCard Product Manager SKU before issuing a customer quote.");
+      return;
+    }
     setFormError("");
     createQuote.mutate({
       reference: detail.transaction.reference,
-      cocardProductSku: sku.trim() || undefined,
+      cocardProductSku: sku.trim(),
       validUntil: validUntil ? new Date(validUntil) : undefined,
       lines: prepared.map(({ lineType, label, amountCents, isConditional }) => ({ lineType, label: label.trim(), amountCents, isConditional })),
     });
@@ -62,7 +66,7 @@ export function TransactionQuoteManager({ detail }: { detail: any }) {
       <button type="button" disabled={lines.length === 1} onClick={() => setLines(current => current.filter((_, lineIndex) => lineIndex !== index))} className="text-[10px] font-semibold text-red-600 disabled:opacity-30">Remove</button>
     </div>)}</div>
     <div className="mt-3 flex flex-wrap items-center gap-3"><button type="button" onClick={() => setLines(current => [...current, { ...blankQuoteLine }])} className="text-[11px] font-semibold underline underline-offset-4">Add line</button><label className="text-[11px] font-semibold text-gray-600">Valid until <input value={validUntil} onChange={event => setValidUntil(event.target.value)} type="datetime-local" className="ml-2 h-9 border border-gray-300 bg-white px-2 text-[11px] font-normal text-black" /></label></div>
-    <label className="mt-3 block text-[11px] font-semibold text-gray-600">CoCard Product Manager SKU <input value={sku} onChange={event => setSku(event.target.value)} placeholder="Exact pre-existing merchant product SKU, if checkout is needed" className="mt-1 h-9 w-full border border-gray-300 bg-white px-3 text-[11px] font-normal text-black" /></label>
+    <label className="mt-3 block text-[11px] font-semibold text-gray-600">Exact approved CoCard Product Manager SKU <input required value={sku} onChange={event => setSku(event.target.value)} placeholder="Required exact pre-existing merchant product SKU" className="mt-1 h-9 w-full border border-gray-300 bg-white px-3 text-[11px] font-normal text-black" /></label>
     <button type="button" disabled={createQuote.isPending} onClick={submit} className="mt-3 h-9 bg-black px-3 text-[11px] font-semibold text-white disabled:opacity-50">{createQuote.isPending ? "Issuing quote…" : "Issue approved quote"}</button>
     {formError && <p className="mt-2 text-[11px] text-red-600">{formError}</p>}{createQuote.error && <p className="mt-2 text-[11px] text-red-600">{createQuote.error.message}</p>}
     </div>
