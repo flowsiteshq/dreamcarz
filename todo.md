@@ -344,3 +344,4 @@
 - [x] Load the dedicated DreamCarz Concierge route on demand behind a concise brand-consistent loading state to keep the public home experience responsive.
 - [x] Rebuild DreamCarz Concierge as a full-width sequential conversation where the guide is primary and only a tailored small set of visual vehicle cards appears after intent is established.
 - [x] Redesign DreamCarz Concierge as a premium dark workspace with a persistent guidance rail, focused conversation canvas, tailored confirmed-vehicle cards, saved-path access, and truthful quick actions.
+- [x] Make the DreamCarz Concierge prompt bar the large centered primary interaction and defer conversation detail and vehicle cards until the member submits a prompt or chooses a suggestion.
