@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { loadStripe } from "@stripe/stripe-js";
 import { SettlementStatementPanel } from "@/components/SettlementStatementPanel";
 import { HandoffAcknowledgementPanel } from "@/components/HandoffAcknowledgementPanel";
 
@@ -75,40 +74,12 @@ const tierColors: Record<string, string> = {
 };
 
 function IdentityVerificationLauncher({ reference }: { reference: string }) {
-  const [consents, setConsents] = useState({ document: false, biometric: false });
-  const [message, setMessage] = useState("");
-  const provider = trpc.transactions.identityProviderStatus.useQuery(undefined, { refetchOnWindowFocus: false });
   const awsFaceLiveness = trpc.transactions.awsFaceLivenessStatus.useQuery(undefined, { refetchOnWindowFocus: false });
   const transaction = trpc.transactions.get.useQuery({ reference }, { refetchOnWindowFocus: false });
-  const start = trpc.transactions.startIdentityVerification.useMutation();
 
   if (transaction.data?.transaction.currentStep !== "identity") return null;
-
-  if (!provider.data?.configured) {
-    if (!awsFaceLiveness.data?.serverCredentialsConfigured) return null;
-    if (awsFaceLiveness.data.configured) return <AwsFaceLivenessLauncher reference={reference} region={awsFaceLiveness.data.region} />;
-    return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Identity verification status</p><h2 className="mt-2 font-display text-xl font-bold">Face Liveness is being prepared</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz has prepared a server-side AWS Face Liveness connection. The live-selfie verification experience remains disabled until temporary browser credentials and the final consent flow are configured. Your private document upload and manual review path remain available; no biometric check has been started.</p></section>;
-  }
-
-  const launch = async () => {
-    if (!consents.document || !consents.biometric) {
-      setMessage("Please acknowledge both the document and biometric verification consents before continuing.");
-      return;
-    }
-    try {
-      setMessage("");
-      const response = await start.mutateAsync({ reference, identityDocumentConsent: true, biometricConsent: true });
-      if (!response.started) { setMessage("Identity verification is not configured. Your transaction remains available for manual review."); return; }
-      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-      if (!stripe) { setMessage("The secure identity window could not be opened. Please contact DreamCarz support."); return; }
-      const result = await stripe.verifyIdentity(response.clientSecret);
-      setMessage(result.error ? (result.error.message ?? "The provider could not complete verification. Please use manual review or try again later.") : "Your verification was submitted. DreamCarz will update this record after the provider response is verified.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The identity session could not be started. Please use the manual-review path.");
-    }
-  };
-
-  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Configured provider option</p><h2 className="mt-2 font-display text-xl font-bold">Verify with Stripe Identity</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz receives only the provider result needed for this transaction. Your verification session is tied to this account and must be completed by you.</p><label className="mt-4 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.document} onChange={event => setConsents(current => ({ ...current, document: event.target.checked }))} className="mt-0.5 accent-black" />I consent to secure document verification for this transaction.</label><label className="mt-3 flex gap-2 text-xs leading-5 text-gray-700"><input type="checkbox" checked={consents.biometric} onChange={event => setConsents(current => ({ ...current, biometric: event.target.checked }))} className="mt-0.5 accent-black" />I separately consent to a live-selfie/biometric comparison performed by the configured provider.</label><button type="button" disabled={start.isPending} onClick={() => void launch()} className="mt-5 inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white disabled:opacity-50">{start.isPending ? "Preparing secure session…" : "Begin secure identity verification"}</button>{message && <p className="mt-3 text-xs leading-5 text-gray-600">{message}</p>}</section>;
+  if (awsFaceLiveness.data?.configured) return <AwsFaceLivenessLauncher reference={reference} region={awsFaceLiveness.data.region} />;
+  return <section className="mx-auto mt-8 max-w-6xl border border-[#d8d1c4] bg-[#f7f5f0] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Identity verification status</p><h2 className="mt-2 font-display text-xl font-bold">Manual identity review remains available</h2><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DreamCarz has not enabled the AWS Face Liveness browser flow for this transaction. Your private document records remain available for authorized manual review. This status does not verify identity, license validity, eligibility, payment, or vehicle release.</p></section>;
 }
 
 type AwsLivenessHandoff = {
@@ -381,7 +352,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const profileStatus = dreamcarzId.data?.profile?.profileStatus ?? "incomplete";
   const tier = membershipName ?? "DreamCarz ID";
   const tierGradient = membershipName ? (tierColors[membershipName] || tierColors.Pro) : "linear-gradient(90deg, #111, #4b4030)";
-  const headerStatus = membershipName ? `${membershipName} member` : `Profile ${profileStatus.replaceAll("_", " ")}`;
+  const headerStatus = membershipName ? `${membershipName} member` : profileStatus === "manual_review" ? "Identity review" : `Profile ${profileStatus.replaceAll("_", " ")}`;
   const operatingRoles = dreamcarzId.data?.roles ?? [];
   const operatingLinks = [
     ...(operatingRoles.includes("associate") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/associate", label: "Associate Workspace", icon: Network }] : []),

@@ -328,3 +328,5 @@
 - [x] Reconcile an existing account-owned Face Liveness completion audit to manual review without a new provider call, session, credential handoff, or automatic approval.
 - [x] Present completed account-owned Face Liveness outcomes as manual review in the member transaction journey without implying verification or vehicle release approval.
 - [x] Present a completed Face Liveness result as a distinct completed liveness check while clearly keeping license, eligibility, insurance, payment, agreement, and release decisions pending.
+- [x] Clarify the member account-header status when an account is awaiting separate identity review, without implying a failed liveness check or approval.
+- [x] Remove the residual Stripe Identity launch branch so AWS Face Liveness and manual review are the only identity-verification paths while CoCard remains the payment boundary.
