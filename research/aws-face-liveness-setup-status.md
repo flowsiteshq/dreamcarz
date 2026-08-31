@@ -22,6 +22,8 @@ Before DreamCarz treats the customer flow as launch-ready, the application must 
 - server-only result lookup followed by manual review, with no automatic face-to-ID matching, eligibility approval, or retention of raw biometric media; and
 - privacy, audit, accessibility, and visual review of the completed customer flow.
 
+On 2026-08-31, DreamCarz authorized one account-owned camera validation. The test was deferred because the browser did not have an authenticated session for the transaction owner. No transaction data was altered to bypass normal workflow steps, and the attempt did not create a Face Liveness session, issue browser credentials, request camera access, or process biometric data. The remaining validation must begin only after the transaction owner signs in and personally accepts both in-app consents.
+
 No customer biometric session has been created, and this record does not establish legal, regulatory, security-certification, identity-matching, eligibility, approval, or launch-readiness outcomes.
 
 ## Official implementation references

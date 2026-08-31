@@ -319,3 +319,4 @@
 - [x] Apply a bounded per-administrator rate limit before secure transaction-record lookup, audit creation, or signed URL generation.
 - [x] Code-split the official Face Liveness browser component so its client bundle loads only after an eligible customer begins the consent-gated flow.
 - [x] Apply a bounded per-administrator rate limit before rental-application review record access or storage, retaining existing restricted-content safeguards.
+- [ ] Conduct one explicitly authorized, account-owned Face Liveness camera validation with recorded consent, manual-review-only handling, and no raw biometric retention.
