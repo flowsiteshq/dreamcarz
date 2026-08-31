@@ -3550,7 +3550,26 @@ export const appRouter = router({
         ]);
         const quoteLines = quotes.length ? await db.select().from(transactionQuoteLines).where(inArray(transactionQuoteLines.transactionQuoteId, quotes.map(quote => quote.id))).orderBy(desc(transactionQuoteLines.createdAt)) : [];
         const conditionReports = rawConditionReports.map(({ photoKeys, ...report }) => ({ ...report, hasEvidence: Boolean(photoKeys) }));
-        return { ...record, agreements, documents, consents, conditionReports, events, schedule: schedules[0] ?? null, quotes: quotes.map(quote => ({ ...quote, lines: quoteLines.filter(line => line.transactionQuoteId === quote.id) })), links };
+        const transaction = {
+          ...record.transaction,
+          paymentProviderTransactionId: record.transaction.paymentProviderTransactionId ? "redacted" : null,
+          paymentProviderAuthorizationId: record.transaction.paymentProviderAuthorizationId ? "redacted" : null,
+          paymentProviderCustomerVaultId: record.transaction.paymentProviderCustomerVaultId ? "redacted" : null,
+          cocardCheckoutAttemptToken: record.transaction.cocardCheckoutAttemptToken ? "redacted" : null,
+          stripeCustomerId: record.transaction.stripeCustomerId ? "redacted" : null,
+          stripePaymentMethodId: record.transaction.stripePaymentMethodId ? "redacted" : null,
+          stripeSetupIntentId: record.transaction.stripeSetupIntentId ? "redacted" : null,
+          stripeCheckoutSessionId: record.transaction.stripeCheckoutSessionId ? "redacted" : null,
+          stripePaymentIntentId: record.transaction.stripePaymentIntentId ? "redacted" : null,
+        };
+        const safeAgreements = agreements.map(({ signedDocumentKey, providerEnvelopeId, signerIpHash, ...agreement }) => ({
+          ...agreement,
+          signedDocumentKey: signedDocumentKey ? "redacted" : null,
+          hasSignedDocument: Boolean(signedDocumentKey),
+          hasProviderEnvelope: Boolean(providerEnvelopeId),
+          hasSignerAudit: Boolean(signerIpHash),
+        }));
+        return { ...record, transaction, agreements: safeAgreements, documents, consents, conditionReports, events, schedule: schedules[0] ?? null, quotes: quotes.map(quote => ({ ...quote, lines: quoteLines.filter(line => line.transactionQuoteId === quote.id) })), links };
       }),
 
     updateTransactionStatus: protectedProcedure

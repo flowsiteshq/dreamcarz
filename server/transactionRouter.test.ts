@@ -591,10 +591,10 @@ describe("transaction intake router", () => {
   it("returns a condition evidence-presence indicator instead of private photo storage keys in administrator transaction detail", async () => {
     const ordered = (rows: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(rows) })) })) });
     const limited = (rows: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(rows) })) })) });
-    const detailRow = { transaction: { id: 830, reference: "DCR-2026-CONDITION", status: "return_pending" }, customerName: "Private Customer", customerEmail: "private@example.test" };
+    const detailRow = { transaction: { id: 830, reference: "DCR-2026-CONDITION", status: "return_pending", paymentProviderTransactionId: "private-provider-transaction", paymentProviderAuthorizationId: "private-provider-authorization", paymentProviderCustomerVaultId: "private-provider-vault", cocardCheckoutAttemptToken: "private-cocard-attempt" }, customerName: "Private Customer", customerEmail: "private@example.test" };
     const select = vi.fn()
       .mockReturnValueOnce({ from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([detailRow]) })) })) })) })
-      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(ordered([{ id: 9, agreementType: "rental", version: "rental-v1", status: "signed", signedDocumentKey: "private-signed-agreement-key", providerEnvelopeId: "private-envelope", signerIpHash: "private-signer-hash" }]))
       .mockReturnValueOnce(ordered([]))
       .mockReturnValueOnce(ordered([]))
       .mockReturnValueOnce(ordered([{ id: 12, stage: "return", status: "submitted", photoKeys: "private-condition-photo-key" }]))
@@ -610,5 +610,11 @@ describe("transaction intake router", () => {
     expect(detail.conditionReports).toEqual([expect.objectContaining({ id: 12, hasEvidence: true })]);
     expect(JSON.stringify(detail.conditionReports)).not.toContain("private-condition-photo-key");
     expect(detail.conditionReports[0]).not.toHaveProperty("photoKeys");
+    const serializedDetail = JSON.stringify(detail);
+    for (const restrictedValue of ["private-provider-transaction", "private-provider-authorization", "private-provider-vault", "private-cocard-attempt", "private-signed-agreement-key", "private-envelope", "private-signer-hash"]) {
+      expect(serializedDetail).not.toContain(restrictedValue);
+    }
+    expect(detail.transaction.paymentProviderTransactionId).toBe("redacted");
+    expect(detail.agreements[0]).toMatchObject({ signedDocumentKey: "redacted", hasSignedDocument: true, hasProviderEnvelope: true, hasSignerAudit: true });
   });
 });

@@ -236,6 +236,7 @@
 - [x] Add an administrator-only returned-vehicle processing worklist that records manual post-return readiness decisions after condition-report and settlement review.
 - [x] Add an account-owned, read-only finalized settlement statement that never enables collection or exposes evidence, provider, or staff identifiers.
 - [x] Replace condition-report photo storage-key responses with controlled evidence-presence indicators and existing on-demand record access.
+- [x] Remove raw payment-provider identifiers and agreement storage keys from administrator transaction-detail responses while retaining masked statuses and controlled record access.
 - [x] Correct client query-string parsing so private transaction references and intended post-login destinations remain reachable in app navigation.
 - [x] Add administrator-controlled settlement records and itemized adjustments for deposits, tolls, tickets, damage, cleaning, and other reviewed return items without automatically charging customers.
 - [x] Build a guided accident and incident center that links safety instructions, location, evidence, insurance, police/tow details, and support to the transaction and vehicle.
