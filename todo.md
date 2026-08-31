@@ -221,6 +221,7 @@
 - [x] Add administrator-only Vehicle Passport reservation and active-rental activity counts using existing records without exposing customer, payment, pricing, or schedule details.
 - [x] Add administrator-only private maintenance invoice upload and on-demand signed access without exposing invoice storage keys in operational history.
 - [x] Add administrator-only Vehicle Passport maintenance status updates with a staff-entered completion date, without automatically changing vehicle readiness.
+- [x] Record safe Vehicle Passport readiness-status transitions in the private activity timeline without customer, location, document, or financial data.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before Vehicle Passport inspection review notes are stored.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before authorized administrator extension, settlement, document, or reservation review notes are stored.
 - [x] Add administrator-only registration and insurance document upload and signed retrieval for Vehicle Passports without exposing storage references in portal lists.

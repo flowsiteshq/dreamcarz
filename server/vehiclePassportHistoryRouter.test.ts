@@ -26,19 +26,19 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     const passport = { id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "inspection_due", currentOdometer: 28501, fuelOrChargeLevel: "Full", updatedAt: new Date("2026-09-02T10:00:00Z") };
     const inspections = [{ id: 1, stage: "post_rental", status: "reviewed", odometerReading: 28501, fuelOrChargeLevel: "Full", tireCondition: null, cleanliness: null, damageNotes: null, hasEvidence: true, inspectedAt: new Date("2026-09-02T09:00:00Z"), reviewedAt: new Date("2026-09-02T10:00:00Z"), createdAt: new Date("2026-09-02T09:00:00Z") }];
     const maintenance = [{ id: 2, maintenanceType: "repair", status: "scheduled", dueAt: null, completedAt: null, odometerAtService: null, vendorName: "Approved vendor", workOrderReference: "WO-123", notes: "Review tire condition", hasInvoiceDocument: true, createdAt: new Date("2026-09-02T10:00:00Z"), updatedAt: new Date("2026-09-02T10:00:00Z") }];
-    const activities = [{ id: 3, eventType: "maintenance.invoice_uploaded", createdAt: new Date("2026-09-02T10:05:00Z") }];
+    const activities = [{ id: 3, eventType: "passport.readiness_changed", metadata: JSON.stringify({ fromReadinessStatus: "inspection_due", toReadinessStatus: "available" }), createdAt: new Date("2026-09-02T10:05:00Z") }];
     const select = vi.fn().mockReturnValueOnce(terminalWithLimit([passport])).mockReturnValueOnce(historyTerminal(inspections)).mockReturnValueOnce(historyTerminal(maintenance)).mockReturnValueOnce(historyTerminal(activities)).mockReturnValueOnce(whereTerminal([{ id: 10 }, { id: 11 }])).mockReturnValueOnce(whereTerminal([{ id: 12 }]));
     mockedGetDb.mockResolvedValue({ select } as never);
 
     const result = await appRouter.createCaller(adminContext as never).operations.vehiclePassports.operationalHistory({ vehiclePassportId: 91 });
 
-    expect(result).toMatchObject({ passport: { vehicleId: "2024-chevrolet-malibu-gray", readinessStatus: "inspection_due" }, inspections: [{ hasEvidence: true }], maintenance: [{ hasInvoiceDocument: true }], activities: [{ eventType: "maintenance.invoice_uploaded" }], operationalCounts: { openReservationCount: 2, activeRentalCount: 1 } });
+    expect(result).toMatchObject({ passport: { vehicleId: "2024-chevrolet-malibu-gray", readinessStatus: "inspection_due" }, inspections: [{ hasEvidence: true }], maintenance: [{ hasInvoiceDocument: true }], activities: [{ eventType: "passport.readiness_changed", readinessTransition: { fromReadinessStatus: "inspection_due", toReadinessStatus: "available" } }], operationalCounts: { openReservationCount: 2, activeRentalCount: 1 } });
     const inspectionSelection = select.mock.calls[1]?.[0] as Record<string, unknown>;
     const maintenanceSelection = select.mock.calls[2]?.[0] as Record<string, unknown>;
     const activitySelection = select.mock.calls[3]?.[0] as Record<string, unknown>;
     expect(inspectionSelection).not.toHaveProperty("photoKeys");
     expect(maintenanceSelection).not.toHaveProperty("invoiceDocumentKey");
-    expect(activitySelection).not.toHaveProperty("metadata");
+    expect(activitySelection).toHaveProperty("metadata");
     expect(activitySelection).not.toHaveProperty("actorUserId");
   });
 

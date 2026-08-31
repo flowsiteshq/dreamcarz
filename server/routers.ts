@@ -127,6 +127,26 @@ function parseStoredEvidenceKeys(raw: string | null | undefined) {
   }
 }
 
+const VEHICLE_PASSPORT_READINESS_STATUSES = ["not_ready", "inspection_due", "maintenance_due", "available", "reserved", "active_rental", "out_of_service", "retired"] as const;
+
+function parseVehiclePassportReadinessTransition(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const { fromReadinessStatus, toReadinessStatus } = value as Record<string, unknown>;
+    if (
+      typeof fromReadinessStatus !== "string" ||
+      typeof toReadinessStatus !== "string" ||
+      !VEHICLE_PASSPORT_READINESS_STATUSES.includes(fromReadinessStatus as typeof VEHICLE_PASSPORT_READINESS_STATUSES[number]) ||
+      !VEHICLE_PASSPORT_READINESS_STATUSES.includes(toReadinessStatus as typeof VEHICLE_PASSPORT_READINESS_STATUSES[number])
+    ) return null;
+    return { fromReadinessStatus, toReadinessStatus };
+  } catch {
+    return null;
+  }
+}
+
 function containsRestrictedSupportContent(value: string) {
   const digitsOnly = value.replace(/[^0-9]/g, "");
   const likelyCardNumber = /\d{13,19}/.test(digitsOnly);
@@ -3188,11 +3208,20 @@ export const appRouter = router({
         const [inspections, maintenance, activities, openReservations, activeRentals] = await Promise.all([
           db.select({ id: vehicleOperationalInspections.id, transactionId: vehicleOperationalInspections.transactionId, stage: vehicleOperationalInspections.stage, status: vehicleOperationalInspections.status, odometerReading: vehicleOperationalInspections.odometerReading, fuelOrChargeLevel: vehicleOperationalInspections.fuelOrChargeLevel, tireCondition: vehicleOperationalInspections.tireCondition, cleanliness: vehicleOperationalInspections.cleanliness, damageNotes: vehicleOperationalInspections.damageNotes, reviewNote: vehicleOperationalInspections.reviewNote, hasEvidence: isNotNull(vehicleOperationalInspections.photoKeys), inspectedAt: vehicleOperationalInspections.inspectedAt, reviewedAt: vehicleOperationalInspections.reviewedAt, createdAt: vehicleOperationalInspections.createdAt }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.vehiclePassportId, passport.id)).orderBy(desc(vehicleOperationalInspections.createdAt)).limit(40),
           db.select({ id: vehicleMaintenanceRecords.id, maintenanceType: vehicleMaintenanceRecords.maintenanceType, status: vehicleMaintenanceRecords.status, dueAt: vehicleMaintenanceRecords.dueAt, completedAt: vehicleMaintenanceRecords.completedAt, odometerAtService: vehicleMaintenanceRecords.odometerAtService, vendorName: vehicleMaintenanceRecords.vendorName, workOrderReference: vehicleMaintenanceRecords.workOrderReference, notes: vehicleMaintenanceRecords.notes, hasInvoiceDocument: isNotNull(vehicleMaintenanceRecords.invoiceDocumentKey), createdAt: vehicleMaintenanceRecords.createdAt, updatedAt: vehicleMaintenanceRecords.updatedAt }).from(vehicleMaintenanceRecords).where(eq(vehicleMaintenanceRecords.vehiclePassportId, passport.id)).orderBy(desc(vehicleMaintenanceRecords.createdAt)).limit(40),
-          db.select({ id: vehiclePassportActivityEvents.id, eventType: vehiclePassportActivityEvents.eventType, createdAt: vehiclePassportActivityEvents.createdAt }).from(vehiclePassportActivityEvents).where(eq(vehiclePassportActivityEvents.vehiclePassportId, passport.id)).orderBy(desc(vehiclePassportActivityEvents.createdAt)).limit(40),
+          db.select({ id: vehiclePassportActivityEvents.id, eventType: vehiclePassportActivityEvents.eventType, metadata: vehiclePassportActivityEvents.metadata, createdAt: vehiclePassportActivityEvents.createdAt }).from(vehiclePassportActivityEvents).where(eq(vehiclePassportActivityEvents.vehiclePassportId, passport.id)).orderBy(desc(vehiclePassportActivityEvents.createdAt)).limit(40),
           db.select({ id: reservationRequests.id }).from(reservationRequests).where(and(eq(reservationRequests.vehicleName, passport.vehicleName), inArray(reservationRequests.status, ["submitted", "under_review", "confirmed", "change_requested"]))),
           db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(and(eq(vehicleTransactions.vehicleId, passport.vehicleId), eq(vehicleTransactions.status, "active_rental"))),
         ]);
-        return { passport, inspections, maintenance, activities, operationalCounts: { openReservationCount: openReservations.length, activeRentalCount: activeRentals.length } };
+        return {
+          passport,
+          inspections,
+          maintenance,
+          activities: activities.map(({ metadata, ...activity }) => ({
+            ...activity,
+            readinessTransition: activity.eventType === "passport.readiness_changed" ? parseVehiclePassportReadinessTransition(metadata) : null,
+          })),
+          operationalCounts: { openReservationCount: openReservations.length, activeRentalCount: activeRentals.length },
+        };
       }),
 
       save: protectedProcedure.input(z.object({
@@ -3214,10 +3243,18 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport records are temporarily unavailable." });
         const values = { ...input, stockNumber: input.stockNumber || null, vinLast4: input.vinLast4 || null, plateNumber: input.plateNumber || null, currentLocation: input.currentLocation || null, currentOdometer: input.currentOdometer ?? null, fuelOrChargeLevel: input.fuelOrChargeLevel || null, acquisitionReference: input.acquisitionReference || null, insurancePolicyReference: input.insurancePolicyReference || null, notes: input.notes || null };
-        const existing = await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
+        const existing = await db.select({ id: vehiclePassports.id, readinessStatus: vehiclePassports.readinessStatus }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
         if (existing[0]) {
           await db.update(vehiclePassports).set(values).where(eq(vehiclePassports.id, existing[0].id));
-          await recordVehiclePassportActivity(db, { vehiclePassportId: existing[0].id, actorUserId: ctx.user.id, eventType: "passport.updated", metadata: { readinessStatus: input.readinessStatus } });
+          const readinessChanged = existing[0].readinessStatus !== input.readinessStatus;
+          await recordVehiclePassportActivity(db, {
+            vehiclePassportId: existing[0].id,
+            actorUserId: ctx.user.id,
+            eventType: readinessChanged ? "passport.readiness_changed" : "passport.updated",
+            metadata: readinessChanged
+              ? { fromReadinessStatus: existing[0].readinessStatus, toReadinessStatus: input.readinessStatus }
+              : { readinessStatus: input.readinessStatus },
+          });
           return { success: true, passportId: existing[0].id, updated: true };
         }
         const created = await db.insert(vehiclePassports).values(values);
