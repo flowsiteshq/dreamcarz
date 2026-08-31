@@ -3407,6 +3407,7 @@ export const appRouter = router({
         reviewNote: z.string().trim().min(2).max(1_000),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Extension review is temporarily unavailable." });
         const request = (await db.select().from(rentalExtensionRequests).where(eq(rentalExtensionRequests.id, input.requestId)).limit(1))[0];
@@ -3483,6 +3484,7 @@ export const appRouter = router({
         reviewNote: z.string().trim().min(2).max(1_000),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement review is temporarily unavailable." });
         const adjustment = (await db.select().from(transactionAdjustments).where(eq(transactionAdjustments.id, input.adjustmentId)).limit(1))[0];
@@ -3787,6 +3789,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "needs_attention", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.reviewNote) assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
         await db.update(rentalApplications).set({
@@ -3802,6 +3805,7 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), status: z.enum(["under_review", "confirmed", "change_requested", "declined"]), reviewNote: z.string().trim().max(2_000).optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.reviewNote) assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Operations are temporarily unavailable." });
         await db.update(reservationRequests).set({ status: input.status, reviewNote: input.reviewNote || null, reviewedAt: new Date() }).where(eq(reservationRequests.id, input.id));

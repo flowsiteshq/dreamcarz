@@ -220,6 +220,7 @@
 - [x] Add administrator-only private maintenance invoice upload and on-demand signed access without exposing invoice storage keys in operational history.
 - [x] Add administrator-only Vehicle Passport maintenance status updates with a staff-entered completion date, without automatically changing vehicle readiness.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before Vehicle Passport inspection review notes are stored.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before authorized administrator extension, settlement, document, or reservation review notes are stored.
 - [x] Add administrator-only registration and insurance document upload and signed retrieval for Vehicle Passports without exposing storage references in portal lists.
 - [x] Correct the Administrator Operations route used by management navigation and verification so the protected operations workspace does not resolve to a 404.
 - [x] Add administrator-only Vehicle Passport inspection and maintenance history retrieval with a protected operational timeline.
