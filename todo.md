@@ -245,6 +245,7 @@
 - [x] Add administrator-only Fleet Partner Vehicle Passport assignment, pause, and end controls without exposing customer, pricing, payment, or document records.
 - [x] Add a privacy-safe Fleet Partner assignment activity summary with vehicle-level operational counts only and no customer, transaction, pricing, payment, or document data.
 - [x] Restrict Fleet Partner Vehicle Passport records to minimal assignment-scoped operational fields and explicitly exclude document references, location, acquisition, and financial data.
+- [x] Restrict Fleet Partner maintenance, inspection, incident, and profile responses to minimal operational summaries without documents, evidence, locations, notes, or staff details.
 - [x] Add assignment-scoped Fleet Partner vehicle incident reporting that routes to DreamCarz operations without exposing customer, transaction, payment, or document data.
 - [x] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
 - [x] Correct the public Fleet Partner route so the partnership page is reachable from its intended navigation target without a 404.

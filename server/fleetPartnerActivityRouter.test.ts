@@ -43,5 +43,18 @@ describe("fleetPartner.overview activity", () => {
     for (const restrictedField of ["DocumentKey", "currentLocation", "acquisition", "insurancePolicy", "vinLast4", "plateNumber", "notes"]) {
       expect(serializedVehicles).not.toContain(restrictedField);
     }
+    const projections = select.mock.calls.map(([projection]) => projection).filter(Boolean) as Array<Record<string, unknown>>;
+    const profileProjection = projections.find(projection => "businessName" in projection && "status" in projection);
+    const maintenanceProjection = projections.find(projection => "maintenanceType" in projection);
+    const inspectionProjection = projections.find(projection => "stage" in projection);
+    const incidentProjection = projections.find(projection => "incidentType" in projection);
+    expect(profileProjection).not.toHaveProperty("notes");
+    expect(maintenanceProjection).not.toHaveProperty("invoiceDocumentKey");
+    expect(maintenanceProjection).not.toHaveProperty("notes");
+    expect(inspectionProjection).not.toHaveProperty("photoKeys");
+    expect(inspectionProjection).not.toHaveProperty("damageNotes");
+    expect(incidentProjection).not.toHaveProperty("photoKeys");
+    expect(incidentProjection).not.toHaveProperty("reportedLocation");
+    expect(incidentProjection).not.toHaveProperty("description");
   });
 });
