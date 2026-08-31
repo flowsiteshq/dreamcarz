@@ -1256,6 +1256,7 @@ export const appRouter = router({
         if (value.pickupMethod === "delivery" && !value.deliveryAddress) context.addIssue({ code: z.ZodIssueCode.custom, path: ["deliveryAddress"], message: "Provide the requested delivery address." });
       }))
       .mutation(async ({ ctx, input }) => {
+        if (input.customerNotes) assertSafeRestrictedContent(input.customerNotes, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Rental scheduling is temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];

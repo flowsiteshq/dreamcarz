@@ -236,6 +236,7 @@
 - [x] Expose account-owned active-rental schedule, agreement, payment, condition, and return status in My Account without displaying private provider or document data.
 - [x] Add an account-owned rental extension request with a requested end date, customer note, administrator review, and immutable transaction audit events.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before customer rental extension notes are stored.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before customer rental schedule notes are stored.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
 - [x] Add a customer-controlled print view for a finalized account-owned settlement statement without treating it as a receipt or collection action.
 - [x] Add an administrator-only returned-vehicle processing worklist that records manual post-return readiness decisions after condition-report and settlement review.
