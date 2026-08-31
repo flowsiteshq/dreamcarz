@@ -403,6 +403,7 @@ export const appRouter = router({
       .input(z.object({ membershipPlanId: z.number().int().positive(), benefitType: z.enum(DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES), label: z.string().trim().min(2).max(160), configuration: z.string().trim().min(2).max(5_000), activate: z.boolean().default(false) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.activate) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Membership benefits remain draft-only until approved benefit configurations are defined." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Membership configuration is temporarily unavailable." });
         const plan = await db.select({ id: membershipPlans.id }).from(membershipPlans).where(eq(membershipPlans.id, input.membershipPlanId)).limit(1);
