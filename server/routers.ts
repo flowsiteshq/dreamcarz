@@ -1778,6 +1778,8 @@ export const appRouter = router({
     getRecordLink: protectedProcedure
       .input(z.object({ recordType: z.enum(["legacy_license_document", "transaction_license_document", "transaction_insurance_document", "condition_evidence", "agreement"]), id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
+        const recordLinkLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "secure_record_link", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!recordLinkLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many secure record requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Secure records are temporarily unavailable." });
         if (input.recordType === "legacy_license_document") {
