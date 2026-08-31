@@ -3256,6 +3256,7 @@ export const appRouter = router({
         reviewNote: z.string().trim().max(2_000).optional(),
       }).refine(input => input.status !== "needs_attention" || Boolean(input.reviewNote?.trim()), { message: "Add a review note when inspection needs attention." })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.reviewNote) assertSafeRestrictedContent(input.reviewNote, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Inspection review is temporarily unavailable." });
         const inspection = (await db.select({ id: vehicleOperationalInspections.id, vehiclePassportId: vehicleOperationalInspections.vehiclePassportId }).from(vehicleOperationalInspections).where(eq(vehicleOperationalInspections.id, input.inspectionId)).limit(1))[0];

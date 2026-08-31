@@ -65,6 +65,12 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("rejects likely sensitive content before an inspection review note is stored", async () => {
+    const caller = appRouter.createCaller(adminContext as never);
+    await expect(caller.operations.vehiclePassports.reviewInspection({ inspectionId: 12, status: "needs_attention", reviewNote: "PIN: 1234 must not be recorded here." })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("records a human inspection review without changing vehicle readiness", async () => {
     const reviewValues = vi.fn().mockResolvedValue(undefined);
     const db = {
