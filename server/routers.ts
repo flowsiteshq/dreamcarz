@@ -1155,6 +1155,8 @@ export const appRouter = router({
     getSettlementStatement: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32) }))
       .query(async ({ ctx, input }) => {
+        const statementLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "settlement_statement_read", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!statementLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many settlement statement requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
         const transaction = (await db.select({

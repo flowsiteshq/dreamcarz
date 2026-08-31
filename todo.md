@@ -310,3 +310,4 @@
 - [x] Distinguish prepared AWS IAM credentials from enabled browser camera flow in the administrator launch-readiness projection.
 - [x] Align the future Face Liveness broker with server-created opaque sessions and short-lived browser StartFaceLivenessSession credentials, without activating the customer camera flow.
 - [x] Integrate the official AWS Face Liveness browser component behind explicit configuration, consent, and manual-review safeguards without activating customer camera verification.
+- [x] Apply a bounded per-account rate limit before private return-settlement statement lookup, without changing reviewed figures or initiating collection activity.
