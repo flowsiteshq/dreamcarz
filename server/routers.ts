@@ -124,7 +124,7 @@ function containsRestrictedSupportContent(value: string) {
   return likelyCardNumber || likelyPassword || likelyLicenseNumber;
 }
 
-function assertSafeRestrictedContent(value: string, destination: "support message" | "operational report") {
+function assertSafeRestrictedContent(value: string, destination: "support message" | "operational report" | "private lead note") {
   if (containsRestrictedSupportContent(value)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: `Please remove payment-card numbers, passwords, and driver-license numbers before sending this ${destination}.` });
   }
@@ -2664,6 +2664,7 @@ export const appRouter = router({
       notes: z.string().trim().max(2_000).optional(),
     }).refine(input => Boolean(input.contactEmail || input.contactPhone), { message: "An email address or phone number is required." })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
+      if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
       if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
@@ -2674,6 +2675,7 @@ export const appRouter = router({
     updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
       if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });

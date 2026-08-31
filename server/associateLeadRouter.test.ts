@@ -29,4 +29,10 @@ describe("associate.updateLead", () => {
     await expect(appRouter.createCaller(associateContext as never).associate.updateLead({ id: 8, status: "closed" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(update).not.toHaveBeenCalled();
   });
+
+  it("rejects likely payment-card content before a private Associate lead note is stored", async () => {
+    mockedGetDb.mockResolvedValue({} as never);
+
+    await expect(appRouter.createCaller(associateContext as never).associate.createLead({ contactName: "Consenting contact", contactEmail: "contact@example.test", interestType: "general", consentToContact: true, notes: "Card number is 4111 1111 1111 1111" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });
