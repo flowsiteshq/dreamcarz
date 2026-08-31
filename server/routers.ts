@@ -2501,7 +2501,7 @@ export const appRouter = router({
       const profile = (await db.select().from(fleetPartnerProfiles).where(eq(fleetPartnerProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
       const vehicleAssignments = await db.select().from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, ctx.user.id), eq(fleetPartnerVehicleAssignments.accessStatus, "active")));
       const passportIds = vehicleAssignments.map(item => item.vehiclePassportId);
-      const vehicles = passportIds.length ? await db.select().from(vehiclePassports).where(inArray(vehiclePassports.id, passportIds)) : [];
+      const vehicles = passportIds.length ? await db.select({ id: vehiclePassports.id, vehicleName: vehiclePassports.vehicleName, readinessStatus: vehiclePassports.readinessStatus }).from(vehiclePassports).where(inArray(vehiclePassports.id, passportIds)) : [];
       const vehicleNames = vehicles.map(vehicle => vehicle.vehicleName);
       const maintenance = passportIds.length ? await db.select().from(vehicleMaintenanceRecords).where(inArray(vehicleMaintenanceRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleMaintenanceRecords.createdAt)) : [];
       const inspections = passportIds.length ? await db.select().from(vehicleOperationalInspections).where(inArray(vehicleOperationalInspections.vehiclePassportId, passportIds)).orderBy(desc(vehicleOperationalInspections.createdAt)) : [];

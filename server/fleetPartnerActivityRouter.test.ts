@@ -21,7 +21,7 @@ function queryResult<T>(value: T) {
 describe("fleetPartner.overview activity", () => {
   beforeEach(() => mockedGetDb.mockReset());
 
-  it("returns assigned-vehicle activity counts without transaction references or customer fields", async () => {
+  it("returns only minimal assigned-vehicle operations data without transaction, customer, document, location, acquisition, or financial fields", async () => {
     const select = vi.fn()
       .mockReturnValueOnce(queryResult([{ role: "fleet_partner" }]))
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) })
@@ -38,5 +38,10 @@ describe("fleetPartner.overview activity", () => {
     expect(result.activity).toEqual([{ vehiclePassportId: 8, vehicleName: "2024 Chevrolet Malibu · Gray", activeRentalCount: 1 }]);
     expect(JSON.stringify(result.activity)).not.toContain("reference");
     expect(JSON.stringify(result.activity)).not.toContain("customer");
+    expect(result.vehicles).toEqual([{ id: 8, vehicleName: "2024 Chevrolet Malibu · Gray", readinessStatus: "available" }]);
+    const serializedVehicles = JSON.stringify(result.vehicles);
+    for (const restrictedField of ["DocumentKey", "currentLocation", "acquisition", "insurancePolicy", "vinLast4", "plateNumber", "notes"]) {
+      expect(serializedVehicles).not.toContain(restrictedField);
+    }
   });
 });
