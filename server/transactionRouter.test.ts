@@ -587,4 +587,28 @@ describe("transaction intake router", () => {
     mockedGetDb.mockResolvedValue({ select: handoffSelect } as never);
     await expect(appRouter.createCaller(customerContext as never).transactions.confirmHandoff({ reference: transaction.reference, acknowledgesHandoff: true })).rejects.toThrow("future recorded insurance coverage date is required before handoff confirmation");
   });
+
+  it("returns a condition evidence-presence indicator instead of private photo storage keys in administrator transaction detail", async () => {
+    const ordered = (rows: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(rows) })) })) });
+    const limited = (rows: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(rows) })) })) });
+    const detailRow = { transaction: { id: 830, reference: "DCR-2026-CONDITION", status: "return_pending" }, customerName: "Private Customer", customerEmail: "private@example.test" };
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([detailRow]) })) })) })) })
+      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(ordered([{ id: 12, stage: "return", status: "submitted", photoKeys: "private-condition-photo-key" }]))
+      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(limited([]))
+      .mockReturnValueOnce(ordered([]))
+      .mockReturnValueOnce(ordered([]));
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const adminContext = { ...customerContext, user: { ...customerContext.user, role: "admin" } };
+
+    const detail = await appRouter.createCaller(adminContext as never).operations.transactionDetail({ reference: detailRow.transaction.reference });
+
+    expect(detail.conditionReports).toEqual([expect.objectContaining({ id: 12, hasEvidence: true })]);
+    expect(JSON.stringify(detail.conditionReports)).not.toContain("private-condition-photo-key");
+    expect(detail.conditionReports[0]).not.toHaveProperty("photoKeys");
+  });
 });

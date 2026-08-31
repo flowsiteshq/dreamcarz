@@ -3538,7 +3538,7 @@ export const appRouter = router({
           .where(eq(vehicleTransactions.reference, input.reference)).limit(1);
         const record = rows[0];
         if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
-        const [agreements, documents, consents, conditionReports, events, schedules, quotes, links] = await Promise.all([
+        const [agreements, documents, consents, rawConditionReports, events, schedules, quotes, links] = await Promise.all([
           db.select().from(transactionAgreements).where(eq(transactionAgreements.transactionId, record.transaction.id)).orderBy(desc(transactionAgreements.updatedAt)),
           db.select({ id: transactionDocuments.id, documentType: transactionDocuments.documentType, originalFilename: transactionDocuments.originalFilename, contentType: transactionDocuments.contentType, status: transactionDocuments.status, createdAt: transactionDocuments.createdAt }).from(transactionDocuments).where(eq(transactionDocuments.transactionId, record.transaction.id)).orderBy(desc(transactionDocuments.createdAt)),
           db.select().from(transactionConsents).where(eq(transactionConsents.transactionId, record.transaction.id)).orderBy(desc(transactionConsents.acceptedAt)),
@@ -3549,6 +3549,7 @@ export const appRouter = router({
           db.select().from(transactionLinks).where(or(eq(transactionLinks.sourceTransactionId, record.transaction.id), eq(transactionLinks.targetTransactionId, record.transaction.id))).orderBy(desc(transactionLinks.updatedAt)),
         ]);
         const quoteLines = quotes.length ? await db.select().from(transactionQuoteLines).where(inArray(transactionQuoteLines.transactionQuoteId, quotes.map(quote => quote.id))).orderBy(desc(transactionQuoteLines.createdAt)) : [];
+        const conditionReports = rawConditionReports.map(({ photoKeys, ...report }) => ({ ...report, hasEvidence: Boolean(photoKeys) }));
         return { ...record, agreements, documents, consents, conditionReports, events, schedule: schedules[0] ?? null, quotes: quotes.map(quote => ({ ...quote, lines: quoteLines.filter(line => line.transactionQuoteId === quote.id) })), links };
       }),
 
