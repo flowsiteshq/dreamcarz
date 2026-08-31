@@ -3797,6 +3797,9 @@ export const appRouter = router({
       }).refine(input => Object.entries(input).some(([key, value]) => key !== "reference" && key !== "note" && value !== undefined), { message: "Select at least one review status to update." }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const transactionStateReviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "transaction_state_review", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!transactionStateReviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many transaction state reviews. Please try again later." });
+        if (input.note) assertSafeRestrictedContent(input.note, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction operations are temporarily unavailable." });
         const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);

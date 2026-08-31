@@ -315,3 +315,4 @@
 - [x] Apply a bounded per-account rate limit before account-owned DreamCarz ID record listings, without returning storage keys or changing document visibility.
 - [x] Configure the approved scoped AWS browser role and explicit browser-flow gate, then verify consent-gated readiness without starting a biometric session.
 - [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before eligibility-review record access or storage.
+- [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before transaction-state review record access or storage.
