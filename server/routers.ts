@@ -2518,6 +2518,49 @@ export const appRouter = router({
       }));
       return { profile, roles, vehicles, maintenance, inspections, incidents, activity };
     }),
+    adminAssignmentOverview: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet assignment operations are temporarily unavailable." });
+      const [partners, passports, assignments] = await Promise.all([
+        db.select({ userId: fleetPartnerProfiles.userId, businessName: fleetPartnerProfiles.businessName, status: fleetPartnerProfiles.status }).from(fleetPartnerProfiles).where(eq(fleetPartnerProfiles.status, "active")).orderBy(fleetPartnerProfiles.businessName),
+        db.select({ id: vehiclePassports.id, vehicleName: vehiclePassports.vehicleName, readinessStatus: vehiclePassports.readinessStatus }).from(vehiclePassports).orderBy(vehiclePassports.vehicleName),
+        db.select().from(fleetPartnerVehicleAssignments).orderBy(desc(fleetPartnerVehicleAssignments.updatedAt)),
+      ]);
+      return { partners, passports, assignments };
+    }),
+    assignVehicle: protectedProcedure.input(z.object({ partnerUserId: z.number().int().positive(), vehiclePassportId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet assignment operations are temporarily unavailable." });
+      const partner = (await db.select({ userId: fleetPartnerProfiles.userId }).from(fleetPartnerProfiles).where(and(eq(fleetPartnerProfiles.userId, input.partnerUserId), eq(fleetPartnerProfiles.status, "active"))).limit(1))[0];
+      if (!partner) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The Fleet Partner must have an active DreamCarz partner profile before assignment." });
+      const partnerRoles = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.partnerUserId), isNull(userRoleAssignments.revokedAt)));
+      if (!effectiveDreamCarzRoles("user", partnerRoles.map(item => item.role)).includes("fleet_partner")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The Fleet Partner role must be active before vehicle assignment." });
+      const passport = (await db.select({ id: vehiclePassports.id }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
+      if (!passport) throw new TRPCError({ code: "NOT_FOUND", message: "Vehicle Passport not found." });
+      const existing = (await db.select().from(fleetPartnerVehicleAssignments).where(and(eq(fleetPartnerVehicleAssignments.partnerUserId, input.partnerUserId), eq(fleetPartnerVehicleAssignments.vehiclePassportId, input.vehiclePassportId))).limit(1))[0];
+      if (existing) {
+        await db.update(fleetPartnerVehicleAssignments).set({ accessStatus: "active", endedAt: null }).where(eq(fleetPartnerVehicleAssignments.id, existing.id));
+        await recordVehiclePassportActivity(db, { vehiclePassportId: input.vehiclePassportId, actorUserId: ctx.user.id, eventType: "fleet_partner.assignment_activated", metadata: { assignmentAction: "reactivated" } });
+        return { success: true, assignmentId: existing.id, reactivated: true } as const;
+      }
+      const created = await db.insert(fleetPartnerVehicleAssignments).values({ partnerUserId: input.partnerUserId, vehiclePassportId: input.vehiclePassportId, accessStatus: "active" });
+      const assignmentId = Number(created[0].insertId);
+      await recordVehiclePassportActivity(db, { vehiclePassportId: input.vehiclePassportId, actorUserId: ctx.user.id, eventType: "fleet_partner.assignment_activated", metadata: { assignmentAction: "created" } });
+      return { success: true, assignmentId, reactivated: false } as const;
+    }),
+    updateVehicleAssignment: protectedProcedure.input(z.object({ assignmentId: z.number().int().positive(), accessStatus: z.enum(["active", "paused", "ended"]) })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Fleet assignment operations are temporarily unavailable." });
+      const assignment = (await db.select().from(fleetPartnerVehicleAssignments).where(eq(fleetPartnerVehicleAssignments.id, input.assignmentId)).limit(1))[0];
+      if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Fleet Partner vehicle assignment not found." });
+      const endedAt = input.accessStatus === "ended" ? new Date() : null;
+      await db.update(fleetPartnerVehicleAssignments).set({ accessStatus: input.accessStatus, endedAt }).where(eq(fleetPartnerVehicleAssignments.id, assignment.id));
+      await recordVehiclePassportActivity(db, { vehiclePassportId: assignment.vehiclePassportId, actorUserId: ctx.user.id, eventType: `fleet_partner.assignment_${input.accessStatus}`, metadata: { assignmentAction: input.accessStatus } });
+      return { success: true } as const;
+    }),
     submitInspection: protectedProcedure.input(z.object({
       vehiclePassportId: z.number().int().positive(),
       odometerReading: z.number().int().nonnegative().optional(),

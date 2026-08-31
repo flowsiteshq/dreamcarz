@@ -77,6 +77,31 @@ describe("DreamCarz OS foundation router", () => {
     await expect(caller.fleetPartner.overview()).rejects.toThrow("Fleet Partner access is required");
   });
 
+  it("does not allow a customer to view or change Fleet Partner vehicle assignments", async () => {
+    const caller = appRouter.createCaller(customerContext as never);
+    await expect(caller.fleetPartner.adminAssignmentOverview()).rejects.toThrow("Administrator access is required");
+    await expect(caller.fleetPartner.assignVehicle({ partnerUserId: 8, vehiclePassportId: 1 })).rejects.toThrow("Administrator access is required");
+    await expect(caller.fleetPartner.updateVehicleAssignment({ assignmentId: 3, accessStatus: "paused" })).rejects.toThrow("Administrator access is required");
+  });
+
+  it("creates an administrator-controlled Fleet Partner vehicle assignment and writes a minimal Vehicle Passport activity event", async () => {
+    const withLimit = (result: unknown) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(result) })) })) });
+    const roles = { from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([{ role: "fleet_partner" }]) })) };
+    const select = vi.fn()
+      .mockReturnValueOnce(withLimit([{ userId: 8 }]))
+      .mockReturnValueOnce(roles)
+      .mockReturnValueOnce(withLimit([{ id: 11 }]))
+      .mockReturnValueOnce(withLimit([]));
+    const assignmentValues = vi.fn().mockResolvedValue([{ insertId: 61 }]);
+    const activityValues = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValueOnce({ values: assignmentValues }).mockReturnValueOnce({ values: activityValues });
+    mockedGetDb.mockResolvedValue({ select, insert } as never);
+
+    await expect(appRouter.createCaller(adminContext as never).fleetPartner.assignVehicle({ partnerUserId: 8, vehiclePassportId: 11 })).resolves.toEqual({ success: true, assignmentId: 61, reactivated: false });
+    expect(assignmentValues).toHaveBeenCalledWith(expect.objectContaining({ partnerUserId: 8, vehiclePassportId: 11, accessStatus: "active" }));
+    expect(activityValues).toHaveBeenCalledWith(expect.objectContaining({ vehiclePassportId: 11, actorUserId: 1, eventType: "fleet_partner.assignment_activated", metadata: expect.any(String) }));
+  });
+
   it("does not allow a customer to submit Fleet Partner inspection, maintenance, or incident records", async () => {
     const caller = appRouter.createCaller(customerContext as never);
     await expect(caller.fleetPartner.submitInspection({ vehiclePassportId: 1 })).rejects.toThrow("Fleet Partner access is required");

@@ -17,6 +17,7 @@ import { EligibilityReviewControl } from "@/components/EligibilityReviewControl"
 import { SupportRequestQueue } from "@/components/SupportRequestQueue";
 import { ReturnProcessingQueue } from "@/components/ReturnProcessingQueue";
 import { LaunchReadiness } from "@/components/LaunchReadiness";
+import { FleetPartnerAssignmentManager } from "@/components/FleetPartnerAssignmentManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -153,6 +154,7 @@ export default function AdminOperations() {
 
         <EligibilityPolicyManager />
         <SupportRequestQueue />
+        <FleetPartnerAssignmentManager />
         <ReturnProcessingQueue />
 
         <section className="rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
