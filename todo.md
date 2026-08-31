@@ -320,3 +320,4 @@
 - [x] Code-split the official Face Liveness browser component so its client bundle loads only after an eligible customer begins the consent-gated flow.
 - [x] Apply a bounded per-administrator rate limit before rental-application review record access or storage, retaining existing restricted-content safeguards.
 - [ ] Conduct one explicitly authorized, account-owned Face Liveness camera validation with recorded consent, manual-review-only handling, and no raw biometric retention.
+- [x] Add deterministic release-gate regression coverage for incomplete verification, agreement, insurance, and additional-driver requirements without creating a customer transaction.
