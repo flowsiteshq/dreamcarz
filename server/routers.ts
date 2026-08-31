@@ -3758,6 +3758,9 @@ export const appRouter = router({
       .input(z.object({ reference: z.string().trim().min(8).max(32), nextStatus: z.enum(TRANSACTION_STATUSES), note: z.string().trim().max(2_000).optional() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const lifecycleStatusLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "transaction_lifecycle_status_change", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!lifecycleStatusLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many lifecycle status changes. Please try again later." });
+        if (input.note) assertSafeRestrictedContent(input.note, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transaction operations are temporarily unavailable." });
         const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);

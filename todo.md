@@ -322,3 +322,4 @@
 - [ ] Conduct one explicitly authorized, account-owned Face Liveness camera validation with recorded consent, manual-review-only handling, and no raw biometric retention.
 - [x] Add deterministic release-gate regression coverage for incomplete verification, agreement, insurance, and additional-driver requirements without creating a customer transaction.
 - [x] Require an exact approved CoCard product SKU before an administrator can create a transaction quote or persist customer-facing financial terms.
+- [x] Reject restricted sensitive content and apply a bounded per-administrator rate limit before lifecycle-status changes access or store private transaction data.
