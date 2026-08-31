@@ -18,6 +18,8 @@ describe("DreamCarz administrator review note privacy", () => {
 
     await expect(caller.operations.rentalExtensions.review({ requestId: 22, decision: "declined", reviewNote: "Card number 4111 1111 1111 1111" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller.operations.settlements.reviewAdjustment({ adjustmentId: 23, status: "waived", reviewNote: "Password: prohibited-value" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.operations.settlements.addAdjustment({ reference: "DCR-2026-SETTLE", adjustmentType: "toll", amountCents: 1, description: "Card number 4111 1111 1111 1111" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.operations.settlements.finalize({ reference: "DCR-2026-SETTLE", approvedSubtotalCents: 0, depositAppliedCents: 0, status: "under_review", summary: "Password: prohibited-value" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller.operations.reviewApplication({ id: 24, status: "needs_attention", reviewNote: "Driver license number: A1234567" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller.operations.reviewReservation({ id: 25, status: "under_review", reviewNote: "PIN: 1234" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
 

@@ -241,6 +241,7 @@
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before customer rental schedule notes are stored.
 - [ ] Build return, settlement, final-invoice, deposit adjustment, receipt, toll/ticket, and vehicle-processing workflows with preserved before/after evidence.
 - [x] Add a customer-controlled print view for a finalized account-owned settlement statement without treating it as a receipt or collection action.
+- [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before authorized settlement adjustment descriptions or final summaries are stored.
 - [x] Add an administrator-only returned-vehicle processing worklist that records manual post-return readiness decisions after condition-report and settlement review.
 - [x] Add an account-owned, read-only finalized settlement statement that never enables collection or exposes evidence, provider, or staff identifiers.
 - [x] Replace condition-report photo storage-key responses with controlled evidence-presence indicators and existing on-demand record access.

@@ -3470,6 +3470,7 @@ export const appRouter = router({
         description: z.string().trim().min(3).max(2_000),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        assertSafeRestrictedContent(input.description, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
@@ -3505,6 +3506,7 @@ export const appRouter = router({
         summary: z.string().trim().min(3).max(4_000),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        assertSafeRestrictedContent(input.summary, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Settlement records are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
