@@ -3,7 +3,7 @@ import {
   GetFaceLivenessSessionResultsCommand,
   RekognitionClient,
 } from "@aws-sdk/client-rekognition";
-import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { AssumeRoleCommand, type AssumeRoleCommandOutput, STSClient } from "@aws-sdk/client-sts";
 import { randomUUID } from "crypto";
 
 const DEFAULT_AWS_REGION = "us-east-1";
@@ -13,6 +13,7 @@ export type AwsFaceLivenessStatus = {
   region: string;
   serverCredentialsConfigured: boolean;
   browserCredentialBrokerConfigured: boolean;
+  browserFlowEnabled: boolean;
   enabled: boolean;
   configured: boolean;
   mode: "ready" | "manual_review";
@@ -30,13 +31,15 @@ export function getAwsFaceLivenessStatus(): AwsFaceLivenessStatus {
     process.env.AWS_FACE_LIVENESS_BROWSER_ROLE_ARN?.startsWith("arn:aws:iam::"),
   );
   const enabled = process.env.AWS_FACE_LIVENESS_ENABLED === "true";
-  const configured = serverCredentialsConfigured && browserCredentialBrokerConfigured && enabled;
+  const browserFlowEnabled = process.env.AWS_FACE_LIVENESS_BROWSER_FLOW_ENABLED === "true";
+  const configured = serverCredentialsConfigured && browserCredentialBrokerConfigured && enabled && browserFlowEnabled;
 
   return {
     provider: "aws_face_liveness",
     region: getRegion(),
     serverCredentialsConfigured,
     browserCredentialBrokerConfigured,
+    browserFlowEnabled,
     enabled,
     configured,
     mode: configured ? "ready" : "manual_review",
@@ -51,16 +54,22 @@ function getBrowserRoleArn() {
   return process.env.AWS_FACE_LIVENESS_BROWSER_ROLE_ARN?.trim() || "";
 }
 
+export type AwsFaceLivenessBrowserCredentialDependencies = {
+  sendAssumeRole?: (command: AssumeRoleCommand) => Promise<AssumeRoleCommandOutput>;
+};
+
 /**
  * Produces short-lived browser credentials only when the separately configured
  * least-privilege browser role exists. The caller must never persist these
  * credentials, and no long-term server key is returned to the browser.
  */
-export async function createAwsFaceLivenessBrowserCredentials() {
+export async function createAwsFaceLivenessBrowserCredentials(
+  dependencies: AwsFaceLivenessBrowserCredentialDependencies = {},
+) {
   const provider = getAwsFaceLivenessStatus();
   if (!provider.configured) return { configured: false as const, provider };
 
-  const role = await new STSClient({ region: getRegion() }).send(new AssumeRoleCommand({
+  const request = new AssumeRoleCommand({
     RoleArn: getBrowserRoleArn(),
     RoleSessionName: `dreamcarz-liveness-${randomUUID().replaceAll("-", "").slice(0, 32)}`,
     DurationSeconds: 900,
@@ -68,7 +77,9 @@ export async function createAwsFaceLivenessBrowserCredentials() {
       Version: "2012-10-17",
       Statement: [{ Effect: "Allow", Action: "rekognition:StartFaceLivenessSession", Resource: "*" }],
     }),
-  }));
+  });
+  const sendAssumeRole = dependencies.sendAssumeRole ?? ((command: AssumeRoleCommand) => new STSClient({ region: getRegion() }).send(command));
+  const role = await sendAssumeRole(request);
   if (!role.Credentials?.AccessKeyId || !role.Credentials.SecretAccessKey || !role.Credentials.SessionToken || !role.Credentials.Expiration) {
     throw new Error("AWS did not return complete temporary Face Liveness browser credentials.");
   }

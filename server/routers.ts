@@ -75,7 +75,7 @@ import { DREAMCARZ_ROLES, effectiveDreamCarzRoles } from "../shared/dreamcarzRol
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
-import { createAwsFaceLivenessSession, getAwsFaceLivenessResult, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
+import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, getAwsFaceLivenessResult, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
@@ -1308,6 +1308,48 @@ export const appRouter = router({
 
     awsFaceLivenessStatus: protectedProcedure.query(() => getAwsFaceLivenessStatus()),
 
+    requestAwsFaceLivenessBrowserCredentials: protectedProcedure
+      .input(z.object({
+        reference: z.string().trim().min(8).max(32),
+        identityDocumentConsent: z.literal(true),
+        biometricConsent: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const credentialLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "aws_face_liveness_browser_credentials", String(ctx.user.id)), limit: 3, windowMs: 15 * 60_000 });
+        if (!credentialLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many identity-verification requests. Please use the manual review path or try again later." });
+
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const transaction = (await db.select().from(vehicleTransactions).where(and(
+          eq(vehicleTransactions.reference, input.reference),
+          eq(vehicleTransactions.userId, ctx.user.id),
+        )).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (transaction.currentStep !== "identity") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the saved profile steps before starting identity verification." });
+        if (!["not_started", "pending", "requires_input", "manual_review"].includes(transaction.identityStatus)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction is not awaiting identity verification." });
+        }
+
+        const provider = getAwsFaceLivenessStatus();
+        if (!provider.configured) return { granted: false as const, provider };
+
+        await db.insert(transactionConsents).values([
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_document", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness_browser_broker" },
+          { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_biometric", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness_browser_broker" },
+        ]);
+        const credentials = await createAwsFaceLivenessBrowserCredentials();
+        if (!credentials.configured) return { granted: false as const, provider: credentials.provider };
+
+        await db.insert(transactionEvents).values({
+          transactionId: transaction.id,
+          actorUserId: ctx.user.id,
+          actorType: "customer",
+          eventType: "identity.aws_liveness_browser_credentials_issued",
+          metadata: JSON.stringify({ provider: "aws_face_liveness", credentialScope: "start_face_liveness_only", temporary: true }),
+        });
+        return { granted: true as const, provider: credentials.provider, credentials: credentials.credentials };
+      }),
+
     startAwsFaceLiveness: protectedProcedure
       .input(z.object({
         reference: z.string().trim().min(8).max(32),
@@ -1327,12 +1369,14 @@ export const appRouter = router({
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         if (transaction.currentStep !== "identity") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the saved profile steps before starting identity verification." });
 
-        const session = await createAwsFaceLivenessSession({ clientRequestToken: nanoid(32) });
-        if (!session.configured) return { started: false as const, provider: session.provider };
+        const provider = getAwsFaceLivenessStatus();
+        if (!provider.configured) return { started: false as const, provider };
         await db.insert(transactionConsents).values([
           { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_document", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness" },
           { transactionId: transaction.id, userId: ctx.user.id, consentType: "identity_biometric", policyVersion: "aws-face-liveness-v1", source: "aws_face_liveness" },
         ]);
+        const session = await createAwsFaceLivenessSession({ clientRequestToken: nanoid(32) });
+        if (!session.configured) return { started: false as const, provider: session.provider };
         await db.update(vehicleTransactions).set({
           status: "verification_pending",
           identityStatus: "pending",
@@ -2858,7 +2902,9 @@ export const appRouter = router({
           state: awsFaceLiveness.configured || stripeIdentity.configured ? "attention" : "blocker",
           detail: awsFaceLiveness.configured
             ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS customer verification requires consent and a manual-review decision.`
-            : "Provider liveness verification is not customer-active. The private document and manual-review path remains available.",
+            : awsFaceLiveness.browserCredentialBrokerConfigured
+              ? "AWS temporary browser credentials are prepared, but the customer camera flow remains disabled pending protected broker and official client verification. The private document and manual-review path remains available."
+              : "Provider liveness verification is not customer-active. The private document and manual-review path remains available.",
         },
         {
           key: "agreement",
@@ -2888,6 +2934,7 @@ export const appRouter = router({
           awsFaceLiveness: {
             serverCredentialsConfigured: awsFaceLiveness.serverCredentialsConfigured,
             browserCredentialBrokerConfigured: awsFaceLiveness.browserCredentialBrokerConfigured,
+            browserFlowEnabled: awsFaceLiveness.browserFlowEnabled,
             enabled: awsFaceLiveness.enabled,
           },
         },

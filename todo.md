@@ -112,7 +112,7 @@
 - [ ] Integrate a driver-license and live-selfie identity verification service with explicit biometric consent and manual-review fallback.
 - [x] Add a configuration-gated AWS Face Liveness session and result-verification boundary in US East, with no browser AWS credentials or retained biometric result payloads.
 - [x] Create a dedicated least-privilege AWS IAM configuration for Face Liveness through the authorized AWS session, rather than using root credentials.
-- [ ] Create a scoped short-lived browser credential role limited to `rekognition:StartFaceLivenessSession`, with the DreamCarz server as its only trusted issuer.
+- [x] Create a scoped short-lived browser credential role limited to `rekognition:StartFaceLivenessSession`, with the DreamCarz server as its only trusted issuer.
 - [x] Prepare a configuration-gated server broker for short-lived Face Liveness browser credentials without issuing credentials until the scoped role exists.
 - [x] Implement protected app procedures to create and verify AWS Face Liveness sessions, persisting only minimal opaque session metadata and no biometric result payloads.
 - [ ] Wire the consent-gated customer AWS Face Liveness launch path after the scoped browser credential role is available, retaining manual review as the fallback.
@@ -305,3 +305,6 @@
 - [x] Add immutable administrator role-assignment audit events for role granted, restored, and revoked actions without changing role privileges.
 - [x] Apply per-account rate limits to rental extension, linked transaction, and handoff acknowledgement requests while leaving safety incident reporting accessible.
 - [x] Validate the scoped AWS Face Liveness browser-role trust, start-only policy, and dedicated server exact-role assumption path without creating a biometric session or retaining temporary credentials.
+- [x] Add a consent-recorded, account-owned pending-identity gate and rate limit before the server can request temporary Face Liveness browser credentials.
+- [x] Add deterministic broker success and failure coverage without exposing temporary credentials or activating the customer camera flow.
+- [x] Distinguish prepared AWS IAM credentials from enabled browser camera flow in the administrator launch-readiness projection.
