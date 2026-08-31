@@ -117,6 +117,16 @@ function hasFutureRecordedInsuranceCoverage(insuranceDetails: string | null | un
   }
 }
 
+function parseStoredEvidenceKeys(raw: string | null | undefined) {
+  if (!raw) return [] as string[];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === "string" && key.length > 0) : [];
+  } catch {
+    return [] as string[];
+  }
+}
+
 function containsRestrictedSupportContent(value: string) {
   const digitsOnly = value.replace(/[^0-9]/g, "");
   const likelyCardNumber = /\d{13,19}/.test(digitsOnly);
@@ -2269,7 +2279,7 @@ export const appRouter = router({
         reportedLocation: vehicleIncidentRecords.reportedLocation,
         occurredAt: vehicleIncidentRecords.occurredAt,
         description: vehicleIncidentRecords.description,
-        photoKeys: vehicleIncidentRecords.photoKeys,
+        hasEvidence: isNotNull(vehicleIncidentRecords.photoKeys),
         createdAt: vehicleIncidentRecords.createdAt,
         vehicleName: vehiclePassports.vehicleName,
         transactionReference: vehicleTransactions.reference,
@@ -2278,6 +2288,21 @@ export const appRouter = router({
         .innerJoin(vehicleTransactions, eq(vehicleIncidentRecords.transactionId, vehicleTransactions.id))
         .where(eq(vehicleTransactions.userId, ctx.user.id))
         .orderBy(desc(vehicleIncidentRecords.createdAt));
+    }),
+
+    openEvidence: protectedProcedure.input(z.object({ incidentId: z.number().int().positive(), evidenceIndex: z.number().int().min(0).max(24).default(0) })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Incident evidence is temporarily unavailable." });
+      const incident = (await db.select({ id: vehicleIncidentRecords.id, transactionId: vehicleIncidentRecords.transactionId, photoKeys: vehicleIncidentRecords.photoKeys }).from(vehicleIncidentRecords)
+        .innerJoin(vehicleTransactions, eq(vehicleIncidentRecords.transactionId, vehicleTransactions.id))
+        .where(and(eq(vehicleIncidentRecords.id, input.incidentId), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
+      if (!incident) throw new TRPCError({ code: "NOT_FOUND", message: "Incident report not found." });
+      const evidenceKeys = parseStoredEvidenceKeys(incident.photoKeys);
+      const evidenceKey = evidenceKeys[input.evidenceIndex];
+      if (!evidenceKey) throw new TRPCError({ code: "NOT_FOUND", message: "Incident evidence is not available for this item." });
+      if (!incident.transactionId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Incident evidence is not linked to an account-owned rental record." });
+      await db.insert(transactionEvents).values({ transactionId: incident.transactionId, actorUserId: ctx.user.id, actorType: "customer", eventType: "incident.evidence_access_requested", metadata: JSON.stringify({ incidentId: incident.id, evidenceIndex: input.evidenceIndex }) });
+      return { url: await storageGetSignedUrl(evidenceKey) };
     }),
 
     report: protectedProcedure.input(z.object({
@@ -3539,7 +3564,7 @@ export const appRouter = router({
           reportedLocation: vehicleIncidentRecords.reportedLocation,
           occurredAt: vehicleIncidentRecords.occurredAt,
           description: vehicleIncidentRecords.description,
-          photoKeys: vehicleIncidentRecords.photoKeys,
+          hasEvidence: isNotNull(vehicleIncidentRecords.photoKeys),
           policeReportReference: vehicleIncidentRecords.policeReportReference,
           towReference: vehicleIncidentRecords.towReference,
           insuranceClaimReference: vehicleIncidentRecords.insuranceClaimReference,
@@ -3553,6 +3578,19 @@ export const appRouter = router({
           .leftJoin(vehicleTransactions, eq(vehicleIncidentRecords.transactionId, vehicleTransactions.id))
           .leftJoin(users, eq(vehicleTransactions.userId, users.id))
           .orderBy(desc(vehicleIncidentRecords.createdAt));
+      }),
+
+      openEvidence: protectedProcedure.input(z.object({ incidentId: z.number().int().positive(), evidenceIndex: z.number().int().min(0).max(24).default(0) })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Incident evidence is temporarily unavailable." });
+        const incident = (await db.select({ id: vehicleIncidentRecords.id, transactionId: vehicleIncidentRecords.transactionId, photoKeys: vehicleIncidentRecords.photoKeys }).from(vehicleIncidentRecords).where(eq(vehicleIncidentRecords.id, input.incidentId)).limit(1))[0];
+        if (!incident) throw new TRPCError({ code: "NOT_FOUND", message: "Fleet incident not found." });
+        const evidenceKeys = parseStoredEvidenceKeys(incident.photoKeys);
+        const evidenceKey = evidenceKeys[input.evidenceIndex];
+        if (!evidenceKey) throw new TRPCError({ code: "NOT_FOUND", message: "Incident evidence is not available for this item." });
+        if (incident.transactionId) await db.insert(transactionEvents).values({ transactionId: incident.transactionId, actorUserId: ctx.user.id, actorType: "admin", eventType: "fleet_incident.evidence_access_requested", metadata: JSON.stringify({ incidentId: incident.id, evidenceIndex: input.evidenceIndex }) });
+        return { url: await storageGetSignedUrl(evidenceKey) };
       }),
 
       review: protectedProcedure.input(z.object({
