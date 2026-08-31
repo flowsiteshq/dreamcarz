@@ -343,3 +343,4 @@
 - [x] Route public Rent and Buy entry actions into the dedicated DreamCarz Concierge with an explicit preselected intent, preserving vehicle-first guided discovery.
 - [x] Load the dedicated DreamCarz Concierge route on demand behind a concise brand-consistent loading state to keep the public home experience responsive.
 - [x] Rebuild DreamCarz Concierge as a full-width sequential conversation where the guide is primary and only a tailored small set of visual vehicle cards appears after intent is established.
+- [x] Redesign DreamCarz Concierge as a premium dark workspace with a persistent guidance rail, focused conversation canvas, tailored confirmed-vehicle cards, saved-path access, and truthful quick actions.
