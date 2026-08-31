@@ -48,6 +48,12 @@ describe("DreamCarz sensitive transaction action rate limits", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("throttles condition evidence uploads before any private record lookup or storage operation", async () => {
+    await expect(appRouter.createCaller(memberContext as never).transactions.uploadConditionEvidence({ reference: "DCR-2026-RATE", stage: "pickup", view: "front", filename: "front.jpg", contentType: "image/jpeg", base64: "A".repeat(120) })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    expect(mockedRateLimitKey).toHaveBeenCalledWith(memberContext.req, "condition_evidence_upload", "77");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("throttles native agreement signing attempts before any transaction or agreement lookup", async () => {
     await expect(appRouter.createCaller(memberContext as never).transactions.signNativeAgreement({ reference: "DCR-2026-RATE", agreementId: 91, signerName: "DreamCarz Member", acknowledgesAgreement: true, electronicSignatureConsent: true })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
     expect(mockedRateLimitKey).toHaveBeenCalledWith(memberContext.req, "native_agreement_signing", "77");

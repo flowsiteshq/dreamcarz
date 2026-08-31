@@ -1543,6 +1543,8 @@ export const appRouter = router({
         base64: z.string().min(100).max(8_400_000),
       }))
       .mutation(async ({ ctx, input }) => {
+        const evidenceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "condition_evidence_upload", String(ctx.user.id)), limit: 18, windowMs: 60 * 60 * 1000 });
+        if (!evidenceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many condition image uploads. Please wait before trying again." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Condition evidence storage is temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(and(eq(vehicleTransactions.reference, input.reference), eq(vehicleTransactions.userId, ctx.user.id))).limit(1))[0];
