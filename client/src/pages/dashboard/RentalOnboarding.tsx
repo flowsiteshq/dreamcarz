@@ -34,6 +34,7 @@ import {
   RENTAL_ONBOARDING_STEPS,
   type RentalDocumentType,
 } from "@shared/rentalOnboarding";
+import { findLegacyRentalContinuation } from "@shared/legacyRentalHandoff";
 
 type FormState = {
   phone: string;
@@ -116,6 +117,7 @@ export default function RentalOnboarding() {
   const saveDraft = trpc.rentalOnboarding.saveDraft.useMutation();
   const uploadDocument = trpc.rentalOnboarding.uploadDocument.useMutation();
   const submitApplication = trpc.rentalOnboarding.submitApplication.useMutation();
+  const transactionsQuery = trpc.transactions.list.useQuery(undefined, { enabled: Boolean(user), refetchOnWindowFocus: false });
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(blankForm);
@@ -133,6 +135,7 @@ export default function RentalOnboarding() {
   const isAwaitingReview = application?.status === "submitted" || application?.status === "under_review";
   const isApproved = application?.status === "approved";
   const reviewReference = application ? `DC-R${String(application.id).padStart(6, "0")}` : "";
+  const transactionContinuation = useMemo(() => findLegacyRentalContinuation(transactionsQuery.data ?? []), [transactionsQuery.data]);
 
   useEffect(() => {
     if (!application) return;
@@ -325,7 +328,7 @@ export default function RentalOnboarding() {
               <p className="mt-4 text-sm leading-6 text-white/60">
                 {isApproved
                   ? "Your identity and rental profile are verified. Browse the fleet whenever you’re ready."
-                  : "DreamCarz is reviewing your rental profile and identity documents. We’ll notify you as soon as the review is complete—typically within one business day."}
+                  : "DreamCarz is reviewing your rental profile and identity documents. Check My Account for status updates or continue an existing vehicle-specific transaction."}
               </p>
               <div className="flex flex-wrap gap-3 mt-7">
                 <div className="rounded-2xl bg-white/10 px-4 py-3">
@@ -338,15 +341,23 @@ export default function RentalOnboarding() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 mt-7">
-                <Link href={isApproved ? "/dashboard/vehicles" : "/dashboard"} className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-gray-100 transition-colors">
-                  {isApproved ? "Browse vehicles" : "Return to My Account"}
+                <Link href={transactionContinuation ? `/dashboard/transactions?ref=${encodeURIComponent(transactionContinuation.reference)}` : "/dashboard/vehicles"} className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-gray-100 transition-colors">
+                  {transactionContinuation ? "Continue vehicle setup" : isApproved ? "Browse vehicles" : "Choose a confirmed vehicle"}
                 </Link>
-                <a href="tel:3017722500" className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors">
-                  Questions? Call (301) 772-2500
-                </a>
+                <Link href="/dashboard" className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors">Return to My Account</Link>
               </div>
             </div>
           </div>
+
+          <section className="mt-5 border border-[#ded8cf] bg-[#fbfaf7] p-5 sm:p-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Vehicle transaction</p>
+            <h3 className="mt-2 text-lg font-bold text-black">Continue your vehicle-specific setup.</h3>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-gray-600">Your rental application review and vehicle transaction stay separate. DreamCarz does not copy identity documents or biometric consent between them. Continue an existing rental transaction, or select a confirmed vehicle to start one.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {transactionContinuation ? <Link href={`/dashboard/transactions?ref=${encodeURIComponent(transactionContinuation.reference)}`} className="inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white">Continue {transactionContinuation.vehicleName} <ArrowRight size={14} className="ml-2" /></Link> : <Link href="/dashboard/vehicles" className="inline-flex h-10 items-center bg-black px-4 text-xs font-semibold text-white">Choose a confirmed vehicle <ArrowRight size={14} className="ml-2" /></Link>}
+              {transactionContinuation ? <Link href="/dashboard/vehicles" className="inline-flex h-10 items-center border border-black px-4 text-xs font-semibold text-black">Choose a different vehicle</Link> : null}
+            </div>
+          </section>
 
           <div className="mt-5 grid sm:grid-cols-3 gap-4">
             {[
