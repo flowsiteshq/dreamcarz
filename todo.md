@@ -312,3 +312,4 @@
 - [x] Integrate the official AWS Face Liveness browser component behind explicit configuration, consent, and manual-review safeguards without activating customer camera verification.
 - [x] Apply a bounded per-account rate limit before private return-settlement statement lookup, without changing reviewed figures or initiating collection activity.
 - [x] Apply a bounded per-account rate limit before secure private-document link lookup or signed URL generation, preserving existing ownership checks and minimal access audits.
+- [x] Apply a bounded per-account rate limit before account-owned DreamCarz ID record listings, without returning storage keys or changing document visibility.

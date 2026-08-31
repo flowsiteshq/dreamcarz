@@ -1713,6 +1713,8 @@ export const appRouter = router({
       }),
 
     backOffice: protectedProcedure.query(async ({ ctx }) => {
+      const backOfficeLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "dreamcarz_id_back_office_read", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+      if (!backOfficeLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many private record requests. Please try again later." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Back-office records are temporarily unavailable." });
       const [profiles, legacyLicenseDocuments, transactionLicenseDocuments, insuranceDocuments, agreements] = await Promise.all([
