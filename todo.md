@@ -345,3 +345,4 @@
 - [x] Rebuild DreamCarz Concierge as a full-width sequential conversation where the guide is primary and only a tailored small set of visual vehicle cards appears after intent is established.
 - [x] Redesign DreamCarz Concierge as a premium dark workspace with a persistent guidance rail, focused conversation canvas, tailored confirmed-vehicle cards, saved-path access, and truthful quick actions.
 - [x] Make the DreamCarz Concierge prompt bar the large centered primary interaction and defer conversation detail and vehicle cards until the member submits a prompt or chooses a suggestion.
+- [x] Fix the mobile concierge so submitted prompts and suggested topics keep the conversation and assistant reply visible above collapsed secondary controls.
