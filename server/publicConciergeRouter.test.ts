@@ -28,6 +28,24 @@ describe("public DreamCarz concierge", () => {
     expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({ model: "gpt-5-mini" }));
   });
 
+  it("passes a bounded temporary conversation context to continue guidance without storing it", async () => {
+    vi.mocked(listLLMModels).mockResolvedValue({ data: [{ id: "claude-haiku-4-5" }] } as never);
+    vi.mocked(invokeLLM).mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ answer: "For a family trip, should I focus on space or a sedan?", intent: "rental", vehicleClass: "all", nextPrompt: "Tell me what matters most for the drive.", recommendedVehicleIds: ["2022-chevrolet-traverse-white"] }) } }] } as never);
+
+    await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "I need something for my family",
+      conversation: [
+        { role: "concierge", text: "Hi. I’m your DreamCarz concierge. What can I help you with today?" },
+        { role: "member", text: "I want to rent a vehicle." },
+      ],
+    })).resolves.toMatchObject({ intent: "rental", source: "live_guidance" });
+
+    expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({
+      model: "claude-haiku-4-5",
+      messages: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining("TEMPORARY_CONVERSATION_CONTEXT") })]),
+    }));
+  });
+
   it("rejects sensitive input before model invocation", async () => {
     await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "My card number is 4111 1111 1111 1111" })).rejects.toThrow("For your privacy");
     expect(invokeLLM).not.toHaveBeenCalled();

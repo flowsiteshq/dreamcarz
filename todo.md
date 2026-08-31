@@ -347,3 +347,4 @@
 - [x] Make the DreamCarz Concierge prompt bar the large centered primary interaction and defer conversation detail and vehicle cards until the member submits a prompt or chooses a suggestion.
 - [x] Fix the mobile concierge so submitted prompts and suggested topics keep the conversation and assistant reply visible above collapsed secondary controls.
 - [x] Eliminate mobile horizontal overflow in the active Concierge conversation so greeting, replies, prompt, and contextual vehicle cards reflow cleanly within the phone viewport.
+- [x] Rebuild DreamCarz Concierge as one continuous ChatGPT-style thread that retains only temporary in-browser conversation context, asks adaptive next questions, and reveals vehicle or protected onboarding actions only when relevant.
