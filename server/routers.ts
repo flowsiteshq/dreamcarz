@@ -1498,6 +1498,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const extensionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "rental_extension_request", String(ctx.user.id)), limit: 4, windowMs: 12 * 60 * 60 * 1000 });
         if (!extensionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many extension requests. Please wait before trying again." });
+        if (input.note) assertSafeRestrictedContent(input.note, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Extension requests are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions)
