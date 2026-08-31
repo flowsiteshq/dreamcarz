@@ -53,6 +53,16 @@ export default function Concierge() {
     } catch { window.sessionStorage.removeItem(STORAGE_KEY); }
   }, []);
 
+  useEffect(() => {
+    const requestedIntent = new URLSearchParams(window.location.search).get("intent");
+    if (requestedIntent !== "rental" && requestedIntent !== "purchase") return;
+    setIntent(requestedIntent);
+    setSelectedVehicleId(null);
+    setTimeline(null);
+    setRecommendedVehicleIds(null);
+    setHistory(previous => previous.some(entry => entry.id === "intent-entry") ? previous : [...previous, { id: "intent-entry", role: "concierge", text: requestedIntent === "purchase" ? "You’re starting a purchase path. Choose a confirmed vehicle that interests you, then we’ll save your path before any protected steps begin." : "You’re starting a rental path. Choose a confirmed vehicle and your timing preference, then we’ll save your path before any protected steps begin." }]);
+  }, []);
+
   const visibleVehicles = useMemo(() => {
     const classFiltered = vehicleClass ? (vehicles.data ?? []).filter(vehicle => vehicle.vehicleClass === vehicleClass) : vehicles.data ?? [];
     return recommendedVehicleIds ? classFiltered.filter(vehicle => recommendedVehicleIds.includes(vehicle.vehicleId)) : classFiltered;

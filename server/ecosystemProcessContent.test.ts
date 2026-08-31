@@ -181,8 +181,8 @@ describe("DreamCarz ecosystem process content", () => {
     const app = source("client/src/App.tsx");
 
     for (const destination of [
-      'href="/fleet?intent=rent"',
-      'href="/fleet?intent=buy"',
+      'href="/concierge?intent=rental"',
+      'href="/concierge?intent=purchase"',
       'href="/pricing"',
       'href="/contact"',
     ]) {

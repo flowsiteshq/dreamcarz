@@ -340,3 +340,4 @@
 - [x] Replace the dense home-page concierge panel with a premium entry point that directs members into the dedicated concierge page without losing safe onboarding handoffs.
 - [x] Greet signed-in members by first name in the dedicated DreamCarz Concierge and offer their saved account-owned vehicle path without exposing private profile fields.
 - [x] Upgrade the dedicated DreamCarz Concierge with adaptive question states, a visible progress rail, visual recommendation transitions, and a streamlined saved-path handoff without collecting sensitive information in chat.
+- [x] Route public Rent and Buy entry actions into the dedicated DreamCarz Concierge with an explicit preselected intent, preserving vehicle-first guided discovery.
