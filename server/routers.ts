@@ -2706,6 +2706,16 @@ export const appRouter = router({
       }
       return { success: true };
     }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Notifications are temporarily unavailable." });
+      const unread = await db.select({ id: customerNotifications.id }).from(customerNotifications).where(and(eq(customerNotifications.userId, ctx.user.id), isNull(customerNotifications.readAt)));
+      if (!unread.length) return { success: true, markedCount: 0 } as const;
+      const readAt = new Date();
+      await db.update(customerNotifications).set({ readAt }).where(and(eq(customerNotifications.userId, ctx.user.id), isNull(customerNotifications.readAt)));
+      await db.insert(communicationEvents).values(unread.map(notification => ({ userId: ctx.user.id, notificationId: notification.id, channel: "in_app" as const, status: "read" as const, detail: "Customer marked notification as read." })));
+      return { success: true, markedCount: unread.length } as const;
+    }),
     issueInApp: protectedProcedure.input(z.object({
       userId: z.number().int().positive(),
       category: z.enum(["transaction", "membership", "wallet", "vehicle", "incident", "support", "account", "other"]),

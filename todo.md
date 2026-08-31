@@ -257,6 +257,8 @@
 - [x] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [x] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
+- [ ] Add account-owned in-app notification read and unread history controls without claiming email, SMS, or push delivery.
+- [x] Add an account-scoped in-app notification mark-all-read action without affecting other members or external delivery channels.
 - [x] Replace the static Support message form with account-owned support requests and administrator review controls, without response-time promises or unconfigured live chat.
 - [x] Allow a customer to add a private follow-up only to an account-owned open support request, retaining the message solely in the protected support history.
 - [x] Show customer-authored private support follow-ups only in the authorized DreamCarz support queue, never on public or cross-account surfaces.
