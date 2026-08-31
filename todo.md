@@ -251,6 +251,8 @@
 - [x] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
 - [x] Correct the public Fleet Partner route so the partnership page is reachable from its intended navigation target without a 404.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
+- [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
+- [x] Allow an Associate to update only the status of their own consented leads, without creating a customer outcome, application decision, or commission entitlement.
 - [x] Add privacy-safe, non-financial Associate referral conversion milestones for new account registration and customer-initiated rental or purchase transactions.
 - [x] Capture a validated Associate referral code at new-account registration and preserve the attribution without allowing self-referrals or arbitrary reassignment.
 - [x] Generate Associate referral QR and copied links with the configured public DreamCarz domain rather than a local development address.
@@ -260,7 +262,7 @@
 - [x] Build a DreamCarz Command Center with operational vehicle, transaction, review, maintenance, incident, checkout, revenue, utilization, and exception metrics based only on actual data.
 - [x] Build a configurable smart-pricing rules and history engine with management approval/override controls and no automatic price changes.
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
-- [ ] Add account-owned in-app notification read and unread history controls without claiming email, SMS, or push delivery.
+- [x] Add account-owned in-app notification read and unread history controls without claiming email, SMS, or push delivery.
 - [x] Add an account-scoped in-app notification mark-all-read action without affecting other members or external delivery channels.
 - [x] Replace the static Support message form with account-owned support requests and administrator review controls, without response-time promises or unconfigured live chat.
 - [x] Allow a customer to add a private follow-up only to an account-owned open support request, retaining the message solely in the protected support history.

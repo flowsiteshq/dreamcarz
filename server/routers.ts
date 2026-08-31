@@ -2666,7 +2666,10 @@ export const appRouter = router({
     }),
     updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead update is temporarily unavailable." });
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
+      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
+      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
       const lead = (await db.select().from(associateLeads).where(eq(associateLeads.id, input.id)).limit(1))[0];
       if (!lead || (lead.associateUserId !== ctx.user.id && ctx.user.role !== "admin")) throw new TRPCError({ code: "FORBIDDEN", message: "This lead is not available to this account." });
       await db.update(associateLeads).set({ status: input.status, notes: input.notes ?? lead.notes }).where(eq(associateLeads.id, input.id));
