@@ -2465,6 +2465,8 @@ export const appRouter = router({
       internalNote: z.string().trim().min(3).max(2_000).optional(),
       assignedToUserId: z.number().int().positive().nullable().optional(),
     }).refine(input => Boolean(input.customerUpdate || input.internalNote || input.assignedToUserId !== undefined || input.status), { message: "Add a review change before saving." })).mutation(async ({ ctx, input }) => {
+      const reviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "support_request_review", String(ctx.user.id)), limit: 30, windowMs: 60 * 60 * 1000 });
+      if (!reviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many support updates. Please wait before trying again." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Support operations are temporarily unavailable." });
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
