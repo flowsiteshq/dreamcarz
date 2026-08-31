@@ -3366,6 +3366,7 @@ export const appRouter = router({
         handoffNotes: z.string().trim().max(1_000).optional(),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.handoffNotes) assertSafeRestrictedContent(input.handoffNotes, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Handoff operations are temporarily unavailable." });
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
