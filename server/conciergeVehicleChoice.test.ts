@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { vehicleIdsForClass } from "../client/src/pages/Concierge";
+import { vehicleIdsForClass } from "../client/src/lib/conciergeFlow";
 
 describe("Concierge body-style choice", () => {
   it("returns matching confirmed vehicle IDs so cards render immediately after a style is selected", () => {

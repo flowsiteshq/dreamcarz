@@ -354,3 +354,4 @@
 - [x] Make Rent and Buy entry actions greet a signed-in member by first name once, ask the relevant vehicle-type question, and immediately offer sedan and SUV images.
 - [x] Replace the staged Concierge loading screen with a subtle fade transition directly into the chat interface.
 - [x] Reveal matching confirmed sedan or SUV vehicle cards immediately after the member taps a body-style choice in Concierge.
+- [x] Keep DreamCarz Concierge with the customer through guided in-page enrollment, answer conversational interruptions naturally, and return to the exact next enrollment step without early dashboard handoffs.

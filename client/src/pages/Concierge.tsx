@@ -1,13 +1,13 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
+import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel";
+import { shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
 import { trpc } from "@/lib/trpc";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
 import { ArrowRight, Bookmark, CarFront, Check, Compass, RotateCcw, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 
-type Intent = "rental" | "purchase" | "membership" | "explore";
-type VehicleClass = "sedan" | "suv" | null;
 type Timeline = "exploring" | "soon" | "this_week" | null;
 type Entry = { id: string; role: "concierge" | "member"; text: string };
 const STORAGE_KEY = "dreamcarz-concierge-selection";
@@ -41,26 +41,6 @@ const welcome = (name: string | null | undefined, signedIn: boolean, intent: Int
       : signedIn ? `Hi ${firstName(name)}. How can I help?` : "Hi. How can I help?",
 });
 
-export function shouldShowVehicleClassChoice(input: {
-  intent: Intent;
-  vehicleClass: VehicleClass;
-  hasSelectedVehicle: boolean;
-  latestConciergeMessage: string;
-}) {
-  return !input.vehicleClass
-    && !input.hasSelectedVehicle
-    && (input.intent === "rental" || input.intent === "purchase")
-    && /\b(?:vehicle|sedan|suv)\b/i.test(input.latestConciergeMessage)
-    && /\b(?:type|sedan|suv)\b/i.test(input.latestConciergeMessage);
-}
-
-export function vehicleIdsForClass(
-  vehicles: ReadonlyArray<{ vehicleId: string; vehicleClass: string }>,
-  choice: Exclude<VehicleClass, null>,
-) {
-  return vehicles.filter(vehicle => vehicle.vehicleClass === choice).map(vehicle => vehicle.vehicleId);
-}
-
 export default function Concierge() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -77,6 +57,7 @@ export default function Concierge() {
   const [recommendedIds, setRecommendedIds] = useState<string[] | null>(null);
   const [notice, setNotice] = useState("");
   const [hasEntered, setHasEntered] = useState(false);
+  const [enrollmentReference, setEnrollmentReference] = useState<string | null>(null);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -158,9 +139,13 @@ export default function Concierge() {
     setRecommendedIds(savedJourney.selectedVehicleId ? [savedJourney.selectedVehicleId] : null);
     append({ id: `${Date.now()}-restore`, role: "concierge", text: "Your saved path is open." });
   };
+  const openEnrollment = (reference: string) => {
+    setEnrollmentReference(reference);
+    setNotice("");
+  };
   const reset = () => {
     setIntent("explore"); setHistory([welcome(user?.name, isAuthenticated, "explore")]);
-    setVehicleClass(null); setRecommendedIds(null); setSelectedVehicleId(null); setTimeline(null); setNotice("");
+    setVehicleClass(null); setRecommendedIds(null); setSelectedVehicleId(null); setTimeline(null); setEnrollmentReference(null); setNotice("");
   };
   const continueJourney = async () => {
     if (intent === "membership") { navigate("/pricing"); return; }
@@ -174,7 +159,8 @@ export default function Concierge() {
       await savePreference.mutateAsync({ intent, preferredVehicleClass: vehicleClass, selectedVehicleId, timeline, confirmSave: true });
       const result = await beginTransaction.mutateAsync({ transactionType: intent === "purchase" ? "purchase" : "rental", vehicleId: selectedVehicle.vehicleId });
       sessionStorage.removeItem(STORAGE_KEY);
-      navigate(`/dashboard/rental-setup?ref=${encodeURIComponent(result.reference)}`);
+      openEnrollment(result.reference);
+      append({ id: `${Date.now()}-enrollment`, role: "concierge", text: `Great choice. I’ll keep your ${intent === "purchase" ? "purchase" : "rental"} enrollment right here.` });
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "DreamCarz could not start your journey.");
     }
@@ -191,7 +177,7 @@ export default function Concierge() {
           </div>
           <div className="flex items-center gap-2">
             {savedJourney ? <button type="button" onClick={restore} className="hidden items-center gap-1.5 text-xs font-semibold text-gray-700 sm:flex"><Bookmark size={14} /> Saved</button> : null}
-            {activeTransaction ? <button type="button" onClick={() => navigate(`/dashboard/rental-setup?ref=${encodeURIComponent(activeTransaction.reference)}`)} className="hidden items-center gap-1.5 text-xs font-semibold text-gray-700 sm:flex">Continue <ArrowRight size={14} /></button> : null}
+            {activeTransaction ? <button type="button" onClick={() => openEnrollment(activeTransaction.reference)} className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">Resume <ArrowRight size={14} /></button> : null}
             <button type="button" onClick={reset} aria-label="New DreamCarz Concierge conversation" className="grid h-9 w-9 place-items-center rounded-full text-gray-500 hover:bg-gray-100"><RotateCcw size={18} /></button>
           </div>
         </header>
@@ -209,6 +195,7 @@ export default function Concierge() {
             {showVehicleClassChoice ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1">{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold capitalize">{option.kind}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
             {recommendedIds?.length ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className={`overflow-hidden rounded-xl border bg-white text-left ${selectedVehicleId === vehicle.vehicleId ? "border-black ring-1 ring-black" : "border-[#e6e6e6]"}`}><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">{selectedVehicleId === vehicle.vehicleId ? <><Check size={13} className="text-[#a8832d]" /> Selected</> : <><CarFront size={13} className="text-[#a8832d]" /> Choose</>}</span></div></button>)}</div></div> : null}
             {selectedVehicle ? <div className="rounded-xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><p className="font-semibold">When would you like to drive?</p><div className="mt-3 flex flex-wrap gap-2">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => setTimeline(item)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div><button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Sign in to save"}<ArrowRight size={15} /></button></div> : null}
+            {enrollmentReference ? <ConciergeEnrollmentPanel reference={enrollmentReference} onProgress={message => append({ id: `${Date.now()}-enrollment-progress`, role: "concierge", text: message })} /> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
           </div>
           <form onSubmit={submit} className="mt-auto pt-8">

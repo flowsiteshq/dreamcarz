@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldShowVehicleClassChoice } from "./Concierge";
+import { shouldShowVehicleClassChoice } from "@/lib/conciergeFlow";
 
 describe("shouldShowVehicleClassChoice", () => {
   it("shows visual body-style choices only after the relevant rental or purchase question", () => {

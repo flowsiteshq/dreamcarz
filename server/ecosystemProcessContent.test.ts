@@ -194,7 +194,9 @@ describe("DreamCarz ecosystem process content", () => {
     expect(conciergePage).toContain('navigate("/pricing")');
     expect(conciergePage).toContain("startLogin();");
     expect(conciergePage).toContain("beginTransaction.mutateAsync");
-    expect(conciergePage).toContain("/dashboard/rental-setup?ref=${encodeURIComponent(result.reference)}");
+    expect(conciergePage).toContain("openEnrollment(result.reference)");
+    expect(conciergePage).toContain("<ConciergeEnrollmentPanel");
+    expect(conciergePage).not.toContain("navigate(`/dashboard/rental-setup?ref=${encodeURIComponent(result.reference)}`)");
     expect(app).toContain('path="/concierge"');
 
     expect(app).toContain('window.scrollTo({ top: 0, left: 0, behavior: "auto" })');
