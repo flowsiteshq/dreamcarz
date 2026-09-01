@@ -192,8 +192,8 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain("<HomeConcierge />");
     expect(homeConcierge).toContain('href="/concierge"');
     expect(conciergePage).toContain('navigate("/pricing")');
-    expect(conciergePage).toContain("Create your DreamCarz dashboard to keep this vehicle and continue securely.");
-    expect(conciergePage).toContain("navigate(`/login?next=${encodeURIComponent(`/concierge?intent=${intent === \"purchase\" ? \"purchase\" : \"rental\"}`)}`)");
+    expect(conciergePage).toContain("Let me gather a few details and create your DreamCarz dashboard.");
+    expect(conciergePage).toContain("register.mutateAsync");
     expect(conciergePage).toContain("beginTransaction.mutateAsync");
     expect(conciergePage).toContain("openEnrollment(result.reference)");
     expect(conciergePage).toContain("<ConciergeEnrollmentPanel");

@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
 type Entry = { id: string; role: "concierge" | "member"; text: string };
+type DashboardCreationField = "name" | "email" | "password" | null;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
   sedan: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image,
@@ -49,6 +50,8 @@ export default function Concierge() {
   const publicGuide = trpc.concierge.publicGuide.useMutation();
   const savePreference = trpc.concierge.saveJourneyPreference.useMutation();
   const beginTransaction = trpc.transactions.begin.useMutation();
+  const register = trpc.auth.register.useMutation();
+  const utils = trpc.useUtils();
   const [question, setQuestion] = useState("");
   const [intent, setIntent] = useState<Intent>(getRouteIntent);
   const [vehicleClass, setVehicleClass] = useState<VehicleClass>(null);
@@ -58,6 +61,11 @@ export default function Concierge() {
   const [notice, setNotice] = useState("");
   const [hasEntered, setHasEntered] = useState(false);
   const [enrollmentReference, setEnrollmentReference] = useState<string | null>(null);
+  const [dashboardCreationField, setDashboardCreationField] = useState<DashboardCreationField>(null);
+  const [dashboardQuestionMode, setDashboardQuestionMode] = useState(false);
+  const [dashboardName, setDashboardName] = useState("");
+  const [dashboardEmail, setDashboardEmail] = useState("");
+  const [continueAfterRegistration, setContinueAfterRegistration] = useState(false);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -104,11 +112,48 @@ export default function Concierge() {
     kind,
     image: inventory.find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
   }));
-  const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending;
+  const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending;
+  const dashboardPrompt = dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "email" ? "What email should we use?" : "Create a secure password";
 
+  const answerDashboardCreation = async (rawValue: string) => {
+    const value = rawValue.trim();
+    if (!value || !dashboardCreationField || sending) return;
+    setQuestion("");
+    setNotice("");
+    if (dashboardCreationField === "name") {
+      if (value.length < 2) { setNotice("Please enter your name."); return; }
+      setDashboardName(value);
+      setDashboardCreationField("email");
+      append({ id: `${Date.now()}-dashboard-email`, role: "concierge", text: "Thank you. What email should we use?" });
+      return;
+    }
+    if (dashboardCreationField === "email") {
+      if (!/^\S+@\S+\.\S+$/.test(value)) { setNotice("Please enter a valid email address."); return; }
+      setDashboardEmail(value);
+      setDashboardCreationField("password");
+      append({ id: `${Date.now()}-dashboard-password`, role: "concierge", text: "Create a secure password. Use at least 10 characters." });
+      return;
+    }
+    if (value.length < 10) { setNotice("Use at least 10 characters for your password."); return; }
+    try {
+      const created = await register.mutateAsync({ name: dashboardName, email: dashboardEmail, password: rawValue, acceptedTerms: true });
+      utils.auth.me.setData(undefined, created);
+      await utils.auth.me.invalidate();
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ intent, vehicleClass, timeline, selectedVehicleId }));
+      setDashboardCreationField(null);
+      setContinueAfterRegistration(true);
+      append({ id: `${Date.now()}-dashboard-ready`, role: "concierge", text: "Your DreamCarz dashboard is ready. I’ll keep your vehicle path right here." });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "We could not create your dashboard yet.");
+    }
+  };
   const ask = async (rawQuestion: string) => {
     const value = rawQuestion.trim();
     if (!value || sending) return;
+    if (dashboardCreationField && !dashboardQuestionMode) {
+      await answerDashboardCreation(rawQuestion);
+      return;
+    }
     const memberEntry: Entry = { id: `${Date.now()}-member`, role: "member", text: value };
     const conversation = [...history.slice(-5), memberEntry].map(entry => ({ role: entry.role === "member" ? "member" as const : "concierge" as const, text: entry.text.slice(0, 420) }));
     setQuestion("");
@@ -120,6 +165,10 @@ export default function Concierge() {
       setVehicleClass(response.vehicleClass === "sedan" || response.vehicleClass === "suv" ? response.vehicleClass : null);
       setRecommendedIds(/\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value) ? response.recommendedVehicleIds : null);
       append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer });
+      if (dashboardQuestionMode && dashboardCreationField) {
+        setDashboardQuestionMode(false);
+        append({ id: `${Date.now() + 1}-dashboard-return`, role: "concierge", text: `When you’re ready, ${dashboardPrompt.toLowerCase()}` });
+      }
     } catch {
       setNotice("Please avoid personal, license, or payment details here.");
     }
@@ -158,7 +207,10 @@ export default function Concierge() {
   const openAccount = () => {
     if (isAuthenticated) { navigate("/dashboard"); return; }
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ intent, vehicleClass, timeline, selectedVehicleId }));
-    navigate(`/login?next=${encodeURIComponent(`/concierge?intent=${intent === "purchase" ? "purchase" : "rental"}`)}`);
+    if (dashboardCreationField) return;
+    setDashboardQuestionMode(false);
+    setDashboardCreationField("name");
+    append({ id: `${Date.now()}-dashboard-start`, role: "concierge", text: "Let me gather a few details and create your DreamCarz dashboard. What should I call you?" });
   };
   const openEnrollment = (reference: string) => {
     setEnrollmentReference(reference);
@@ -186,6 +238,11 @@ export default function Concierge() {
       setNotice(error instanceof Error ? error.message : "DreamCarz could not start your journey.");
     }
   };
+  useEffect(() => {
+    if (!continueAfterRegistration || !isAuthenticated || !selectedVehicle || !timeline) return;
+    setContinueAfterRegistration(false);
+    void continueJourney();
+  }, [continueAfterRegistration, isAuthenticated, selectedVehicle, timeline]);
 
   return (
     <ConciergeWorkspace dashboard={dashboardMode} userName={user?.name} isAuthenticated={isAuthenticated} hasSavedPath={hasSavedPath} savedPath={{ vehicleName: savedPathVehicle?.vehicleName ?? selectedVehicle?.vehicleName ?? null, vehicleImage: savedPathVehicle?.image ?? selectedVehicle?.image ?? null, intent: workspacePathIntent, timeline: savedPathTimeline ?? timeline, nextStep: savedPathStep ?? (enrollmentReference ? "Continue enrollment" : null) }} canResume={Boolean(activeTransaction)} onResume={() => activeTransaction ? openEnrollment(activeTransaction.reference) : restore()} onNewConversation={reset} onChoosePath={choosePath} onChangeVehicle={changeVehicle} onAccount={openAccount}>
@@ -203,16 +260,16 @@ export default function Concierge() {
             {!dashboardMode && hasSavedPath ? <section aria-label="Saved Concierge choices" className="border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Your saved path</p><p className="mt-1 text-sm font-semibold">Pick up where you left off.</p></div>{activeTransaction ? <button type="button" onClick={() => openEnrollment(activeTransaction.reference)} className="shrink-0 rounded-full bg-black px-3 py-2 text-xs font-semibold text-white">Resume</button> : null}</div><div className="mt-4 grid gap-2 text-xs text-gray-600">{savedPathVehicle ? <div className="flex items-center gap-3 border-t border-[#eee4c9] pt-3"><img src={savedPathVehicle.image} alt="" className="h-10 w-16 object-contain" /><span><strong className="text-gray-900">Vehicle</strong> · {savedPathVehicle.vehicleName}</span></div> : null}{savedPathIntent === "rental" || savedPathIntent === "purchase" ? <p><strong className="text-gray-900">Path</strong> · {savedPathIntent === "rental" ? "Renting" : "Buying"}</p> : null}{savedPathTimeline ? <p><strong className="text-gray-900">Timing</strong> · {savedPathTimeline === "this_week" ? "This week" : savedPathTimeline === "soon" ? "Soon" : "Exploring"}</p> : null}{savedPathStep ? <p><strong className="text-gray-900">Next</strong> · {savedPathStep}</p> : null}</div></section> : null}
             {showVehicleClassChoice ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1">{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold">{option.kind === "suv" ? "SUV" : "Sedan"}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
             {recommendedIds?.length ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className={`overflow-hidden rounded-xl border bg-white text-left ${selectedVehicleId === vehicle.vehicleId ? "border-black ring-1 ring-black" : "border-[#e6e6e6]"}`}><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">{selectedVehicleId === vehicle.vehicleId ? <><Check size={13} className="text-[#a8832d]" /> Selected</> : <><CarFront size={13} className="text-[#a8832d]" /> Choose</>}</span></div></button>)}</div></div> : null}
-            {selectedVehicle ? <div className="rounded-xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><p className="font-semibold">When would you like to drive?</p><div className="mt-3 flex flex-wrap gap-2">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => setTimeline(item)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div>{!isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">Create your DreamCarz dashboard to keep this vehicle and continue securely.</p> : null}<button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Create your dashboard"}<ArrowRight size={15} /></button></div> : null}
+            {selectedVehicle ? <div className="rounded-xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><p className="font-semibold">When would you like to drive?</p><div className="mt-3 flex flex-wrap gap-2">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => { setTimeline(item); if (!isAuthenticated) openAccount(); }} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div>{!isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">I’ll create your dashboard here and keep this vehicle saved.</p> : null}<button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Create your dashboard"}<ArrowRight size={15} /></button></div> : null}
             {enrollmentReference ? <ConciergeEnrollmentPanel reference={enrollmentReference} onProgress={message => append({ id: `${Date.now()}-enrollment-progress`, role: "concierge", text: message })} /> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
           </div>
           <form onSubmit={submit} className="mt-auto pt-8">
             <div className="flex items-center gap-2 rounded-[26px] bg-[#f4f4f4] px-4 py-2">
-              <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={240} disabled={sending} placeholder="Ask DreamCarz" className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-gray-500" />
+              <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={dashboardCreationField === "password" && !dashboardQuestionMode ? 128 : 240} disabled={sending} type={dashboardCreationField === "password" && !dashboardQuestionMode ? "password" : "text"} autoComplete={dashboardCreationField === "name" && !dashboardQuestionMode ? "name" : dashboardCreationField === "email" && !dashboardQuestionMode ? "email" : dashboardCreationField === "password" && !dashboardQuestionMode ? "new-password" : "off"} placeholder={dashboardCreationField && !dashboardQuestionMode ? dashboardPrompt : "Ask DreamCarz"} className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-gray-500" />
               <button type="submit" disabled={!question.trim() || sending} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black text-white disabled:opacity-40" aria-label="Ask DreamCarz Concierge"><Send size={17} /></button>
             </div>
-            <p className="mt-3 flex items-start gap-1.5 px-2 text-[10px] leading-4 text-gray-400"><ShieldCheck size={12} className="mt-0.5 shrink-0" /> No private details in chat.</p>
+            {dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="mt-3 px-2 text-[10px] font-semibold text-gray-500 underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : <p className="mt-3 flex items-start gap-1.5 px-2 text-[10px] leading-4 text-gray-400"><ShieldCheck size={12} className="mt-0.5 shrink-0" /> No private details in chat.</p>}
           </form>
         </div>
     </ConciergeWorkspace>

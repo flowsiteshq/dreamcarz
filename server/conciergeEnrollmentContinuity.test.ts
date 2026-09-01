@@ -12,7 +12,8 @@ describe("Concierge enrollment continuity", () => {
   });
 
   it("keeps the natural-language question form available alongside in-page enrollment", () => {
-    expect(conciergeSource).toContain('placeholder="Ask DreamCarz"');
+    expect(conciergeSource).toContain('placeholder={dashboardCreationField && !dashboardQuestionMode ? dashboardPrompt : "Ask DreamCarz"}');
+    expect(conciergeSource).toContain("Ask a question instead");
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");
   });
 });
