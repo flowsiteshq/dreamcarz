@@ -3072,7 +3072,6 @@ export const appRouter = router({
         db.select({ id: agreementTemplates.id }).from(agreementTemplates).where(eq(agreementTemplates.isActive, true)),
       ]);
       const payment = getPaymentProviderStatus();
-      const stripeIdentity = getIdentityProviderStatus();
       const awsFaceLiveness = getAwsFaceLivenessStatus();
       const pendingIdentity = transactions.filter(transaction => ["pending", "manual_review", "needs_attention"].includes(transaction.identityStatus)).length;
       const pendingPayment = transactions.filter(transaction => ["pending", "required", "failed"].includes(transaction.paymentStatus)).length;
@@ -3098,12 +3097,12 @@ export const appRouter = router({
         {
           key: "identity",
           label: "Identity and liveness verification",
-          state: awsFaceLiveness.configured || stripeIdentity.configured ? "attention" : "blocker",
+          state: "blocker",
           detail: awsFaceLiveness.configured
-            ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS customer verification requires consent and a manual-review decision.`
+            ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS Face Liveness supports consented liveness only; a compliant driver's-license and live-selfie matching provider still requires configuration and manual review.`
             : awsFaceLiveness.browserCredentialBrokerConfigured
-              ? "AWS temporary browser credentials are prepared, but the customer camera flow remains disabled pending protected broker and official client verification. The private document and manual-review path remains available."
-              : "Provider liveness verification is not customer-active. The private document and manual-review path remains available.",
+              ? "AWS temporary browser credentials are prepared, but liveness is not full driver's-license verification. A compliant license-and-live-selfie matching provider, customer consent, and manual review are still required."
+              : "A compliant driver's-license and live-selfie matching provider is not customer-active. The private document and manual-review path remains available.",
         },
         {
           key: "agreement",
