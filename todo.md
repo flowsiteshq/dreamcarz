@@ -210,6 +210,7 @@
 - [x] Require each customer-added rental driver to complete separate identity and license review before a rental can be released or its handoff acknowledged.
 - [x] Add private proof-of-insurance upload, protected administrator review, and release-gated manual status decisions without insurance sales or automated coverage determinations.
 - [x] Add administrator-controlled, unseeded eligibility policy records that can be versioned and attached to manual transaction reviews without automated approvals.
+- [ ] Require an active administrator-controlled eligibility policy before a rental transaction can be manually cleared for eligibility.
 - [x] Complete separated rental, purchase, rent-to-buy, and swap workflows that reuse DreamCarz ID and never claim unavailable pricing or financing approvals.
 - [ ] Add configurable membership benefits that affect permitted vehicle access, discounts, deposits, credits, delivery benefits, and upgrade eligibility through transaction rules.
 - [x] Keep new membership benefits draft-only until approved benefit configurations are defined, preventing ad hoc activation from transaction eligibility or financial effects.
@@ -356,3 +357,4 @@
 - [x] Reveal matching confirmed sedan or SUV vehicle cards immediately after the member taps a body-style choice in Concierge.
 - [x] Keep DreamCarz Concierge with the customer through guided in-page enrollment, answer conversational interruptions naturally, and return to the exact next enrollment step without early dashboard handoffs.
 - [x] Show saved Concierge vehicle, timing, and protected current-step decisions in Concierge without retaining chat transcript text.
+- [x] Transition Concierge into a responsive dashboard-style workspace after vehicle selection, with live conversation, saved-path context, and safe guest sign-in guidance.
