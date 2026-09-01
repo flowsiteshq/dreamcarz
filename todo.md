@@ -349,5 +349,6 @@
 - [x] Eliminate mobile horizontal overflow in the active Concierge conversation so greeting, replies, prompt, and contextual vehicle cards reflow cleanly within the phone viewport.
 - [x] Rebuild DreamCarz Concierge as one continuous ChatGPT-style thread that retains only temporary in-browser conversation context, asks adaptive next questions, and reveals vehicle or protected onboarding actions only when relevant.
 - [x] Reduce DreamCarz Concierge to a minimal ChatGPT-style mobile screen with one short opening message, open conversation space, a rounded bottom prompt bar, concise replies, and contextual vehicle cards only when needed.
-- [ ] Show a clean sedan-or-SUV visual choice immediately after the Concierge asks the member which body style they prefer, while preserving the minimal continuous chat flow.
 - [x] Show a clean sedan-or-SUV visual choice immediately after the Concierge asks the member which body style they prefer, while preserving the minimal continuous chat flow.
+- [x] Show a clean sedan-or-SUV visual choice immediately after the Concierge asks the member which body style they prefer, while preserving the minimal continuous chat flow.
+- [x] Make Rent and Buy entry actions greet a signed-in member by first name once, ask the relevant vehicle-type question, and immediately offer sedan and SUV images.
