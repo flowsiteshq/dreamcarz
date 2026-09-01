@@ -513,7 +513,7 @@ export const appRouter = router({
         db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))),
         db.select({ membership: customerMemberships, plan: membershipPlans }).from(customerMemberships).innerJoin(membershipPlans, eq(customerMemberships.membershipPlanId, membershipPlans.id)).where(and(eq(customerMemberships.userId, ctx.user.id), eq(customerMemberships.status, "active"))).orderBy(desc(customerMemberships.updatedAt)).limit(1),
         db.select().from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1),
-        db.select({ reference: vehicleTransactions.reference, transactionType: vehicleTransactions.transactionType, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(eq(vehicleTransactions.userId, ctx.user.id)).orderBy(desc(vehicleTransactions.updatedAt)).limit(12),
+        db.select({ reference: vehicleTransactions.reference, transactionType: vehicleTransactions.transactionType, vehicleId: vehicleTransactions.vehicleId, vehicleName: vehicleTransactions.vehicleName, status: vehicleTransactions.status, currentStep: vehicleTransactions.currentStep, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).where(eq(vehicleTransactions.userId, ctx.user.id)).orderBy(desc(vehicleTransactions.updatedAt)).limit(12),
         db.select().from(conciergeJourneyPreferences).where(eq(conciergeJourneyPreferences.userId, ctx.user.id)).limit(1),
       ]);
       const membership = memberships[0] ?? null;

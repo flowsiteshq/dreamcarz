@@ -355,3 +355,4 @@
 - [x] Replace the staged Concierge loading screen with a subtle fade transition directly into the chat interface.
 - [x] Reveal matching confirmed sedan or SUV vehicle cards immediately after the member taps a body-style choice in Concierge.
 - [x] Keep DreamCarz Concierge with the customer through guided in-page enrollment, answer conversational interruptions naturally, and return to the exact next enrollment step without early dashboard handoffs.
+- [x] Show saved Concierge vehicle, timing, and protected current-step decisions in Concierge without retaining chat transcript text.
