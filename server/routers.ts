@@ -3676,6 +3676,9 @@ export const appRouter = router({
         handoffNotes: z.string().trim().max(1_000).optional(),
       })).mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.handoffStatus === "customer_verified") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only the account owner can acknowledge an arrived handoff." });
+        }
         if (input.handoffNotes) assertSafeRestrictedContent(input.handoffNotes, "operational report");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Handoff operations are temporarily unavailable." });
@@ -3683,11 +3686,17 @@ export const appRouter = router({
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         const schedule = (await db.select().from(transactionSchedules).where(eq(transactionSchedules.transactionId, transaction.id)).limit(1))[0];
         if (!schedule) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save customer schedule details before assigning a handoff." });
-        const pickupStatus = input.handoffStatus === "customer_verified" ? "verified" : input.handoffStatus === "completed" ? "completed" : input.handoffStatus === "missed" ? "missed" : "pending";
+        if (["arrived", "completed"].includes(input.handoffStatus) && transaction.status !== "ready_for_pickup") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Release the transaction through the verified workflow before recording an arrived or completed handoff." });
+        }
+        if (input.handoffStatus === "completed" && schedule.handoffStatus !== "customer_verified") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The account owner must acknowledge the arrived handoff before it can be completed." });
+        }
+        const pickupStatus = input.handoffStatus === "completed" ? "completed" : input.handoffStatus === "missed" ? "missed" : "pending";
         const estimatedArrivalAt = input.estimatedArrivalAt === undefined ? schedule.estimatedArrivalAt : input.estimatedArrivalAt;
         await db.update(transactionSchedules).set({ scheduledHandoffAt: input.scheduledHandoffAt ?? schedule.scheduledHandoffAt, estimatedArrivalAt, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName, handoffStatus: input.handoffStatus, handoffNotes: input.handoffNotes ?? schedule.handoffNotes }).where(eq(transactionSchedules.id, schedule.id));
         if (transaction.transactionType === "rental") await db.update(vehicleTransactions).set({ pickupStatus }).where(eq(vehicleTransactions.id, transaction.id));
-        else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "verified" ? "verified" : pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
+        else await db.update(vehicleTransactions).set({ deliveryStatus: pickupStatus === "completed" ? "completed" : pickupStatus === "missed" ? "missed" : "scheduled" }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "handoff.updated", fromStatus: schedule.handoffStatus, toStatus: input.handoffStatus, note: input.handoffNotes ?? null, metadata: JSON.stringify({ pickupMethod: schedule.pickupMethod, scheduledHandoffAt: (input.scheduledHandoffAt ?? schedule.scheduledHandoffAt)?.toISOString() ?? null, estimatedArrivalAt: estimatedArrivalAt?.toISOString() ?? null, assignedDriverName: input.assignedDriverName ?? schedule.assignedDriverName ?? null }) });
         await deliverLifecycleInAppNotice(db, { userId: transaction.userId, title: "Handoff update", body: `DreamCarz updated the ${schedule.pickupMethod === "delivery" ? "delivery" : "pickup"} status for your rental to ${input.handoffStatus.replaceAll("_", " ")}. Review current details in your private rental record.`, actionPath: `/dashboard/transactions?ref=${encodeURIComponent(transaction.reference)}`, relatedTransactionId: transaction.id });
         return { success: true, handoffStatus: input.handoffStatus };

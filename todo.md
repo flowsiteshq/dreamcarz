@@ -230,7 +230,7 @@
 - [x] Build guided pickup and return inspections with required vehicle views, mileage, fuel/charge, secure evidence storage, and human-review-only future computer-vision architecture.
 - [x] Add administrator-only review decisions and notes for Vehicle Passport operational inspections without automatically changing vehicle readiness.
 - [x] Require structured pickup and return evidence labels for front, rear, driver side, passenger side, interior, and odometer views before a condition report can be finalized.
-- [ ] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
+- [x] Add operational pickup and delivery workflows, status/ETA handling, driver assignment, customer handoff, and future keyless-access integration boundaries.
 - [x] Add an administrator-controlled handoff estimated-arrival field with customer-safe visibility and no delivery-time guarantee.
 - [x] Add administrator-only pickup or delivery driver assignment to existing rental handoff records with minimal audit metadata and no delivery guarantee.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before authorized handoff notes are stored.

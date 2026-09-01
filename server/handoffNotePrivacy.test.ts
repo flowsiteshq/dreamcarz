@@ -17,4 +17,9 @@ describe("DreamCarz handoff note privacy", () => {
     await expect(appRouter.createCaller(adminContext as never).operations.handoff.update({ reference: "DCR-2026-HANDOFF", handoffStatus: "scheduled", handoffNotes: "Password: prohibited-value" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
+
+  it("reserves handoff acknowledgement for the account-owner confirmation path", async () => {
+    await expect(appRouter.createCaller(adminContext as never).operations.handoff.update({ reference: "DCR-2026-HANDOFF", handoffStatus: "customer_verified" })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
 });
