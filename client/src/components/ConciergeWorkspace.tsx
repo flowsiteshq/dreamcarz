@@ -72,7 +72,7 @@ export function ConciergeWorkspace({
 
   return (
     <main aria-label="DreamCarz Concierge dashboard" className="min-h-screen bg-[#f5f5f3] text-[#1f1f1f]">
-      <section className={`mx-auto min-h-screen w-full max-w-[1520px] bg-white transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${entered ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"}`}>
+      <section className={`min-h-screen w-full bg-white transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${entered ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"}`}>
         {header}
         <div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[236px_minmax(0,1fr)] xl:grid-cols-[236px_minmax(0,1fr)_280px]">
           <aside className="hidden bg-[#0d0f10] px-4 py-5 text-white lg:flex lg:flex-col">

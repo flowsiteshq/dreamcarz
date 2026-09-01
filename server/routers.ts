@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { createDirectSession, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
+import { createDirectSession, hasDirectAccountForEmail, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
 import {
   referralProfiles,
   referrals,
@@ -212,6 +212,13 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    conciergeAccountPath: publicProcedure
+      .input(z.object({ email: z.string().trim().email().max(320) }))
+      .mutation(async ({ ctx, input }) => {
+        const lookupLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "concierge-account-path", input.email), limit: 5, windowMs: 15 * 60_000 });
+        if (!lookupLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before trying another email." });
+        return { hasPasswordAccount: await hasDirectAccountForEmail(input.email) } as const;
+      }),
     register: publicProcedure
       .input(
         z.object({

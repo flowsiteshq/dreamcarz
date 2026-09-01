@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
 type Entry = { id: string; role: "concierge" | "member"; text: string };
-type DashboardCreationField = "name" | "email" | "password" | null;
+type DashboardCreationField = "name" | "email" | "password" | "existingPassword" | null;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
   sedan: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image,
@@ -51,6 +51,8 @@ export default function Concierge() {
   const savePreference = trpc.concierge.saveJourneyPreference.useMutation();
   const beginTransaction = trpc.transactions.begin.useMutation();
   const register = trpc.auth.register.useMutation();
+  const login = trpc.auth.login.useMutation();
+  const accountPath = trpc.auth.conciergeAccountPath.useMutation();
   const utils = trpc.useUtils();
   const [question, setQuestion] = useState("");
   const [intent, setIntent] = useState<Intent>(getRouteIntent);
@@ -112,32 +114,44 @@ export default function Concierge() {
     kind,
     image: inventory.find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
   }));
-  const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending;
-  const dashboardPrompt = dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "email" ? "What email should we use?" : "Create a secure password";
+  const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
+  const dashboardPrompt = dashboardCreationField === "email" ? "What email should we use?" : dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "existingPassword" ? "Enter your password to sign in" : "Create a secure password";
 
   const answerDashboardCreation = async (rawValue: string) => {
     const value = rawValue.trim();
     if (!value || !dashboardCreationField || sending) return;
     setQuestion("");
     setNotice("");
-    if (dashboardCreationField === "name") {
-      if (value.length < 2) { setNotice("Please enter your name."); return; }
-      setDashboardName(value);
-      setDashboardCreationField("email");
-      append({ id: `${Date.now()}-dashboard-email`, role: "concierge", text: "Thank you. What email should we use?" });
-      return;
-    }
     if (dashboardCreationField === "email") {
       if (!/^\S+@\S+\.\S+$/.test(value)) { setNotice("Please enter a valid email address."); return; }
       setDashboardEmail(value);
+      try {
+        const account = await accountPath.mutateAsync({ email: value });
+        if (account.hasPasswordAccount) {
+          setDashboardCreationField("existingPassword");
+          append({ id: `${Date.now()}-dashboard-sign-in`, role: "concierge", text: "I found your DreamCarz dashboard. Enter your password to sign in and continue." });
+        } else {
+          setDashboardCreationField("name");
+          append({ id: `${Date.now()}-dashboard-name`, role: "concierge", text: "Great. What should I call you?" });
+        }
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "We could not check that email yet.");
+      }
+      return;
+    }
+    if (dashboardCreationField === "name") {
+      if (value.length < 2) { setNotice("Please enter your name."); return; }
+      setDashboardName(value);
       setDashboardCreationField("password");
       append({ id: `${Date.now()}-dashboard-password`, role: "concierge", text: "Create a secure password. Use at least 10 characters." });
       return;
     }
-    if (value.length < 10) { setNotice("Use at least 10 characters for your password."); return; }
+    if (dashboardCreationField === "password" && value.length < 10) { setNotice("Use at least 10 characters for your password."); return; }
     try {
-      const created = await register.mutateAsync({ name: dashboardName, email: dashboardEmail, password: rawValue, acceptedTerms: true });
-      utils.auth.me.setData(undefined, created);
+      const account = dashboardCreationField === "existingPassword"
+        ? await login.mutateAsync({ email: dashboardEmail, password: rawValue })
+        : await register.mutateAsync({ name: dashboardName, email: dashboardEmail, password: rawValue, acceptedTerms: true });
+      utils.auth.me.setData(undefined, account);
       await utils.auth.me.invalidate();
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ intent, vehicleClass, timeline, selectedVehicleId }));
       setDashboardCreationField(null);
@@ -209,8 +223,8 @@ export default function Concierge() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ intent, vehicleClass, timeline, selectedVehicleId }));
     if (dashboardCreationField) return;
     setDashboardQuestionMode(false);
-    setDashboardCreationField("name");
-    append({ id: `${Date.now()}-dashboard-start`, role: "concierge", text: "Let me gather a few details and create your DreamCarz dashboard. What should I call you?" });
+    setDashboardCreationField("email");
+    append({ id: `${Date.now()}-dashboard-start`, role: "concierge", text: "Let me gather a few details and create your DreamCarz dashboard. What email should we use?" });
   };
   const openEnrollment = (reference: string) => {
     setEnrollmentReference(reference);
@@ -266,7 +280,7 @@ export default function Concierge() {
           </div>
           <form onSubmit={submit} className="mt-auto pt-8">
             <div className="flex items-center gap-2 rounded-[26px] bg-[#f4f4f4] px-4 py-2">
-              <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={dashboardCreationField === "password" && !dashboardQuestionMode ? 128 : 240} disabled={sending} type={dashboardCreationField === "password" && !dashboardQuestionMode ? "password" : "text"} autoComplete={dashboardCreationField === "name" && !dashboardQuestionMode ? "name" : dashboardCreationField === "email" && !dashboardQuestionMode ? "email" : dashboardCreationField === "password" && !dashboardQuestionMode ? "new-password" : "off"} placeholder={dashboardCreationField && !dashboardQuestionMode ? dashboardPrompt : "Ask DreamCarz"} className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-gray-500" />
+              <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={(dashboardCreationField === "password" || dashboardCreationField === "existingPassword") && !dashboardQuestionMode ? 128 : 240} disabled={sending} type={(dashboardCreationField === "password" || dashboardCreationField === "existingPassword") && !dashboardQuestionMode ? "password" : "text"} autoComplete={dashboardCreationField === "name" && !dashboardQuestionMode ? "name" : dashboardCreationField === "email" && !dashboardQuestionMode ? "email" : dashboardCreationField === "password" && !dashboardQuestionMode ? "new-password" : dashboardCreationField === "existingPassword" && !dashboardQuestionMode ? "current-password" : "off"} placeholder={dashboardCreationField && !dashboardQuestionMode ? dashboardPrompt : "Ask DreamCarz"} className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-gray-500" />
               <button type="submit" disabled={!question.trim() || sending} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black text-white disabled:opacity-40" aria-label="Ask DreamCarz Concierge"><Send size={17} /></button>
             </div>
             {dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="mt-3 px-2 text-[10px] font-semibold text-gray-500 underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : <p className="mt-3 flex items-start gap-1.5 px-2 text-[10px] leading-4 text-gray-400"><ShieldCheck size={12} className="mt-0.5 shrink-0" /> No private details in chat.</p>}

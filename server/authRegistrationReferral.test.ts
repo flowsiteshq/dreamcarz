@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 vi.mock("./directAuth", () => ({
   createDirectSession: vi.fn(),
+  hasDirectAccountForEmail: vi.fn(),
   loginDirectAccount: vi.fn(),
   registerDirectAccount: vi.fn(),
   revokeDirectSession: vi.fn(),
@@ -12,18 +13,20 @@ vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() 
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 
 import { getDb } from "./db";
-import { createDirectSession, registerDirectAccount } from "./directAuth";
+import { createDirectSession, hasDirectAccountForEmail, registerDirectAccount } from "./directAuth";
 import { appRouter } from "./routers";
 
 const mockedGetDb = vi.mocked(getDb);
 const mockedRegister = vi.mocked(registerDirectAccount);
 const mockedCreateSession = vi.mocked(createDirectSession);
+const mockedHasDirectAccount = vi.mocked(hasDirectAccountForEmail);
 
 describe("DreamCarz registration referral attribution", () => {
   beforeEach(() => {
     mockedGetDb.mockReset();
     mockedRegister.mockReset();
     mockedCreateSession.mockReset();
+    mockedHasDirectAccount.mockReset();
   });
 
   it("creates a pending immutable referral link only for a validated Associate code at registration", async () => {
@@ -49,5 +52,13 @@ describe("DreamCarz registration referral attribution", () => {
 
     await expect(caller.auth.register({ name: "New Member", email: "invalid.referral@example.test", password: "DreamCarz!2026", acceptedTerms: true, referralCode: "DC-UNKNOWN" })).rejects.toThrow("Associate referral code is not active");
     expect(mockedRegister).not.toHaveBeenCalled();
+  });
+
+  it("returns the Concierge account path only through the bounded email-recognition procedure", async () => {
+    mockedHasDirectAccount.mockResolvedValue(true);
+    const caller = appRouter.createCaller({ user: null, req: { headers: {} }, res: { cookie: vi.fn() } } as never);
+
+    await expect(caller.auth.conciergeAccountPath({ email: "existing.concierge@example.test" })).resolves.toEqual({ hasPasswordAccount: true });
+    expect(mockedHasDirectAccount).toHaveBeenCalledWith("existing.concierge@example.test");
   });
 });

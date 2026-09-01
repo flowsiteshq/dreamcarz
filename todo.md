@@ -359,3 +359,4 @@
 - [x] Show saved Concierge vehicle, timing, and protected current-step decisions in Concierge without retaining chat transcript text.
 - [x] Transition Concierge into a responsive dashboard-style workspace after vehicle selection, with live conversation, saved-path context, and safe guest sign-in guidance.
 - [x] Let Concierge guide a guest through protected dashboard creation after vehicle selection with one conversational question at a time, including secure name, email, and password handling before restoring the selected rental or purchase path.
+- [x] Expand the selected-vehicle Concierge workspace to the full page and detect an existing account at email entry so the conversation securely signs in instead of attempting duplicate registration.

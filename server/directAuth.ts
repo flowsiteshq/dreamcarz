@@ -89,6 +89,20 @@ export async function loginDirectAccount(emailInput: string, password: string): 
   return { ...match.user, lastSignedIn: new Date() };
 }
 
+export async function hasDirectAccountForEmail(emailInput: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DreamCarz accounts are temporarily unavailable");
+
+  const email = normalizeEmail(emailInput);
+  const account = await db
+    .select({ id: users.id })
+    .from(userCredentials)
+    .innerJoin(users, eq(userCredentials.userId, users.id))
+    .where(eq(users.email, email))
+    .limit(1);
+  return Boolean(account[0]);
+}
+
 export async function createDirectSession(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("DreamCarz sessions are temporarily unavailable");
