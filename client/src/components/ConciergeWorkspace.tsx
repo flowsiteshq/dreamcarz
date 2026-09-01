@@ -12,6 +12,7 @@ type SavedPath = {
 
 type ConciergeWorkspaceProps = {
   dashboard: boolean;
+  intent: "rental" | "purchase" | null;
   userName: string | null | undefined;
   isAuthenticated: boolean;
   hasSavedPath: boolean;
@@ -29,6 +30,7 @@ const timelineLabel = (timeline: SavedPath["timeline"]) => timeline === "this_we
 
 export function ConciergeWorkspace({
   dashboard,
+  intent,
   userName,
   isAuthenticated,
   hasSavedPath,
@@ -81,8 +83,8 @@ export function ConciergeWorkspace({
               <p className="mt-3 text-xs leading-5 text-white/55">Your selected vehicle and next step stay together here.</p>
             </div>
             <nav aria-label="Concierge actions" className="mt-5 grid gap-2">
-              <button type="button" onClick={() => onChoosePath("rental")} className="flex items-center gap-3 rounded-xl bg-white/10 px-3 py-3 text-left text-sm font-semibold active:scale-[0.98]"><CarFront size={16} className="text-[#d9b756]" /> Rent a vehicle</button>
-              <button type="button" onClick={() => onChoosePath("purchase")} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-white/75 hover:bg-white/10 active:scale-[0.98]"><CarFront size={16} className="text-[#d9b756]" /> Buy a vehicle</button>
+              <button type="button" onClick={() => onChoosePath("rental")} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold active:scale-[0.98] ${intent === "rental" ? "bg-white/10 text-white" : "text-white/75 hover:bg-white/10"}`}><CarFront size={16} className="text-[#d9b756]" /> Rent a vehicle</button>
+              <button type="button" onClick={() => onChoosePath("purchase")} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold active:scale-[0.98] ${intent === "purchase" ? "bg-white/10 text-white" : "text-white/75 hover:bg-white/10"}`}><CarFront size={16} className="text-[#d9b756]" /> Buy a vehicle</button>
               <button type="button" onClick={onChangeVehicle} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-white/75 hover:bg-white/10 active:scale-[0.98]"><Bookmark size={16} className="text-[#d9b756]" /> Change vehicle</button>
             </nav>
             <div className="mt-auto border-t border-white/10 pt-5 text-xs leading-5 text-white/55">Ask a question anytime. Your enrollment stays at the exact next step.</div>

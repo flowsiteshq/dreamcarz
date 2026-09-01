@@ -2471,8 +2471,9 @@ export const appRouter = router({
         if (!isTransactionStep(transaction.transactionType, input.currentStep)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This step is not valid for the selected transaction." });
         }
+        const recoverLegacyRentalTradeIn = transaction.transactionType === "rental" && transaction.currentStep === "trade_in" && input.currentStep === "eligibility";
         const nextStep = nextCustomerTransactionStep(transaction.transactionType, transaction.currentStep, transaction.purchasePaymentPath);
-        if (input.currentStep !== nextStep) {
+        if (!recoverLegacyRentalTradeIn && input.currentStep !== nextStep) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This transaction can advance only to its next available customer stage." });
         }
         if (transaction.currentStep === "identity") {
@@ -2487,7 +2488,7 @@ export const appRouter = router({
         if (transaction.currentStep === "pricing" && !transaction.pricingSnapshot) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DreamCarz must record an approved transaction pricing summary before payment-method setup can begin." });
         if (transaction.currentStep === "payment" && !["authorized", "paid"].includes(transaction.paymentStatus)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete the provider-managed payment authorization before continuing to agreement review." });
         await db.update(vehicleTransactions).set({ currentStep: input.currentStep }).where(eq(vehicleTransactions.id, transaction.id));
-        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: "transaction.step_advanced", metadata: JSON.stringify({ fromStep: transaction.currentStep, toStep: input.currentStep }) });
+        await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: recoverLegacyRentalTradeIn ? "rental.invalid_trade_in_step_recovered" : "transaction.step_advanced", metadata: JSON.stringify({ fromStep: transaction.currentStep, toStep: input.currentStep }) });
         return { success: true, currentStep: input.currentStep };
       }),
   }),
