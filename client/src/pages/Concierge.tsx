@@ -15,6 +15,16 @@ const VEHICLE_CLASS_IMAGES = {
   sedan: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image,
   suv: APPROVED_TRANSACTION_VEHICLES["2022-chevrolet-traverse-white"].image,
 } as const;
+const CONFIRMED_CONCIERGE_VEHICLES = [
+  { vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu · Gray", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image },
+  { vehicleId: "2022-chevrolet-traverse-white", vehicleName: "2022 Chevrolet Traverse · White", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2022-chevrolet-traverse-white"].image },
+  { vehicleId: "2024-ford-fusion-gray", vehicleName: "2024 Ford Fusion · Gray", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2024-ford-fusion-gray"].image },
+  { vehicleId: "2020-chevrolet-traverse-gray", vehicleName: "2020 Chevrolet Traverse · Gray", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-traverse-gray"].image },
+  { vehicleId: "2019-chevrolet-malibu-black", vehicleName: "2019 Chevrolet Malibu · Black", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2019-chevrolet-malibu-black"].image },
+  { vehicleId: "2015-ford-taurus-gray", vehicleName: "2015 Ford Taurus · Gray", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2015-ford-taurus-gray"].image },
+  { vehicleId: "2020-chevrolet-equinox-gray", vehicleName: "2020 Chevrolet Equinox · Gray", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-equinox-gray"].image },
+  { vehicleId: "2020-chevrolet-equinox-black", vehicleName: "2020 Chevrolet Equinox · Black", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-equinox-black"].image },
+] as const;
 
 const firstName = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || "there";
 const getRouteIntent = (): Intent => {
@@ -42,6 +52,13 @@ export function shouldShowVehicleClassChoice(input: {
     && (input.intent === "rental" || input.intent === "purchase")
     && /\b(?:vehicle|sedan|suv)\b/i.test(input.latestConciergeMessage)
     && /\b(?:type|sedan|suv)\b/i.test(input.latestConciergeMessage);
+}
+
+export function vehicleIdsForClass(
+  vehicles: ReadonlyArray<{ vehicleId: string; vehicleClass: string }>,
+  choice: Exclude<VehicleClass, null>,
+) {
+  return vehicles.filter(vehicle => vehicle.vehicleClass === choice).map(vehicle => vehicle.vehicleId);
 }
 
 export default function Concierge() {
@@ -87,16 +104,17 @@ export default function Concierge() {
       append({ id: "restored", role: "concierge", text: "Your saved path is ready." });
     } catch { sessionStorage.removeItem(STORAGE_KEY); }
   }, []);
+  const inventory = vehicles.data?.length ? vehicles.data : CONFIRMED_CONCIERGE_VEHICLES;
   const visibleVehicles = useMemo(() => {
-    const classMatches = vehicleClass ? (vehicles.data ?? []).filter(item => item.vehicleClass === vehicleClass) : (vehicles.data ?? []);
+    const classMatches = vehicleClass ? inventory.filter(item => item.vehicleClass === vehicleClass) : inventory;
     return (recommendedIds ? classMatches.filter(item => recommendedIds.includes(item.vehicleId)) : classMatches).slice(0, 2);
-  }, [vehicles.data, vehicleClass, recommendedIds]);
-  const selectedVehicle = (vehicles.data ?? []).find(item => item.vehicleId === selectedVehicleId) ?? null;
+  }, [inventory, vehicleClass, recommendedIds]);
+  const selectedVehicle = inventory.find(item => item.vehicleId === selectedVehicleId) ?? null;
   const latestConciergeMessage = [...history].reverse().find(entry => entry.role === "concierge")?.text ?? "";
   const showVehicleClassChoice = shouldShowVehicleClassChoice({ intent, vehicleClass, hasSelectedVehicle: Boolean(selectedVehicle), latestConciergeMessage });
   const vehicleClassChoices = (["sedan", "suv"] as const).map(kind => ({
     kind,
-    image: (vehicles.data ?? []).find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
+    image: inventory.find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
   }));
   const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending;
 
@@ -122,12 +140,12 @@ export default function Concierge() {
   const selectVehicle = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
     setTimeline(null);
-    const vehicle = (vehicles.data ?? []).find(item => item.vehicleId === vehicleId);
+    const vehicle = inventory.find(item => item.vehicleId === vehicleId);
     if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: `${vehicle.vehicleName} selected. When would you like to drive?` });
   };
   const selectVehicleClass = (choice: Exclude<VehicleClass, null>) => {
     setVehicleClass(choice);
-    setRecommendedIds(null);
+    setRecommendedIds(vehicleIdsForClass(inventory, choice));
     append({ id: `${Date.now()}-class`, role: "member", text: choice === "suv" ? "SUV" : "Sedan" });
     append({ id: `${Date.now() + 1}-class-guide`, role: "concierge", text: `Here are confirmed ${choice === "suv" ? "SUV" : "sedan"} options.` });
   };
