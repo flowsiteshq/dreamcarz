@@ -18,6 +18,19 @@ const welcome = (name: string | null | undefined, signedIn: boolean): Entry => (
   text: signedIn ? `Hi ${firstName(name)}. How can I help?` : "Hi. How can I help?",
 });
 
+export function shouldShowVehicleClassChoice(input: {
+  intent: Intent;
+  vehicleClass: VehicleClass;
+  hasSelectedVehicle: boolean;
+  latestConciergeMessage: string;
+}) {
+  return !input.vehicleClass
+    && !input.hasSelectedVehicle
+    && (input.intent === "rental" || input.intent === "purchase")
+    && /\bsedan\b/i.test(input.latestConciergeMessage)
+    && /\bsuv\b/i.test(input.latestConciergeMessage);
+}
+
 export default function Concierge() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -65,6 +78,12 @@ export default function Concierge() {
     return (recommendedIds ? classMatches.filter(item => recommendedIds.includes(item.vehicleId)) : classMatches).slice(0, 2);
   }, [vehicles.data, vehicleClass, recommendedIds]);
   const selectedVehicle = (vehicles.data ?? []).find(item => item.vehicleId === selectedVehicleId) ?? null;
+  const latestConciergeMessage = [...history].reverse().find(entry => entry.role === "concierge")?.text ?? "";
+  const showVehicleClassChoice = shouldShowVehicleClassChoice({ intent, vehicleClass, hasSelectedVehicle: Boolean(selectedVehicle), latestConciergeMessage });
+  const vehicleClassChoices = (["sedan", "suv"] as const).map(kind => ({
+    kind,
+    image: (vehicles.data ?? []).find(vehicle => vehicle.vehicleClass === kind)?.image,
+  }));
   const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending;
 
   const ask = async (rawQuestion: string) => {
@@ -91,6 +110,12 @@ export default function Concierge() {
     setTimeline(null);
     const vehicle = (vehicles.data ?? []).find(item => item.vehicleId === vehicleId);
     if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: `${vehicle.vehicleName} selected. When would you like to drive?` });
+  };
+  const selectVehicleClass = (choice: Exclude<VehicleClass, null>) => {
+    setVehicleClass(choice);
+    setRecommendedIds(null);
+    append({ id: `${Date.now()}-class`, role: "member", text: choice === "suv" ? "SUV" : "Sedan" });
+    append({ id: `${Date.now() + 1}-class-guide`, role: "concierge", text: `Here are confirmed ${choice === "suv" ? "SUV" : "sedan"} options.` });
   };
   const restore = () => {
     if (!savedJourney) return;
@@ -149,6 +174,7 @@ export default function Concierge() {
               </div>
             ))}
             {publicGuide.isPending ? <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={14} /></span><span className="pt-2 text-sm text-gray-400">Thinking…</span></div> : null}
+            {showVehicleClassChoice ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1"><p className="col-span-2 text-xs font-medium text-gray-500">Choose a style</p>{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold capitalize">{option.kind}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
             {recommendedIds?.length ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className={`overflow-hidden rounded-xl border bg-white text-left ${selectedVehicleId === vehicle.vehicleId ? "border-black ring-1 ring-black" : "border-[#e6e6e6]"}`}><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">{selectedVehicleId === vehicle.vehicleId ? <><Check size={13} className="text-[#a8832d]" /> Selected</> : <><CarFront size={13} className="text-[#a8832d]" /> Choose</>}</span></div></button>)}</div></div> : null}
             {selectedVehicle ? <div className="rounded-xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><p className="font-semibold">When would you like to drive?</p><div className="mt-3 flex flex-wrap gap-2">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => setTimeline(item)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div><button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Sign in to save"}<ArrowRight size={15} /></button></div> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
