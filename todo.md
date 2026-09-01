@@ -352,3 +352,4 @@
 - [x] Show a clean sedan-or-SUV visual choice immediately after the Concierge asks the member which body style they prefer, while preserving the minimal continuous chat flow.
 - [x] Show a clean sedan-or-SUV visual choice immediately after the Concierge asks the member which body style they prefer, while preserving the minimal continuous chat flow.
 - [x] Make Rent and Buy entry actions greet a signed-in member by first name once, ask the relevant vehicle-type question, and immediately offer sedan and SUV images.
+- [x] Replace the staged Concierge loading screen with a subtle fade transition directly into the chat interface.

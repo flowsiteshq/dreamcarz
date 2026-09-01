@@ -46,7 +46,7 @@ import NotificationsCenter from "./pages/dashboard/NotificationsCenter";
 const Concierge = lazy(() => import("./pages/Concierge"));
 
 function ConciergeRoute() {
-  return <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#f8f7f4] text-black"><div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#a8832d]">DreamCarz Concierge</p><p className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">Preparing your vehicle path.</p></div></div>}><Concierge /></Suspense>;
+  return <Suspense fallback={<div className="min-h-screen bg-white" aria-hidden="true" />}><Concierge /></Suspense>;
 }
 
 function ScrollToTop() {

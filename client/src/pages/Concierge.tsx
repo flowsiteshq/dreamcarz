@@ -59,6 +59,7 @@ export default function Concierge() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [recommendedIds, setRecommendedIds] = useState<string[] | null>(null);
   const [notice, setNotice] = useState("");
+  const [hasEntered, setHasEntered] = useState(false);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -70,6 +71,10 @@ export default function Concierge() {
   useEffect(() => {
     setHistory(previous => previous.length === 1 && previous[0]?.id === "welcome" ? [welcome(user?.name, isAuthenticated, intent)] : previous);
   }, [intent, isAuthenticated, user?.name]);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setHasEntered(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   useEffect(() => {
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return;
@@ -158,7 +163,7 @@ export default function Concierge() {
   };
 
   return (
-    <main aria-label="DreamCarz Concierge" className="min-h-screen bg-white text-[#1f1f1f]">
+    <main aria-label="DreamCarz Concierge" className={`min-h-screen bg-white text-[#1f1f1f] transition-opacity duration-200 motion-reduce:transition-none ${hasEntered ? "opacity-100" : "opacity-0"}`}>
       <section className="mx-auto flex min-h-screen w-full max-w-4xl flex-col border-x border-[#efefef] bg-white">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[#eeeeee] bg-white px-5 py-4 sm:px-7">
           <div className="flex items-center gap-4">
