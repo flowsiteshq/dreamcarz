@@ -51,6 +51,25 @@ describe("public DreamCarz concierge", () => {
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 
+  it("rejects sensitive temporary conversation context before model invocation", async () => {
+    await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Show me an SUV",
+      conversation: [{ role: "member", text: "My email is example@dreamcarz.test" }],
+    })).rejects.toThrow("For your privacy");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("caps a model response at the concise 220-character public limit", async () => {
+    const longAnswer = "A".repeat(260);
+    vi.mocked(listLLMModels).mockResolvedValue({ data: [{ id: "claude-haiku-4-5" }] } as never);
+    vi.mocked(invokeLLM).mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ answer: longAnswer, intent: "explore", vehicleClass: "all", nextPrompt: "What matters most?", recommendedVehicleIds: [] }) } }] } as never);
+
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "I need a vehicle" });
+
+    expect(result.answer).toHaveLength(220);
+    expect(result.answer).toBe(longAnswer.slice(0, 220));
+  });
+
   it("blocks public guidance before model invocation when the request rate limit is reached", async () => {
     vi.mocked(consumeRateLimit).mockReturnValue({ allowed: false, remaining: 0, retryAfterMs: 60_000 });
     await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "Show me an SUV" })).rejects.toThrow("Please wait before asking DreamCarz Concierge");
