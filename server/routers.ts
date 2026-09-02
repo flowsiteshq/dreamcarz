@@ -3508,6 +3508,40 @@ export const appRouter = router({
         return query ? rows.filter(row => [row.reference, row.vehicleName, row.customerName, row.customerEmail, row.status].some(value => value?.toLowerCase().includes(query))) : rows;
       }),
 
+    customerDirectory: protectedProcedure
+      .input(z.object({ query: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(10).max(50).default(20) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        const page = input?.page ?? 1;
+        const pageSize = input?.pageSize ?? 20;
+        if (!db) return { items: [], total: 0, page, pageSize, activeJourneyCount: 0 };
+        const [accounts, transactions] = await Promise.all([
+          db.select({ id: users.id, name: users.name, email: users.email, role: users.role, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).orderBy(desc(users.updatedAt)),
+          db.select({ userId: vehicleTransactions.userId, status: vehicleTransactions.status, transactionType: vehicleTransactions.transactionType, updatedAt: vehicleTransactions.updatedAt }).from(vehicleTransactions).orderBy(desc(vehicleTransactions.updatedAt)),
+        ]);
+        const rows = accounts.filter(account => account.role !== "admin").map(account => {
+          const customerTransactions = transactions.filter(transaction => transaction.userId === account.id);
+          const latestTransaction = customerTransactions[0];
+          return {
+            id: account.id,
+            name: account.name,
+            email: account.email,
+            role: account.role,
+            createdAt: account.createdAt,
+            lastSignedIn: account.lastSignedIn,
+            transactionCount: customerTransactions.length,
+            openTransactionCount: customerTransactions.filter(transaction => !["completed", "cancelled", "settled"].includes(transaction.status)).length,
+            latestTransactionStatus: latestTransaction?.status ?? null,
+            latestTransactionType: latestTransaction?.transactionType ?? null,
+            latestTransactionUpdatedAt: latestTransaction?.updatedAt ?? null,
+          };
+        });
+        const query = input?.query?.toLowerCase();
+        const filtered = query ? rows.filter(row => [row.name, row.email, row.role, row.latestTransactionStatus].some(value => value?.toLowerCase().includes(query))) : rows;
+        return { items: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize, activeJourneyCount: filtered.filter(row => row.openTransactionCount > 0).length };
+      }),
+
     vehiclePassports: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });

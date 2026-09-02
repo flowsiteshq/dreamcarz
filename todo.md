@@ -373,3 +373,4 @@
 - [x] Add a role-gated DCP policy-governance module for approved earning, expiration, and redemption rules without activating customer balances or monetary conversion.
 - [x] Add an administrator-only fleet operations calendar using actual rental and purchase schedule windows, without exposing customer contact, payment, or document data.
 - [x] Add an administrator fleet readiness board using live vehicle availability, maintenance, inspection, incident, and schedule data without exposing customer, payment, or document details.
+- [x] Add a role-gated, paginated administrator customer-management workspace with account-owned customer records and transaction summaries, excluding credentials, payment data, and private documents.
