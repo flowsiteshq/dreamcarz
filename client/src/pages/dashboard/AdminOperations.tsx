@@ -1,7 +1,7 @@
 import DashboardShell from "@/components/DashboardShell";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { ClipboardCheck, CalendarCheck, Check, AlertTriangle, X, RefreshCw, ShieldCheck, FileText, Search, ArrowRight } from "lucide-react";
+import { ClipboardCheck, CalendarCheck, Check, AlertTriangle, X, RefreshCw, ShieldCheck, FileText, Search, ArrowRight, Car, Users, Settings2, Wrench, BadgeDollarSign } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TransactionQuoteManager } from "@/components/TransactionQuoteManager";
 import { VehiclePassportManager } from "@/components/VehiclePassportManager";
@@ -25,6 +25,31 @@ function formatDate(value?: Date | string | null) {
 
 function maskedReference(value?: string | null) {
   return value ? `Recorded ••••${value.slice(-8)}` : "Not recorded";
+}
+
+type CommandCenterModule = {
+  id: string;
+  label: string;
+  summary: string;
+  detail: string;
+  count?: number;
+  icon: typeof Car;
+};
+
+function AdminCommandCenter({ applicationsAwaitingReview, reservationRequestsAwaitingReview, transactionCount, transactionExceptions }: { applicationsAwaitingReview: number; reservationRequestsAwaitingReview: number; transactionCount: number; transactionExceptions: number }) {
+  const navigateTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const modules: CommandCenterModule[] = [
+    { id: "admin-fleet", label: "Fleet", summary: "Vehicles, service, returns", detail: "Vehicle passports, service records, incidents, handoff, and return readiness.", icon: Car },
+    { id: "admin-customers", label: "Customers", summary: "Records & transactions", detail: "Account-owned journeys, controlled documents, agreements, and transaction review.", count: transactionCount, icon: Users },
+    { id: "admin-dcp", label: "DCP & pricing", summary: "Program governance", detail: "Approved plan and pricing-rule management. DCP monetary conversion and redemption stay unconfigured until program rules are approved.", icon: BadgeDollarSign },
+    { id: "admin-reviews", label: "Review queue", summary: "Manual decisions", detail: "Identity, eligibility, reservation, and support exceptions remain human-reviewed.", count: applicationsAwaitingReview + reservationRequestsAwaitingReview + transactionExceptions, icon: ClipboardCheck },
+    { id: "admin-operations", label: "Operations", summary: "Delivery & settlement", detail: "Handoff, extension, incident, settlement, and partner operations.", icon: Wrench },
+  ];
+
+  return <section className="border border-[#ded8cf] bg-[#fbfaf7] p-5 sm:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">Administrator command center</p><h2 className="mt-1 text-2xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Run DreamCarz from one place.</h2><p className="mt-1 max-w-3xl text-[12px] leading-5 text-gray-500">A single control surface for fleet, customer, DCP governance, review, and operations. Provider actions, financial collection, and approval decisions remain separately controlled.</p></div><span className="inline-flex items-center gap-2 border border-gray-300 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-600"><Settings2 size={13} /> Administrator only</span></div>
+    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{modules.map(module => { const Icon = module.icon; return <button key={module.id} type="button" onClick={() => navigateTo(module.id)} className="group min-h-[164px] border border-gray-200 bg-white p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-black"><div className="flex items-center justify-between gap-2"><span className="flex h-8 w-8 items-center justify-center bg-black text-[#d3a63f]"><Icon size={15} /></span>{typeof module.count === "number" && <span className="text-xl font-bold text-black">{module.count}</span>}</div><p className="mt-5 text-[12px] font-bold text-black">{module.label}</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#a46c18]">{module.summary}</p><p className="mt-3 text-[10px] leading-4 text-gray-500">{module.detail}</p></button>; })}</div>
+  </section>;
 }
 
 function AdminTransactionEvidence({ detail }: { detail: any }) {
@@ -118,7 +143,9 @@ export default function AdminOperations() {
           <div className="rounded-2xl border border-gray-100 bg-white p-5"><p className="text-[10px] uppercase tracking-wider text-gray-400">Approved members</p><p className="mt-2 text-3xl font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>{applications.filter(item => item.status === "approved").length}</p><p className="mt-1 text-[11px] text-gray-400">Eligible for requests</p></div>
         </div>
 
-        <section className="border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6">
+        <AdminCommandCenter applicationsAwaitingReview={applicationsAwaitingReview} reservationRequestsAwaitingReview={reservationRequestsAwaitingReview} transactionCount={transactionRows.length} transactionExceptions={transactionExceptions} />
+
+        <section id="admin-customers" className="scroll-mt-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="flex items-center gap-2"><FileText size={17} className="text-[#B8860B]" /><h3 className="text-[16px] font-bold text-black">Transaction console</h3></div><p className="mt-1 text-[12px] text-gray-500">Private rental and purchase records, provider states, manual-review exceptions, and the immutable activity trail.</p></div><div className="border border-gray-200 bg-white px-3 py-2"><label className="flex items-center gap-2"><Search size={14} className="text-gray-400" /><input value={transactionSearch} onChange={event => setTransactionSearch(event.target.value)} placeholder="Search reference, vehicle, customer…" className="w-52 bg-transparent text-[12px] outline-none" /></label></div></div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Open transactions</p><p className="mt-1 text-2xl font-bold text-black">{transactionRows.length}</p></div><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Manual exceptions</p><p className="mt-1 text-2xl font-bold text-[#a46c18]">{transactionExceptions}</p></div><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Provider integrations</p><p className="mt-1 text-xs font-semibold text-black">Configuration-gated</p></div></div>
           <div className="mt-5 overflow-x-auto border border-gray-200 bg-white"><table className="min-w-[860px] w-full text-left"><thead className="border-b border-gray-200 bg-[#f4f1eb]"><tr className="text-[10px] uppercase tracking-wider text-gray-500"><th className="px-4 py-3">Reference / customer</th><th className="px-4 py-3">Vehicle</th><th className="px-4 py-3">Lifecycle</th><th className="px-4 py-3">Verification</th><th className="px-4 py-3">Payment / agreement</th><th className="px-4 py-3"></th></tr></thead><tbody>{transactionRows.map(item => <tr key={item.id} className="border-b border-gray-100 last:border-0"><td className="px-4 py-3"><p className="text-[12px] font-bold text-black">{item.reference}</p><p className="text-[10px] text-gray-500">{item.customerName || "Customer"} · {item.customerEmail || "No email"}</p></td><td className="px-4 py-3 text-[12px] text-black">{item.vehicleName}<p className="mt-0.5 text-[10px] uppercase text-gray-500">{item.transactionType} · {item.membershipPlan || "No plan"}</p></td><td className="px-4 py-3"><span className="bg-black px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">{item.status.replaceAll("_", " ")}</span><p className="mt-1 text-[10px] text-gray-500">Step: {item.currentStep.replaceAll("_", " ")}</p></td><td className="px-4 py-3 text-[10px] text-gray-600">ID: {item.identityStatus.replaceAll("_", " ")}<br />License: {item.licenseStatus.replaceAll("_", " ")}<br />Eligibility: {item.eligibilityStatus.replaceAll("_", " ")}</td><td className="px-4 py-3 text-[10px] text-gray-600">Payment: {item.paymentStatus.replaceAll("_", " ")}<br />Agreement: {item.agreementStatus.replaceAll("_", " ")}<br />Insurance: {item.insuranceStatus.replaceAll("_", " ")}</td><td className="px-4 py-3"><button onClick={() => setSelectedTransactionReference(item.reference)} className="inline-flex items-center gap-1 text-[11px] font-bold text-black underline underline-offset-4">Review <ArrowRight size={12} /></button></td></tr>)}</tbody></table></div>
@@ -132,11 +159,11 @@ export default function AdminOperations() {
           {selectedTransaction && <TransactionQuoteManager detail={selectedTransaction} />}
         </section>
 
-        <NativeAgreementTemplateManager />
+        <section id="admin-reviews" className="scroll-mt-6"><NativeAgreementTemplateManager /></section>
 
         <LaunchReadiness />
 
-        <VehiclePassportManager />
+        <section id="admin-fleet" className="scroll-mt-6"><VehiclePassportManager /></section>
 
         <FleetIncidentQueue />
 
@@ -144,13 +171,13 @@ export default function AdminOperations() {
 
         <MaintenanceCompletionControl />
 
-        <HandoffManager />
+        <section id="admin-operations" className="scroll-mt-6"><HandoffManager /></section>
 
         <RentalExtensionQueue />
 
         <SettlementManager />
 
-        <PricingRuleManager />
+        <section id="admin-dcp" className="scroll-mt-6 space-y-6"><section className="border border-[#ded8cf] bg-[#fbfaf7] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">DCP governance</p><h3 className="mt-1 text-base font-bold text-black">Program terms before point operations</h3><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DCP is not cash, and no point-to-dollar conversion, redemption, or account adjustment is active in DreamCarz. Approve the earning, expiration, and redemption rules before enabling a member ledger or administrative adjustments.</p></section><PricingRuleManager /></section>
 
         <EligibilityPolicyManager />
         <SupportRequestQueue />
