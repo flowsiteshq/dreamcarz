@@ -219,6 +219,7 @@
 - [ ] Build protected DreamCarz Vehicle Passports with vehicle lifecycle, location, readiness, acquisition, maintenance, inspection, damage, document, reservation, and utilization/revenue record support.
 - [x] Add a dedicated immutable Vehicle Passport activity timeline for administrator actions without storing document keys, sensitive vehicle details, or customer records in audit metadata.
 - [x] Record an administrator-only Vehicle Passport location-change audit signal without copying location values into the event history.
+- [x] Apply a bounded per-administrator rate limit before private Vehicle Passport operational history is read.
 - [x] Extend Vehicle Passport activity events to cover passport updates, registration/insurance document changes, and inspection actions with minimal non-sensitive metadata.
 - [x] Add administrator-only Vehicle Passport reservation and active-rental activity counts using existing records without exposing customer, payment, pricing, or schedule details.
 - [x] Add administrator-only private maintenance invoice upload and on-demand signed access without exposing invoice storage keys in operational history.

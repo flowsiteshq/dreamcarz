@@ -3616,6 +3616,8 @@ export const appRouter = router({
 
       operationalHistory: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive() })).query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const historyLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_passport_history", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+        if (!historyLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Vehicle Passport history requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport history is temporarily unavailable." });
         const passport = (await db.select({ id: vehiclePassports.id, vehicleId: vehiclePassports.vehicleId, vehicleName: vehiclePassports.vehicleName, readinessStatus: vehiclePassports.readinessStatus, currentOdometer: vehiclePassports.currentOdometer, fuelOrChargeLevel: vehiclePassports.fuelOrChargeLevel, updatedAt: vehiclePassports.updatedAt }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];

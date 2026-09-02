@@ -48,6 +48,15 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("rate limits private Vehicle Passport history before another database lookup", async () => {
+    mockedGetDb.mockResolvedValue(null);
+    const caller = appRouter.createCaller(adminContext as never);
+    for (let attempt = 0; attempt < 60; attempt += 1) await expect(caller.operations.vehiclePassports.operationalHistory({ vehiclePassportId: 91 })).rejects.toThrow("Vehicle Passport history is temporarily unavailable");
+    const dbCallsBeforeBlockedAttempt = mockedGetDb.mock.calls.length;
+    await expect(caller.operations.vehiclePassports.operationalHistory({ vehiclePassportId: 91 })).rejects.toThrow("Too many Vehicle Passport history requests");
+    expect(mockedGetDb).toHaveBeenCalledTimes(dbCallsBeforeBlockedAttempt);
+  });
+
   it("returns document-presence indicators to administrators without exposing Vehicle Passport storage keys", async () => {
     const listRows = [{ id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "available", registrationDocumentKey: "private/registration.pdf", insuranceDocumentKey: null, updatedAt: new Date("2026-09-02T10:00:00Z") }];
     mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(listRows) })) })) } as never);
