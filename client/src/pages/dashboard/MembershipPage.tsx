@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Crown, Gauge, ShieldCheck } from "lucide-react";
+import { Check, ChevronRight, Crown, Gauge, ShieldCheck, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import DashboardShell from "@/components/DashboardShell";
 
@@ -45,7 +45,11 @@ export default function MembershipPage() {
         <section className="border-b border-gray-200 pb-10 text-center">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">Vehicle access packages</p>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.045em] text-black sm:text-5xl">Choose the vehicle category that fits your drive.</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">Start with the kind of vehicle you want to drive: Entry, Mid-Range, or Elite. Each package leads to the current confirmed inventory and a clear rental-or-purchase request path.</p>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">Start with your need, compare vehicle access, and understand DCP program rules before you select a rental or purchase path.</p>
+        </section>
+
+        <section className="grid gap-px overflow-hidden border border-gray-200 bg-gray-200 md:grid-cols-4">
+          {[['01', 'Your need', 'Choose the transportation goal you are working toward.'], ['02', 'Vehicle access', 'Explore the matching confirmed sedan and SUV options.'], ['03', 'Membership context', 'Compare the program path and vehicle access in one view.'], ['04', 'DCP rules', 'Eligible activity, verification, and redemption requirements apply.']].map(([number, title, copy]) => <div key={number} className="min-h-[154px] bg-white p-5"><p className="text-[10px] font-bold tracking-[0.16em] text-[#a8832d]">{number}</p><Sparkles className="mt-4 text-[#a8832d]" size={17} /><p className="mt-3 text-sm font-bold">{title}</p><p className="mt-2 text-xs leading-relaxed text-gray-500">{copy}</p></div>)}
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">

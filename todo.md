@@ -362,3 +362,4 @@
 - [x] Expand the selected-vehicle Concierge workspace to the full page and detect an existing account at email entry so the conversation securely signs in instead of attempting duplicate registration.
 - [x] Prevent purchase-only trade-in steps from rendering or advancing in any rental Concierge enrollment path.
 - [x] Restore the protected driver-license upload storage configuration and verify account-owned document handling without exposing private storage references.
+- [x] Extract approved homepage and membership-vehicle experience content from the supplied presentation and apply it to the DreamCarz website and app without unsupported pricing, inventory, or workflow claims.
