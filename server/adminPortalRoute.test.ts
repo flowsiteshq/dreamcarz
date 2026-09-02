@@ -33,6 +33,7 @@ describe("separate administrator portal", () => {
 
   it("keeps user and role management inside the separate administrator portal", () => {
     expect(portal).toContain('{ label: "Users & roles", id: "admin-roles", icon: Users }');
+    expect(portal).toContain('onClick={() => onOpen("admin-roles")}');
     expect(operations).toContain("AdministratorUserRoleManager");
     expect(operations).toContain('{ id: "admin-roles", label: "Users & roles", summary: "Access administration"');
     expect(roleManager).toContain("trpc.roles.directory");
