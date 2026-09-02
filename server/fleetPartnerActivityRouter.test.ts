@@ -6,6 +6,7 @@ vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPay
 
 import { getDb } from "./db";
 import { appRouter } from "./routers";
+import { resetRateLimitsForTests } from "./rateLimit";
 
 const mockedGetDb = vi.mocked(getDb);
 const fleetPartnerContext = {
@@ -19,7 +20,7 @@ function queryResult<T>(value: T) {
 }
 
 describe("fleetPartner.overview activity", () => {
-  beforeEach(() => mockedGetDb.mockReset());
+  beforeEach(() => { mockedGetDb.mockReset(); resetRateLimitsForTests(); });
 
   it("returns only minimal assigned-vehicle operations data without transaction, customer, document, location, acquisition, or financial fields", async () => {
     const select = vi.fn()
@@ -71,5 +72,14 @@ describe("fleetPartner.overview activity", () => {
     mockedGetDb.mockResolvedValue({} as never);
 
     await expect(appRouter.createCaller(fleetPartnerContext as never).fleetPartner.reportIncident({ vehiclePassportId: 8, incidentType: "damage", severity: "standard", description: "Driver license number: AB-12345 was reported." })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rate-limits Fleet Partner overview access before another database lookup", async () => {
+    mockedGetDb.mockResolvedValue(null);
+    const adminCaller = appRouter.createCaller({ ...fleetPartnerContext, user: { ...fleetPartnerContext.user, role: "admin" } } as never);
+    for (let attempt = 0; attempt < 60; attempt += 1) await expect(adminCaller.fleetPartner.overview()).rejects.toThrow("Fleet Partner data is temporarily unavailable");
+    const dbCallsBeforeBlockedAttempt = mockedGetDb.mock.calls.length;
+    await expect(adminCaller.fleetPartner.overview()).rejects.toThrow("Too many Fleet Partner overview requests");
+    expect(mockedGetDb).toHaveBeenCalledTimes(dbCallsBeforeBlockedAttempt);
   });
 });

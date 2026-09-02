@@ -264,6 +264,7 @@
 - [x] Restrict Fleet Partner maintenance, inspection, incident, and profile responses to minimal operational summaries without documents, evidence, locations, notes, or staff details.
 - [x] Expose assignment-scoped Fleet Partner maintenance requests and periodic inspection reports without vehicle location, customer, payment, pricing, or document data.
 - [x] Add assignment-scoped Fleet Partner schedule-window visibility using only vehicle, journey type, status, and timing, without customer, payment, location, or note data.
+- [x] Apply a bounded per-account rate limit before Fleet Partner overview data is read, preserving role-isolated assigned-vehicle controls.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before Fleet Partner maintenance or incident report text is stored.
 - [x] Add assignment-scoped Fleet Partner vehicle incident reporting that routes to DreamCarz operations without exposing customer, transaction, payment, or document data.
 - [x] Replace fleet incident photo storage-key responses with evidence indicators and controlled access pathways.
