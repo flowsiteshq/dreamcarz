@@ -82,6 +82,26 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(result.items[0]).not.toHaveProperty("insuranceDocumentKey");
   });
 
+  it("rate limits repeated private Vehicle Passport record-list and directory reads", async () => {
+    mockedGetDb.mockResolvedValue(null);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    for (let attempt = 0; attempt < 60; attempt += 1) await expect(caller.operations.vehiclePassports.list()).resolves.toEqual([]);
+    await expect(caller.operations.vehiclePassports.list()).rejects.toThrow("Too many Vehicle Passport list requests");
+
+    for (let attempt = 0; attempt < 60; attempt += 1) await expect(caller.operations.vehiclePassports.directory()).resolves.toMatchObject({ items: [], total: 0 });
+    await expect(caller.operations.vehiclePassports.directory()).rejects.toThrow("Too many Vehicle Passport directory requests");
+  });
+
+  it("rate limits signed Vehicle Passport document-link requests before another database lookup", async () => {
+    mockedGetDb.mockResolvedValue(null);
+    const caller = appRouter.createCaller(adminContext as never);
+    for (let attempt = 0; attempt < 24; attempt += 1) await expect(caller.operations.vehiclePassports.documentUrl({ vehiclePassportId: 91, documentType: "registration" })).rejects.toThrow("Vehicle Passport documents are temporarily unavailable");
+    const dbCallsBeforeBlockedAttempt = mockedGetDb.mock.calls.length;
+    await expect(caller.operations.vehiclePassports.documentUrl({ vehiclePassportId: 91, documentType: "registration" })).rejects.toThrow("Too many Vehicle Passport document requests");
+    expect(mockedGetDb).toHaveBeenCalledTimes(dbCallsBeforeBlockedAttempt);
+  });
+
   it("records a location-change audit signal without copying location values into Vehicle Passport history", async () => {
     const updateWhere = vi.fn().mockResolvedValue(undefined);
     const activityValues = vi.fn().mockResolvedValue(undefined);

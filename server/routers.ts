@@ -3608,6 +3608,8 @@ export const appRouter = router({
     vehiclePassports: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const listLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_passport_list", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+        if (!listLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Vehicle Passport list requests. Please try again later." });
         const db = await getDb();
         if (!db) return [];
         const passports = await db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
@@ -3620,6 +3622,8 @@ export const appRouter = router({
         pageSize: z.number().int().min(5).max(50).default(10),
       }).optional()).query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const directoryLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_passport_directory", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+        if (!directoryLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Vehicle Passport directory requests. Please try again later." });
         const page = input?.page ?? 1;
         const pageSize = input?.pageSize ?? 10;
         const db = await getDb();
@@ -3730,6 +3734,8 @@ export const appRouter = router({
 
       documentUrl: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive(), documentType: z.enum(["registration", "insurance"]) })).query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const documentLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_passport_document_url", String(ctx.user.id)), limit: 24, windowMs: 60 * 60_000 });
+        if (!documentLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Vehicle Passport document requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport documents are temporarily unavailable." });
         const passport = (await db.select({ id: vehiclePassports.id, registrationDocumentKey: vehiclePassports.registrationDocumentKey, insuranceDocumentKey: vehiclePassports.insuranceDocumentKey }).from(vehiclePassports).where(eq(vehiclePassports.id, input.vehiclePassportId)).limit(1))[0];
