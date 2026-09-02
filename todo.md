@@ -294,6 +294,7 @@
 - [ ] Build centralized email, SMS, push-when-supported, and in-app transactional communications with lifecycle triggers, consent boundaries, and communication history.
 - [x] Add a privacy-minimized administrator view of recorded in-app communication delivery events without exposing message bodies or provider references.
 - [x] Add a bounded administrator single-customer in-app service-notice workspace that respects the customer’s in-app communication preference and does not send email, SMS, or push.
+- [x] Replace non-persistent account-settings email, SMS, and push toggles with accurate provider-disabled guidance and the working private notification center.
 - [x] Add account-owned in-app notification read and unread history controls without claiming email, SMS, or push delivery.
 - [x] Add an account-scoped in-app notification mark-all-read action without affecting other members or external delivery channels.
 - [x] Replace the static Support message form with account-owned support requests and administrator review controls, without response-time promises or unconfigured live chat.

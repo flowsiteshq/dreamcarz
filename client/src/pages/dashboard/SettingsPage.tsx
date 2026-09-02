@@ -6,7 +6,6 @@ import { useState } from "react";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState({ email: true, sms: false, push: true });
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
@@ -47,7 +46,7 @@ export default function SettingsPage() {
             <div>
               <p className="text-[15px] font-bold text-black">{user?.name || "Member"}</p>
               <p className="text-[12px] text-gray-400">{user?.email || "—"}</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Pro Member · Since 2026</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">DreamCarz account</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -70,30 +69,10 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <Bell size={16} className="text-gray-400" />
-            <h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Notifications</h3>
-          </div>
-          <div className="space-y-4">
-            {[
-              { key: "email" as const, label: "Email Notifications", desc: "Receipts, reminders, and account updates" },
-              { key: "sms" as const, label: "SMS Notifications", desc: "Reservation confirmations and alerts" },
-              { key: "push" as const, label: "Push Notifications", desc: "Real-time DCP updates and AI insights" },
-            ].map((n) => (
-              <div key={n.key} className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-medium text-black">{n.label}</p>
-                  <p className="text-[11px] text-gray-400">{n.desc}</p>
-                </div>
-                <button
-                  onClick={() => setNotifications(prev => ({ ...prev, [n.key]: !prev[n.key] }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${notifications[n.key] ? "bg-black" : "bg-gray-200"}`}
-                >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifications[n.key] ? "translate-x-5" : "translate-x-0.5"}`} />
-                </button>
-              </div>
-            ))}
-          </div>
+          <div className="flex items-center gap-3 mb-5"><Bell size={16} className="text-gray-400" /><h3 className="text-[14px] font-bold text-black" style={{ fontFamily: "var(--font-display)" }}>Notifications</h3></div>
+          <p className="text-[12px] leading-5 text-gray-500">Private in-app updates are managed in your Notification Center. Email, SMS, and push remain unavailable until DreamCarz completes a separate approved provider setup.</p>
+          <div className="mt-4 divide-y divide-gray-100 border-y border-gray-100">{["Email", "SMS", "Push"].map(channel => <div key={channel} className="flex items-center justify-between py-3"><span className="text-[13px] font-medium text-black">{channel} updates</span><span className="text-[11px] text-gray-400">Provider not configured</span></div>)}</div>
+          <a href="/dashboard/notifications" className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-black px-4 text-sm font-semibold text-white">Open Notification Center</a>
         </div>
 
         {/* Security */}
