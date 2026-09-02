@@ -55,6 +55,11 @@ describe("DreamCarz role assignment governance", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("does not allow operational role management to grant base administrator access", async () => {
+    await expect(appRouter.createCaller(adminContext as never).roles.assign({ userId: 91, role: "administrator" })).rejects.toThrow("Base administrator access cannot be granted");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("prevents an administrator from revoking their own operational role before database access", async () => {
     await expect(appRouter.createCaller(adminContext as never).roles.revoke({ userId: 1, role: "operations" })).rejects.toThrow("You cannot revoke your own operational role");
     expect(mockedGetDb).not.toHaveBeenCalled();

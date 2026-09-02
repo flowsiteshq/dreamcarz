@@ -37,6 +37,8 @@ describe("separate administrator portal", () => {
     expect(roleManager).toContain("trpc.roles.historyForUser");
     expect(roleManager).toContain("Role-change history");
     expect(roleManager).toContain("You cannot revoke your own operational role");
+    expect(roleManager).toContain("Base administrator access is controlled outside this workspace");
+    expect(roleManager).not.toContain('"administrator"');
     expect(roleManager).not.toContain("password");
   });
 });

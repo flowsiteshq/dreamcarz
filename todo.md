@@ -381,3 +381,4 @@
 - [x] Add an administrator-only immutable role-change history for selected accounts, exposing only role, action, timestamp, and minimal staff attribution.
 - [x] Apply bounded per-administrator rate limits before account-directory and role-change history access in the Administrator portal.
 - [x] Apply bounded per-administrator rate limits before operational role grants, restores, and revocations are recorded.
+- [x] Prevent operational role assignment from representing or granting base DreamCarz administrator access.

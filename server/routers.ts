@@ -683,6 +683,7 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.role === "administrator") throw new TRPCError({ code: "BAD_REQUEST", message: "Base administrator access cannot be granted through operational role management." });
         const roleChangeLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_change", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
         if (!roleChangeLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator role changes. Please try again later." });
         const db = await getDb();
