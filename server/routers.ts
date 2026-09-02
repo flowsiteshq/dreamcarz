@@ -39,6 +39,8 @@ import {
   transactionEligibilityAssessments,
   eligibilityPolicies,
   eligibilityPolicyEvents,
+  dcpProgramPolicies,
+  dcpProgramPolicyEvents,
   transactionSchedules,
   transactionQuotes,
   transactionQuoteLines,
@@ -3406,6 +3408,69 @@ export const appRouter = router({
           activatedAt: input.nextStatus === "active" ? new Date() : policy.activatedAt,
         }).where(eq(eligibilityPolicies.id, policy.id));
         await db.insert(eligibilityPolicyEvents).values({ eligibilityPolicyId: policy.id, actorUserId: ctx.user.id, eventType: `eligibility_policy_${input.nextStatus}`, fromStatus: policy.status, toStatus: input.nextStatus, note: input.note });
+        return { success: true, unchanged: false };
+      }),
+    }),
+
+    dcpPolicies: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const [policies, events] = await Promise.all([
+          db.select().from(dcpProgramPolicies).orderBy(desc(dcpProgramPolicies.updatedAt)),
+          db.select().from(dcpProgramPolicyEvents).orderBy(desc(dcpProgramPolicyEvents.createdAt)),
+        ]);
+        return policies.map(policy => ({ ...policy, history: events.filter(event => event.dcpProgramPolicyId === policy.id) }));
+      }),
+
+      create: protectedProcedure.input(z.object({
+        code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,64}$/, "Use 3–64 uppercase letters, numbers, hyphens, or underscores."),
+        name: z.string().trim().min(3).max(160),
+        version: z.string().trim().min(1).max(64),
+        earningRules: z.string().trim().min(2).max(12_000),
+        expirationRules: z.string().trim().min(2).max(12_000),
+        redemptionRules: z.string().trim().min(2).max(12_000),
+        approvalReference: z.string().trim().max(255).optional(),
+        note: z.string().trim().max(1_000).optional(),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DCP policy controls are temporarily unavailable." });
+        const created = await db.insert(dcpProgramPolicies).values({
+          code: input.code,
+          name: input.name,
+          version: input.version,
+          earningRules: input.earningRules,
+          expirationRules: input.expirationRules,
+          redemptionRules: input.redemptionRules,
+          approvalReference: input.approvalReference || null,
+          createdByUserId: ctx.user.id,
+        });
+        const dcpProgramPolicyId = Number(created[0].insertId);
+        await db.insert(dcpProgramPolicyEvents).values({ dcpProgramPolicyId, actorUserId: ctx.user.id, eventType: "dcp_policy_created", toStatus: "draft", note: input.note || null });
+        return { success: true, dcpProgramPolicyId };
+      }),
+
+      setStatus: protectedProcedure.input(z.object({
+        dcpProgramPolicyId: z.number().int().positive(),
+        nextStatus: z.enum(["draft", "active", "retired"]),
+        note: z.string().trim().min(3).max(1_000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DCP policy controls are temporarily unavailable." });
+        const policy = (await db.select().from(dcpProgramPolicies).where(eq(dcpProgramPolicies.id, input.dcpProgramPolicyId)).limit(1))[0];
+        if (!policy) throw new TRPCError({ code: "NOT_FOUND", message: "DCP policy not found." });
+        if (policy.status === "retired") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Retired DCP policies cannot be changed." });
+        if (policy.status === input.nextStatus) return { success: true, unchanged: true };
+        if (input.nextStatus === "active" && !policy.approvalReference) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record an approval reference before activating a DCP policy." });
+        await db.update(dcpProgramPolicies).set({
+          status: input.nextStatus,
+          activatedByUserId: input.nextStatus === "active" ? ctx.user.id : policy.activatedByUserId,
+          activatedAt: input.nextStatus === "active" ? new Date() : policy.activatedAt,
+        }).where(eq(dcpProgramPolicies.id, policy.id));
+        await db.insert(dcpProgramPolicyEvents).values({ dcpProgramPolicyId: policy.id, actorUserId: ctx.user.id, eventType: `dcp_policy_${input.nextStatus}`, fromStatus: policy.status, toStatus: input.nextStatus, note: input.note });
         return { success: true, unchanged: false };
       }),
     }),

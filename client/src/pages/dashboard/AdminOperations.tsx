@@ -18,6 +18,7 @@ import { SupportRequestQueue } from "@/components/SupportRequestQueue";
 import { ReturnProcessingQueue } from "@/components/ReturnProcessingQueue";
 import { LaunchReadiness } from "@/components/LaunchReadiness";
 import { FleetPartnerAssignmentManager } from "@/components/FleetPartnerAssignmentManager";
+import { DcpPolicyManager } from "@/components/DcpPolicyManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -177,7 +178,7 @@ export default function AdminOperations() {
 
         <SettlementManager />
 
-        <section id="admin-dcp" className="scroll-mt-6 space-y-6"><section className="border border-[#ded8cf] bg-[#fbfaf7] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">DCP governance</p><h3 className="mt-1 text-base font-bold text-black">Program terms before point operations</h3><p className="mt-2 max-w-3xl text-xs leading-5 text-gray-600">DCP is not cash, and no point-to-dollar conversion, redemption, or account adjustment is active in DreamCarz. Approve the earning, expiration, and redemption rules before enabling a member ledger or administrative adjustments.</p></section><PricingRuleManager /></section>
+        <section id="admin-dcp" className="scroll-mt-6 space-y-6"><DcpPolicyManager /><PricingRuleManager /></section>
 
         <EligibilityPolicyManager />
         <SupportRequestQueue />

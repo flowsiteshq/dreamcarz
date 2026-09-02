@@ -185,6 +185,37 @@ describe("DreamCarz OS foundation router", () => {
     expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ code: "RENTAL-MD", createdByUserId: adminContext.user.id }));
   });
 
+  it("limits DCP policy creation to administrators and records every new policy as an inert draft", async () => {
+    const input = {
+      code: "DCP-2026-01",
+      name: "DCP program rules",
+      version: "2026.1",
+      earningRules: "Approved earning rules are recorded here.",
+      expirationRules: "Approved expiration rules are recorded here.",
+      redemptionRules: "Approved redemption rules are recorded here.",
+    };
+    const customerCaller = appRouter.createCaller(customerContext as never);
+    await expect(customerCaller.operations.dcpPolicies.create(input)).rejects.toThrow("Administrator access is required");
+
+    const insertValues = vi.fn().mockResolvedValue([{ insertId: 95 }]);
+    mockedGetDb.mockResolvedValue({ insert: vi.fn(() => ({ values: insertValues })) } as never);
+    const adminCaller = appRouter.createCaller(adminContext as never);
+    await expect(adminCaller.operations.dcpPolicies.create(input)).resolves.toEqual({ success: true, dcpProgramPolicyId: 95 });
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ code: "DCP-2026-01", createdByUserId: adminContext.user.id }));
+  });
+
+  it("does not activate a DCP policy without a documented approval reference", async () => {
+    const policy = { id: 96, status: "draft" as const, approvalReference: null };
+    const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([policy]) })) })) }));
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.dcpPolicies.setStatus({ dcpProgramPolicyId: policy.id, nextStatus: "active", note: "Approved rules reviewed." })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "Record an approval reference before activating a DCP policy.",
+    });
+  });
+
   it("snapshots an active administrator-selected policy during manual eligibility review without automatic approval", async () => {
     const transaction = { id: 91, eligibilityStatus: "pending" as const, vehicleId: "2024-chevrolet-malibu-gray" };
     const policy = { id: 14, code: "RENTAL-MD", name: "Rental review", version: "2026.1", status: "active" as const, scope: "all_rentals" as const, vehicleId: null, approvalReference: "POLICY-14", ruleConfiguration: '{"requiredChecks":["license_validity"]}' };

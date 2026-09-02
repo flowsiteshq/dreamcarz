@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const adminOperations = readFileSync(resolve(process.cwd(), "client/src/pages/dashboard/AdminOperations.tsx"), "utf8");
+const dcpPolicyManager = readFileSync(resolve(process.cwd(), "client/src/components/DcpPolicyManager.tsx"), "utf8");
 
 describe("DreamCarz Administrator Command Center", () => {
   it("keeps fleet, customers, DCP governance, reviews, and operations in the role-gated administrator workspace", () => {
@@ -17,6 +18,7 @@ describe("DreamCarz Administrator Command Center", () => {
 
   it("does not present unconfigured DCP conversion or redemption as an active administrative capability", () => {
     expect(adminOperations).toContain("DCP monetary conversion and redemption stay unconfigured");
-    expect(adminOperations).toContain("DCP is not cash");
+    expect(dcpPolicyManager).toContain("DCP remains non-cash");
+    expect(dcpPolicyManager).toContain("does not create customer balances");
   });
 });

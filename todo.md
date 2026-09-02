@@ -369,4 +369,5 @@
 - [x] Label a separately saved rental or purchase path explicitly whenever Concierge is actively exploring the other journey.
 - [x] Require a reviewed return condition report before a rental settlement can be finalized or waived, without initiating collection.
 - [x] Build a role-gated unified administrator dashboard for fleet, customer, DCP, review, and operations management with account-owned data minimization.
-- [ ] Audit TSD Web’s fleet-rental operations capabilities, map controlled gaps to DreamCarz, and implement the highest-value safe internal administrator control first.
+- [x] Audit TSD Web’s fleet-rental operations capabilities, map controlled gaps to DreamCarz, and implement the highest-value safe internal administrator control first.
+- [x] Add a role-gated DCP policy-governance module for approved earning, expiration, and redemption rules without activating customer balances or monetary conversion.

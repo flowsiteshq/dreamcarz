@@ -337,6 +337,13 @@
       "when": 1788204701154,
       "tag": "0047_glossy_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1788366233152,
+      "tag": "0048_lyrical_riptide",
+      "breakpoints": true
     }
   ]
 }
