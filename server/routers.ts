@@ -3775,6 +3775,25 @@ export const appRouter = router({
       }),
     }),
 
+    fleetCalendar: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        reference: vehicleTransactions.reference,
+        transactionType: vehicleTransactions.transactionType,
+        transactionStatus: vehicleTransactions.status,
+        vehicleName: vehicleTransactions.vehicleName,
+        requestedStartAt: transactionSchedules.requestedStartAt,
+        requestedEndAt: transactionSchedules.requestedEndAt,
+        pickupMethod: transactionSchedules.pickupMethod,
+        scheduledHandoffAt: transactionSchedules.scheduledHandoffAt,
+        handoffStatus: transactionSchedules.handoffStatus,
+      }).from(transactionSchedules)
+        .innerJoin(vehicleTransactions, eq(transactionSchedules.transactionId, vehicleTransactions.id))
+        .orderBy(desc(transactionSchedules.requestedStartAt));
+    }),
+
     rentalExtensions: router({
       list: protectedProcedure.query(async ({ ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });

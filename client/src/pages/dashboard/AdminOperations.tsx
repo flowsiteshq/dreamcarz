@@ -19,6 +19,7 @@ import { ReturnProcessingQueue } from "@/components/ReturnProcessingQueue";
 import { LaunchReadiness } from "@/components/LaunchReadiness";
 import { FleetPartnerAssignmentManager } from "@/components/FleetPartnerAssignmentManager";
 import { DcpPolicyManager } from "@/components/DcpPolicyManager";
+import { FleetOperationsCalendar } from "@/components/FleetOperationsCalendar";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -172,7 +173,7 @@ export default function AdminOperations() {
 
         <MaintenanceCompletionControl />
 
-        <section id="admin-operations" className="scroll-mt-6"><HandoffManager /></section>
+        <section id="admin-operations" className="scroll-mt-6 space-y-6"><FleetOperationsCalendar /><HandoffManager /></section>
 
         <RentalExtensionQueue />
 

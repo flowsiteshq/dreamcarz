@@ -371,3 +371,4 @@
 - [x] Build a role-gated unified administrator dashboard for fleet, customer, DCP, review, and operations management with account-owned data minimization.
 - [x] Audit TSD Web’s fleet-rental operations capabilities, map controlled gaps to DreamCarz, and implement the highest-value safe internal administrator control first.
 - [x] Add a role-gated DCP policy-governance module for approved earning, expiration, and redemption rules without activating customer balances or monetary conversion.
+- [x] Add an administrator-only fleet operations calendar using actual rental and purchase schedule windows, without exposing customer contact, payment, or document data.
