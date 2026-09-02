@@ -69,7 +69,6 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/fleet" component={Fleet} />
       <Route path="/calculator" component={Calculator} />
-      <Route path="/dashboard" component={Dashboard} />
       <Route path="/host" component={HostProgram} />
       <Route path="/fleet-partners" component={HostProgram} />
       <Route path="/fleet-partner" component={HostProgram} />
@@ -105,6 +104,7 @@ function Router() {
       <Route path="/dashboard/admin" component={AdminOperations} />
       <Route path="/dashboard/admin-operations" component={AdminOperations} />
       <Route path="/dashboard/command-center" component={CommandCenter} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

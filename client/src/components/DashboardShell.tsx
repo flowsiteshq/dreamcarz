@@ -357,7 +357,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const operatingLinks = [
     ...(operatingRoles.includes("associate") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/associate", label: "Associate Workspace", icon: Network }] : []),
     ...(operatingRoles.includes("fleet_partner") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/fleet-partner", label: "Fleet Partner Portal", icon: Car }] : []),
-    ...(user?.role === "admin" ? [{ href: "/dashboard/command-center", label: "Command Center", icon: Gauge }, { href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : []),
+    ...(user?.role === "admin" ? [{ href: "/dashboard/admin", label: "Admin Panel", icon: ShieldCheck }, { href: "/dashboard/command-center", label: "Command Center", icon: Gauge }, { href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : []),
   ];
 
   if (loading) {
