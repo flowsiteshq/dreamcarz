@@ -10,5 +10,6 @@ describe("account settings notification boundaries", () => {
     expect(settings).toContain("Provider not configured");
     expect(settings).not.toContain("setNotifications");
     expect(settings).not.toContain("Pro Member · Since 2026");
+    expect(settings).not.toContain(">Edit</button>");
   });
 });

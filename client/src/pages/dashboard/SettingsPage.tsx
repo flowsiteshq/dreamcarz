@@ -58,10 +58,7 @@ export default function SettingsPage() {
             ].map((f, i) => (
               <div key={i} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                 <span className="text-[12px] text-gray-400">{f.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-black">{f.value}</span>
-                  <button className="text-[11px] text-gray-400 hover:text-black transition-colors">Edit</button>
-                </div>
+                <span className="text-[13px] font-medium text-black">{f.value}</span>
               </div>
             ))}
           </div>
