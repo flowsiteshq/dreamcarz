@@ -365,3 +365,4 @@
 - [x] Extract approved homepage and membership-vehicle experience content from the supplied presentation and apply it to the DreamCarz website and app without unsupported pricing, inventory, or workflow claims.
 - [x] Audit every public and member membership-plan reference against the supplied deck, correct approved naming and vehicle-value context, and continue excluding illustrative pricing from live terms.
 - [x] Redesign Concierge around one visually dominant active question, a connected response composer, contextual answer controls, and compact saved-path context while preserving protected workflows and no chat persistence.
+- [x] Prevent generic transaction-state updates from bypassing the dedicated policy-backed eligibility decision path and its review audit.

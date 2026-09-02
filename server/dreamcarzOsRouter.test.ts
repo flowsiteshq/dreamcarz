@@ -162,6 +162,18 @@ describe("DreamCarz OS foundation router", () => {
     await expect(caller.operations.reviewEligibility({ reference: "DCR-2026-RENTAL-GUARD", status: "cleared", decisionReason: "Records were reviewed." })).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy before clearing a rental transaction." });
   });
 
+  it("does not let generic transaction state review bypass the dedicated eligibility decision path", async () => {
+    const transaction = { id: 45, transactionType: "rental" as const, eligibilityStatus: "pending" as const };
+    const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) }));
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.reviewTransactionStates({ reference: "DCR-2026-ELIGIBILITY-BYPASS", eligibilityStatus: "cleared", note: "Reviewed separately." })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "Record eligibility decisions through the dedicated eligibility review so policy, rationale, and audit requirements are enforced.",
+    });
+  });
+
   it("limits eligibility policy creation to administrators and records unseeded policies as drafts", async () => {
     const customerCaller = appRouter.createCaller(customerContext as never);
     await expect(customerCaller.operations.eligibilityPolicies.create({ code: "RENTAL-MD", name: "Rental review", version: "2026.1", scope: "all_rentals", ruleConfiguration: '{"requiredChecks":["license_validity"]}' })).rejects.toThrow("Administrator access is required");

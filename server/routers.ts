@@ -4013,6 +4013,9 @@ export const appRouter = router({
         const rows = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1);
         const transaction = rows[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        if (input.eligibilityStatus !== undefined) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record eligibility decisions through the dedicated eligibility review so policy, rationale, and audit requirements are enforced." });
+        }
         const updates = Object.fromEntries(Object.entries(input).filter(([key, value]) => !["reference", "note"].includes(key) && value !== undefined));
         await db.update(vehicleTransactions).set(updates).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "admin", eventType: "transaction.review_states_updated", note: input.note || null, metadata: JSON.stringify(updates) });
