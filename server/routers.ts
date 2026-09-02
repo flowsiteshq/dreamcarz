@@ -2405,6 +2405,20 @@ export const appRouter = router({
         return { success: true, driverId: Number(inserted[0].insertId) };
       }),
 
+    adminAdditionalDrivers: protectedProcedure
+      .input(z.object({ reference: z.string().trim().min(8).max(32) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const limit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_additional_drivers", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+        if (!limit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many additional-driver review requests. Please try again later." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Additional-driver review records are temporarily unavailable." });
+        const transaction = (await db.select({ id: vehicleTransactions.id }).from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
+        if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
+        const drivers = await db.select({ id: transactionAdditionalDrivers.id, fullName: transactionAdditionalDrivers.fullName, licenseStatus: transactionAdditionalDrivers.licenseStatus, identityStatus: transactionAdditionalDrivers.identityStatus, createdAt: transactionAdditionalDrivers.createdAt }).from(transactionAdditionalDrivers).where(eq(transactionAdditionalDrivers.transactionId, transaction.id)).orderBy(desc(transactionAdditionalDrivers.createdAt));
+        return { drivers };
+      }),
+
     saveTradeIn: protectedProcedure
       .input(z.object({ reference: z.string().trim().min(8).max(32), hasTradeIn: z.boolean(), vehicleDescription: z.string().trim().max(300).optional(), estimatedMileage: z.number().int().min(0).max(2_000_000).optional(), notes: z.string().trim().max(1_000).optional() }).refine(input => !input.hasTradeIn || Boolean(input.vehicleDescription), { message: "Describe the trade-in vehicle before saving." }))
       .mutation(async ({ ctx, input }) => {
