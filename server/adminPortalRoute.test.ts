@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const app = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
 const portal = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPortal.tsx"), "utf8");
 const operations = readFileSync(resolve(process.cwd(), "client/src/pages/dashboard/AdminOperations.tsx"), "utf8");
+const serviceLog = readFileSync(resolve(process.cwd(), "client/src/components/VehicleServiceLog.tsx"), "utf8");
 
 describe("separate administrator portal", () => {
   it("routes /admin to a dedicated administrator portal", () => {
@@ -18,5 +19,13 @@ describe("separate administrator portal", () => {
     expect(portal).toContain("AdminOperationsContent");
     expect(operations).toContain("export function AdminOperationsContent");
     expect(operations).toContain('<DashboardShell title="Operations"><AdminOperationsContent /></DashboardShell>');
+  });
+
+  it("provides a separate preventive-maintenance workspace with controlled target dates", () => {
+    expect(portal).toContain('{ label: "Maintenance", id: "admin-maintenance", icon: Wrench }');
+    expect(operations).toContain('section id="admin-maintenance"');
+    expect(operations).toContain("Preventive maintenance");
+    expect(serviceLog).toContain("Target service date");
+    expect(serviceLog).toContain("dueAt");
   });
 });

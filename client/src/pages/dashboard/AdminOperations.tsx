@@ -171,9 +171,11 @@ export function AdminOperationsContent() {
 
         <FleetIncidentQueue />
 
-        <VehicleServiceLog />
-
-        <MaintenanceCompletionControl />
+        <section id="admin-maintenance" className="scroll-mt-6 space-y-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">Preventive maintenance</p><h3 className="mt-1 text-lg font-bold text-black">Plan, inspect, and close vehicle service.</h3><p className="mt-1 max-w-3xl text-[12px] leading-5 text-gray-500">Record target service dates, operational inspections, and maintenance completion. These internal controls never dispatch work, change customer charges, or release a vehicle automatically.</p></div>
+          <VehicleServiceLog />
+          <MaintenanceCompletionControl />
+        </section>
 
         <section id="admin-operations" className="scroll-mt-6 space-y-6"><FleetOperationsCalendar /><HandoffManager /></section>
 
