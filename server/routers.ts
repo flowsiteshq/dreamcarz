@@ -625,6 +625,8 @@ export const appRouter = router({
       .input(z.object({ query: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(10).max(50).default(20) }).optional())
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const directoryLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_directory_read", String(ctx.user.id)), limit: 120, windowMs: 60 * 60_000 });
+        if (!directoryLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator account-directory requests. Please try again later." });
         const db = await getDb();
         const page = input?.page ?? 1;
         const pageSize = input?.pageSize ?? 20;
@@ -655,6 +657,8 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(25).default(8) }))
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const historyLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_history_read", String(ctx.user.id)), limit: 120, windowMs: 60 * 60_000 });
+        if (!historyLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator role-history requests. Please try again later." });
         const db = await getDb();
         if (!db) return { items: [], total: 0, page: input.page, pageSize: input.pageSize };
         const events = await db.select({ id: roleAssignmentEvents.id, actorUserId: roleAssignmentEvents.actorUserId, role: roleAssignmentEvents.role, eventType: roleAssignmentEvents.eventType, createdAt: roleAssignmentEvents.createdAt }).from(roleAssignmentEvents).where(eq(roleAssignmentEvents.targetUserId, input.userId)).orderBy(desc(roleAssignmentEvents.createdAt));

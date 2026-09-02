@@ -6,6 +6,7 @@ vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPay
 
 import { getDb } from "./db";
 import { appRouter } from "./routers";
+import { resetRateLimitsForTests } from "./rateLimit";
 
 const mockedGetDb = vi.mocked(getDb);
 const adminContext = { user: { id: 1, name: "Administrator", email: "admin@example.com", role: "admin" }, req: { headers: {} }, res: {} };
@@ -13,7 +14,7 @@ const memberContext = { user: { id: 77, name: "Member", email: "member@example.c
 const assignmentTerminal = (rows: unknown[]) => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue(rows) })) })) });
 
 describe("DreamCarz role assignment governance", () => {
-  beforeEach(() => mockedGetDb.mockReset());
+  beforeEach(() => { mockedGetDb.mockReset(); resetRateLimitsForTests(); });
 
   it("records an immutable role_granted event when an administrator grants a new operational role", async () => {
     const values = vi.fn().mockResolvedValueOnce([{ insertId: 42 }]).mockResolvedValueOnce(undefined);
@@ -62,5 +63,14 @@ describe("DreamCarz role assignment governance", () => {
   it("restricts immutable role-change history to administrators before database access", async () => {
     await expect(appRouter.createCaller(memberContext as never).roles.historyForUser({ userId: 91 })).rejects.toThrow("Administrator access is required");
     expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits administrator directory and role-history reads before database access", async () => {
+    mockedGetDb.mockResolvedValue(null);
+    const caller = appRouter.createCaller(adminContext as never);
+    for (let attempt = 0; attempt < 120; attempt += 1) await caller.roles.directory({ page: 1, pageSize: 10 });
+    await expect(caller.roles.directory({ page: 1, pageSize: 10 })).rejects.toThrow("Too many administrator account-directory requests");
+    for (let attempt = 0; attempt < 120; attempt += 1) await caller.roles.historyForUser({ userId: 91 });
+    await expect(caller.roles.historyForUser({ userId: 91 })).rejects.toThrow("Too many administrator role-history requests");
   });
 });
