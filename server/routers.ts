@@ -651,6 +651,30 @@ export const appRouter = router({
         if (!db) return [];
         return db.select().from(userRoleAssignments).where(eq(userRoleAssignments.userId, input.userId)).orderBy(desc(userRoleAssignments.assignedAt));
       }),
+    historyForUser: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(25).default(8) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return { items: [], total: 0, page: input.page, pageSize: input.pageSize };
+        const events = await db.select({ id: roleAssignmentEvents.id, actorUserId: roleAssignmentEvents.actorUserId, role: roleAssignmentEvents.role, eventType: roleAssignmentEvents.eventType, createdAt: roleAssignmentEvents.createdAt }).from(roleAssignmentEvents).where(eq(roleAssignmentEvents.targetUserId, input.userId)).orderBy(desc(roleAssignmentEvents.createdAt));
+        const actorIds = Array.from(new Set(events.map(event => event.actorUserId)));
+        const actors = actorIds.length ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, actorIds)) : [];
+        const actorNames = new Map(actors.map(actor => [actor.id, actor.name]));
+        const start = (input.page - 1) * input.pageSize;
+        return {
+          items: events.slice(start, start + input.pageSize).map(event => ({
+            id: event.id,
+            role: event.role,
+            eventType: event.eventType,
+            createdAt: event.createdAt,
+            actorName: actorNames.get(event.actorUserId) || "Authorized administrator",
+          })),
+          total: events.length,
+          page: input.page,
+          pageSize: input.pageSize,
+        };
+      }),
     assign: protectedProcedure
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
       .mutation(async ({ ctx, input }) => {

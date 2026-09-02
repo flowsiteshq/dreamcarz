@@ -34,6 +34,8 @@ describe("separate administrator portal", () => {
     expect(portal).toContain('{ label: "Users & roles", id: "admin-roles", icon: Users }');
     expect(operations).toContain("AdministratorUserRoleManager");
     expect(roleManager).toContain("trpc.roles.directory");
+    expect(roleManager).toContain("trpc.roles.historyForUser");
+    expect(roleManager).toContain("Role-change history");
     expect(roleManager).toContain("You cannot revoke your own operational role");
     expect(roleManager).not.toContain("password");
   });
