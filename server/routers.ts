@@ -74,7 +74,7 @@ import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
 import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
-import { DREAMCARZ_ROLES, effectiveDreamCarzRoles } from "../shared/dreamcarzRoles";
+import { DREAMCARZ_ROLES, effectiveDreamCarzRoles, type DreamCarzRole } from "../shared/dreamcarzRoles";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
 import { hasCompleteRentalInquiry, vehicleInquiryReferencePrefix } from "../shared/vehicleInquiry";
 import { createStripeIdentityVerificationSession, getIdentityProviderStatus } from "./identityProvider";
@@ -621,6 +621,28 @@ export const appRouter = router({
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
       return { roles: effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role)) };
     }),
+    directory: protectedProcedure
+      .input(z.object({ query: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(10).max(50).default(20) }).optional())
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        const page = input?.page ?? 1;
+        const pageSize = input?.pageSize ?? 20;
+        if (!db) return { items: [], total: 0, page, pageSize };
+        const [accounts, assignments] = await Promise.all([
+          db.select({ id: users.id, name: users.name, email: users.email, baseRole: users.role, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).orderBy(desc(users.updatedAt)),
+          db.select({ userId: userRoleAssignments.userId, role: userRoleAssignments.role }).from(userRoleAssignments).where(isNull(userRoleAssignments.revokedAt)),
+        ]);
+        const activeRoles = new Map<number, DreamCarzRole[]>();
+        for (const assignment of assignments) activeRoles.set(assignment.userId, [...(activeRoles.get(assignment.userId) ?? []), assignment.role]);
+        const rows = accounts.map(account => ({
+          ...account,
+          roles: effectiveDreamCarzRoles(account.baseRole, activeRoles.get(account.id) ?? []),
+        }));
+        const query = input?.query?.toLowerCase();
+        const filtered = query ? rows.filter(row => [row.name, row.email, row.baseRole, ...row.roles].some(value => value?.toLowerCase().includes(query))) : rows;
+        return { items: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize };
+      }),
     listForUser: protectedProcedure
       .input(z.object({ userId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -650,6 +672,7 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You cannot revoke your own operational role." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
         const assignment = (await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role), isNull(userRoleAssignments.revokedAt))).limit(1))[0];

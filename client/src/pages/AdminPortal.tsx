@@ -11,6 +11,7 @@ const adminLinks = [
   { label: "Rentals & sales", id: "admin-customers", icon: ClipboardCheck },
   { label: "DCP & pricing", id: "admin-dcp", icon: FileText },
   { label: "Maintenance", id: "admin-maintenance", icon: Wrench },
+  { label: "Users & roles", id: "admin-roles", icon: Users },
   { label: "Compliance", id: "admin-reviews", icon: ShieldCheck },
   { label: "Documents", id: "admin-customers", icon: FileText },
   { label: "Operations", id: "admin-operations", icon: ClipboardCheck },
