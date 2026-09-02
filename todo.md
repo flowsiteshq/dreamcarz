@@ -376,3 +376,4 @@
 - [x] Add a role-gated, paginated administrator customer-management workspace with account-owned customer records and transaction summaries, excluding credentials, payment data, and private documents.
 - [ ] Add a role-gated preventive-maintenance workspace for vehicle service schedules, inspections, and maintenance states without automated dispatch or external provider activation.
 - [x] Add a clearly labeled role-gated Admin Panel navigation entry and verify the direct administrator route remains separate from My Account.
+- [x] Create a separate role-gated DreamCarz Administrator portal and login experience at /admin with a dedicated command-center layout using only live operational data.

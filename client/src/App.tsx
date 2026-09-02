@@ -34,7 +34,8 @@ import DreamJourney from "./pages/dashboard/DreamJourney";
 import Opportunity from "./pages/Opportunity";
 import DriveNetwork from "./pages/dashboard/DriveNetwork";
 import RentalOnboarding from "./pages/dashboard/RentalOnboarding";
-import AdminOperations from "./pages/dashboard/AdminOperations";
+import AdminOperations from "@/pages/dashboard/AdminOperations";
+import AdminPortal from "@/pages/AdminPortal";
 import TransactionOnboarding from "./pages/dashboard/TransactionOnboarding";
 import DreamCarzId from "./pages/dashboard/DreamCarzId";
 import IncidentCenter from "./pages/dashboard/IncidentCenter";
@@ -103,6 +104,7 @@ function Router() {
       <Route path="/dashboard/operations" component={AdminOperations} />
       <Route path="/dashboard/admin" component={AdminOperations} />
       <Route path="/dashboard/admin-operations" component={AdminOperations} />
+      <Route path="/admin" component={AdminPortal} />
       <Route path="/dashboard/command-center" component={CommandCenter} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/404" component={NotFound} />

@@ -14,6 +14,6 @@ describe("administrator route navigation", () => {
   it("shows an Admin Panel link only for the administrator role", () => {
     const adminLinks = shell.slice(shell.indexOf("const operatingLinks"), shell.indexOf("if (loading)"));
     expect(adminLinks).toContain('user?.role === "admin"');
-    expect(adminLinks).toContain('{ href: "/dashboard/admin", label: "Admin Panel", icon: ShieldCheck }');
+    expect(adminLinks).toContain('{ href: "/admin", label: "Admin Panel", icon: ShieldCheck }');
   });
 });
