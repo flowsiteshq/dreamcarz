@@ -137,7 +137,7 @@ describe("DreamCarz OS foundation router", () => {
     expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ walletAccountId: 9, status: "pending", amountCents: 500, createdByUserId: 1 }));
   });
 
-  it("records an administrator eligibility decision on the transaction assessment and audit trail", async () => {
+  it("records an administrator manual-review eligibility decision on the transaction assessment and audit trail", async () => {
     const transaction = { id: 41, eligibilityStatus: "pending" as const };
     const assessment = { id: 7, ruleSnapshot: '{"version":"dreamcarz-eligibility-v1"}' };
     const select = vi.fn()
@@ -148,9 +148,18 @@ describe("DreamCarz OS foundation router", () => {
     mockedGetDb.mockResolvedValue({ select, update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: insertValues })) } as never);
     const caller = appRouter.createCaller(adminContext as never);
 
-    await expect(caller.operations.reviewEligibility({ reference: "DCR-2026-ELIGIBILITY", status: "cleared", decisionReason: "Required records were reviewed." })).resolves.toEqual({ success: true, eligibilityStatus: "cleared" });
+    await expect(caller.operations.reviewEligibility({ reference: "DCR-2026-ELIGIBILITY", status: "manual_review", decisionReason: "Required records were reviewed." })).resolves.toEqual({ success: true, eligibilityStatus: "manual_review" });
     expect(updateWhere).toHaveBeenCalledTimes(2);
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "eligibility.review_recorded", toStatus: "cleared" }));
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ eventType: "eligibility.review_recorded", toStatus: "manual_review" }));
+  });
+
+  it("requires an active eligibility policy before an administrator clears a rental transaction", async () => {
+    const transaction = { id: 44, transactionType: "rental" as const, eligibilityStatus: "pending" as const, vehicleId: "2024-chevrolet-malibu-gray" };
+    const select = vi.fn().mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([transaction]) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+
+    await expect(caller.operations.reviewEligibility({ reference: "DCR-2026-RENTAL-GUARD", status: "cleared", decisionReason: "Records were reviewed." })).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy before clearing a rental transaction." });
   });
 
   it("limits eligibility policy creation to administrators and records unseeded policies as drafts", async () => {

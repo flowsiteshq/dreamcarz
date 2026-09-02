@@ -4032,7 +4032,10 @@ export const appRouter = router({
         const transaction = (await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, input.reference)).limit(1))[0];
         if (!transaction) throw new TRPCError({ code: "NOT_FOUND", message: "Transaction not found." });
         const policy = input.eligibilityPolicyId ? (await db.select().from(eligibilityPolicies).where(eq(eligibilityPolicies.id, input.eligibilityPolicyId)).limit(1))[0] : null;
-        if (input.eligibilityPolicyId && (!policy || policy.status !== "active")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy or complete this review without a policy snapshot." });
+        if (input.eligibilityPolicyId && (!policy || policy.status !== "active")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy for this review." });
+        if (input.status === "cleared" && transaction.transactionType === "rental" && !policy) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Select an active eligibility policy before clearing a rental transaction." });
+        }
         if (policy?.scope === "specific_vehicle" && policy.vehicleId !== transaction.vehicleId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This eligibility policy does not apply to the selected transaction vehicle." });
         const policySnapshot = policy ? JSON.stringify({ policy: { id: policy.id, code: policy.code, name: policy.name, version: policy.version, scope: policy.scope, vehicleId: policy.vehicleId, approvalReference: policy.approvalReference }, ruleConfiguration: policy.ruleConfiguration, evaluation: "administrator_review" }) : input.ruleSnapshot ?? JSON.stringify({ version: "dreamcarz-eligibility-v1", source: "manual" });
         const assessment = (await db.select().from(transactionEligibilityAssessments).where(eq(transactionEligibilityAssessments.transactionId, transaction.id)).limit(1))[0];
