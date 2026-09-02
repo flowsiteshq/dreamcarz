@@ -37,7 +37,7 @@ describe("fleetPartner.overview activity", () => {
 
     const result = await appRouter.createCaller(fleetPartnerContext as never).fleetPartner.overview();
 
-    expect(result.activity).toEqual([{ vehiclePassportId: 8, vehicleName: "2024 Chevrolet Malibu · Gray", activeRentalCount: 1 }]);
+    expect(result.activity).toEqual([{ vehiclePassportId: 8, vehicleName: "2024 Chevrolet Malibu · Gray", activeRentalCount: 1, scheduleWindowCount: 1, openMaintenanceCount: 0, inspectionAttentionCount: 0, openIncidentCount: 0 }]);
     expect(result.scheduleWindows).toHaveLength(1);
     expect(JSON.stringify(result.scheduleWindows)).not.toMatch(/customer|payment|location|note|reference/i);
     expect(JSON.stringify(result.activity)).not.toContain("reference");

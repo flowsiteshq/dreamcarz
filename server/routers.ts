@@ -2892,10 +2892,30 @@ export const appRouter = router({
         counts[row.vehicleName] = (counts[row.vehicleName] ?? 0) + 1;
         return counts;
       }, {});
+      const scheduleWindowCounts = scheduleWindows.reduce<Record<string, number>>((counts, window) => {
+        counts[window.vehicleName] = (counts[window.vehicleName] ?? 0) + 1;
+        return counts;
+      }, {});
+      const openMaintenanceCounts = maintenance.reduce<Record<number, number>>((counts, item) => {
+        if (!['completed', 'canceled'].includes(item.status)) counts[item.vehiclePassportId] = (counts[item.vehiclePassportId] ?? 0) + 1;
+        return counts;
+      }, {});
+      const inspectionAttentionCounts = inspections.reduce<Record<number, number>>((counts, item) => {
+        if (item.status !== 'reviewed') counts[item.vehiclePassportId] = (counts[item.vehiclePassportId] ?? 0) + 1;
+        return counts;
+      }, {});
+      const openIncidentCounts = incidents.reduce<Record<number, number>>((counts, item) => {
+        if (!['resolved', 'closed'].includes(item.status)) counts[item.vehiclePassportId] = (counts[item.vehiclePassportId] ?? 0) + 1;
+        return counts;
+      }, {});
       const activity = vehicles.map(vehicle => ({
         vehiclePassportId: vehicle.id,
         vehicleName: vehicle.vehicleName,
         activeRentalCount: activeRentalCounts[vehicle.vehicleName] ?? 0,
+        scheduleWindowCount: scheduleWindowCounts[vehicle.vehicleName] ?? 0,
+        openMaintenanceCount: openMaintenanceCounts[vehicle.id] ?? 0,
+        inspectionAttentionCount: inspectionAttentionCounts[vehicle.id] ?? 0,
+        openIncidentCount: openIncidentCounts[vehicle.id] ?? 0,
       }));
       return { profile, roles, vehicles, maintenance, inspections, incidents, scheduleWindows, activity };
     }),
