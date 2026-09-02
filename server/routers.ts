@@ -646,12 +646,16 @@ export const appRouter = router({
         return { items: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize };
       }),
     listForUser: protectedProcedure
-      .input(z.object({ userId: z.number().int().positive() }))
+      .input(z.object({ userId: z.number().int().positive(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(25).default(10) }))
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const assignmentReadLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_assignment_read", String(ctx.user.id)), limit: 120, windowMs: 60 * 60_000 });
+        if (!assignmentReadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator role-assignment requests. Please try again later." });
         const db = await getDb();
-        if (!db) return [];
-        return db.select().from(userRoleAssignments).where(eq(userRoleAssignments.userId, input.userId)).orderBy(desc(userRoleAssignments.assignedAt));
+        if (!db) return { items: [], total: 0, page: input.page, pageSize: input.pageSize };
+        const assignments = await db.select({ id: userRoleAssignments.id, role: userRoleAssignments.role, assignedAt: userRoleAssignments.assignedAt, revokedAt: userRoleAssignments.revokedAt }).from(userRoleAssignments).where(eq(userRoleAssignments.userId, input.userId)).orderBy(desc(userRoleAssignments.assignedAt));
+        const start = (input.page - 1) * input.pageSize;
+        return { items: assignments.slice(start, start + input.pageSize), total: assignments.length, page: input.page, pageSize: input.pageSize };
       }),
     historyForUser: protectedProcedure
       .input(z.object({ userId: z.number().int().positive(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(25).default(8) }))

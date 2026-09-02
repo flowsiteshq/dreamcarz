@@ -382,3 +382,4 @@
 - [x] Apply bounded per-administrator rate limits before account-directory and role-change history access in the Administrator portal.
 - [x] Apply bounded per-administrator rate limits before operational role grants, restores, and revocations are recorded.
 - [x] Prevent operational role assignment from representing or granting base DreamCarz administrator access.
+- [x] Minimize and rate-limit the legacy administrator role-assignment record projection without changing operational role capabilities.

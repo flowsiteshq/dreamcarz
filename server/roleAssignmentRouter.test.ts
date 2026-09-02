@@ -50,6 +50,20 @@ describe("DreamCarz role assignment governance", () => {
     });
   });
 
+  it("minimizes role-assignment records and returns a bounded administrator projection", async () => {
+    const assignedAt = new Date("2026-09-02T12:00:00.000Z");
+    const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([{ id: 8, role: "support", assignedAt, revokedAt: null }]) })) })) }));
+    mockedGetDb.mockResolvedValue({ select } as never);
+
+    await expect(appRouter.createCaller(adminContext as never).roles.listForUser({ userId: 91, page: 1, pageSize: 10 })).resolves.toEqual({
+      items: [{ id: 8, role: "support", assignedAt, revokedAt: null }],
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    });
+    expect(select.mock.calls[0]?.[0]).not.toHaveProperty("assignedByUserId");
+  });
+
   it("rejects role changes before any database access for non-administrators", async () => {
     await expect(appRouter.createCaller(memberContext as never).roles.assign({ userId: 91, role: "support" })).rejects.toThrow("Administrator access is required");
     expect(mockedGetDb).not.toHaveBeenCalled();
@@ -70,6 +84,11 @@ describe("DreamCarz role assignment governance", () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it("restricts role-assignment records to administrators before database access", async () => {
+    await expect(appRouter.createCaller(memberContext as never).roles.listForUser({ userId: 91 })).rejects.toThrow("Administrator access is required");
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it("rate-limits administrator directory and role-history reads before database access", async () => {
     mockedGetDb.mockResolvedValue(null);
     const caller = appRouter.createCaller(adminContext as never);
@@ -77,6 +96,8 @@ describe("DreamCarz role assignment governance", () => {
     await expect(caller.roles.directory({ page: 1, pageSize: 10 })).rejects.toThrow("Too many administrator account-directory requests");
     for (let attempt = 0; attempt < 120; attempt += 1) await caller.roles.historyForUser({ userId: 91 });
     await expect(caller.roles.historyForUser({ userId: 91 })).rejects.toThrow("Too many administrator role-history requests");
+    for (let attempt = 0; attempt < 120; attempt += 1) await caller.roles.listForUser({ userId: 91 });
+    await expect(caller.roles.listForUser({ userId: 91 })).rejects.toThrow("Too many administrator role-assignment requests");
   });
 
   it("rate-limits operational role changes before the next assignment lookup", async () => {
