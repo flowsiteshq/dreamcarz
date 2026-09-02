@@ -382,6 +382,7 @@
 - [x] Add a clearly labeled role-gated Admin Panel navigation entry and verify the direct administrator route remains separate from My Account.
 - [x] Create a separate role-gated DreamCarz Administrator portal and login experience at /admin with a dedicated command-center layout using only live operational data.
 - [x] Add a separate role-gated Administrator user and role-management workspace that uses existing audited role controls and blocks self-demotion.
+- [x] Add a direct Users and roles command-center entry that scrolls to the protected administrator workspace.
 - [x] Add an administrator-only immutable role-change history for selected accounts, exposing only role, action, timestamp, and minimal staff attribution.
 - [x] Apply bounded per-administrator rate limits before account-directory and role-change history access in the Administrator portal.
 - [x] Apply bounded per-administrator rate limits before operational role grants, restores, and revocations are recorded.
