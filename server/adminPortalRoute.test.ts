@@ -7,6 +7,7 @@ const portal = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPortal
 const operations = readFileSync(resolve(process.cwd(), "client/src/pages/dashboard/AdminOperations.tsx"), "utf8");
 const serviceLog = readFileSync(resolve(process.cwd(), "client/src/components/VehicleServiceLog.tsx"), "utf8");
 const roleManager = readFileSync(resolve(process.cwd(), "client/src/components/AdministratorUserRoleManager.tsx"), "utf8");
+const passportManager = readFileSync(resolve(process.cwd(), "client/src/components/VehiclePassportManager.tsx"), "utf8");
 
 describe("separate administrator portal", () => {
   it("routes /admin to a dedicated administrator portal", () => {
@@ -41,5 +42,11 @@ describe("separate administrator portal", () => {
     expect(roleManager).toContain("Base administrator access is controlled outside this workspace");
     expect(roleManager).not.toContain('"administrator"');
     expect(roleManager).not.toContain("password");
+  });
+
+  it("provides an administrator-only selected Vehicle Passport operational timeline", () => {
+    expect(passportManager).toContain("trpc.operations.vehiclePassports.operationalHistory");
+    expect(passportManager).toContain("View timeline");
+    expect(passportManager).toContain("Operational history excludes customer, payment, document-key, and exact-location data.");
   });
 });
