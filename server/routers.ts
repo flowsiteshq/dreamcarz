@@ -2884,6 +2884,7 @@ export const appRouter = router({
       const maintenance = passportIds.length ? await db.select({ id: vehicleMaintenanceRecords.id, vehiclePassportId: vehicleMaintenanceRecords.vehiclePassportId, maintenanceType: vehicleMaintenanceRecords.maintenanceType, status: vehicleMaintenanceRecords.status, createdAt: vehicleMaintenanceRecords.createdAt }).from(vehicleMaintenanceRecords).where(inArray(vehicleMaintenanceRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleMaintenanceRecords.createdAt)) : [];
       const inspections = passportIds.length ? await db.select({ id: vehicleOperationalInspections.id, vehiclePassportId: vehicleOperationalInspections.vehiclePassportId, stage: vehicleOperationalInspections.stage, status: vehicleOperationalInspections.status, createdAt: vehicleOperationalInspections.createdAt }).from(vehicleOperationalInspections).where(inArray(vehicleOperationalInspections.vehiclePassportId, passportIds)).orderBy(desc(vehicleOperationalInspections.createdAt)) : [];
       const incidents = passportIds.length ? await db.select({ id: vehicleIncidentRecords.id, vehiclePassportId: vehicleIncidentRecords.vehiclePassportId, incidentType: vehicleIncidentRecords.incidentType, severity: vehicleIncidentRecords.severity, status: vehicleIncidentRecords.status, createdAt: vehicleIncidentRecords.createdAt }).from(vehicleIncidentRecords).where(inArray(vehicleIncidentRecords.vehiclePassportId, passportIds)).orderBy(desc(vehicleIncidentRecords.createdAt)) : [];
+      const scheduleWindows = vehicleNames.length ? await db.select({ vehicleName: vehicleTransactions.vehicleName, transactionType: vehicleTransactions.transactionType, transactionStatus: vehicleTransactions.status, requestedStartAt: transactionSchedules.requestedStartAt, requestedEndAt: transactionSchedules.requestedEndAt, scheduledHandoffAt: transactionSchedules.scheduledHandoffAt, handoffStatus: transactionSchedules.handoffStatus }).from(transactionSchedules).innerJoin(vehicleTransactions, eq(transactionSchedules.transactionId, vehicleTransactions.id)).where(inArray(vehicleTransactions.vehicleName, vehicleNames)).orderBy(desc(transactionSchedules.requestedStartAt)) : [];
       const activeRentalVehicleRows = vehicleNames.length ? await db.select({ vehicleName: vehicleTransactions.vehicleName }).from(vehicleTransactions).where(and(inArray(vehicleTransactions.vehicleName, vehicleNames), eq(vehicleTransactions.status, "active_rental"))) : [];
       const activeRentalCounts = activeRentalVehicleRows.reduce<Record<string, number>>((counts, row) => {
         counts[row.vehicleName] = (counts[row.vehicleName] ?? 0) + 1;
@@ -2894,7 +2895,7 @@ export const appRouter = router({
         vehicleName: vehicle.vehicleName,
         activeRentalCount: activeRentalCounts[vehicle.vehicleName] ?? 0,
       }));
-      return { profile, roles, vehicles, maintenance, inspections, incidents, activity };
+      return { profile, roles, vehicles, maintenance, inspections, incidents, scheduleWindows, activity };
     }),
     adminAssignmentOverview: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });

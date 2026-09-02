@@ -30,12 +30,15 @@ describe("fleetPartner.overview activity", () => {
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([]) })) })) })
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([]) })) })) })
       .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([]) })) })) })
+      .mockReturnValueOnce({ from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue([{ vehicleName: "2024 Chevrolet Malibu · Gray", transactionType: "rental", transactionStatus: "ready_for_pickup", requestedStartAt: new Date("2026-09-04T12:00:00.000Z"), requestedEndAt: new Date("2026-09-05T12:00:00.000Z"), scheduledHandoffAt: null, handoffStatus: "scheduled" }]) })) })) })) })
       .mockReturnValueOnce(queryResult([{ vehicleName: "2024 Chevrolet Malibu · Gray" }]));
     mockedGetDb.mockResolvedValue({ select } as never);
 
     const result = await appRouter.createCaller(fleetPartnerContext as never).fleetPartner.overview();
 
     expect(result.activity).toEqual([{ vehiclePassportId: 8, vehicleName: "2024 Chevrolet Malibu · Gray", activeRentalCount: 1 }]);
+    expect(result.scheduleWindows).toHaveLength(1);
+    expect(JSON.stringify(result.scheduleWindows)).not.toMatch(/customer|payment|location|note|reference/i);
     expect(JSON.stringify(result.activity)).not.toContain("reference");
     expect(JSON.stringify(result.activity)).not.toContain("customer");
     expect(result.vehicles).toEqual([{ id: 8, vehicleName: "2024 Chevrolet Malibu · Gray", readinessStatus: "available" }]);
