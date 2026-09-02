@@ -59,6 +59,32 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(result[0]).not.toHaveProperty("insuranceDocumentKey");
   });
 
+  it("records a location-change audit signal without copying location values into Vehicle Passport history", async () => {
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const activityValues = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn(() => terminalWithLimit([{ id: 91, readinessStatus: "available", currentLocation: "Baltimore depot" }])),
+      update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })),
+      insert: vi.fn(() => ({ values: activityValues })),
+    };
+    mockedGetDb.mockResolvedValue(db as never);
+
+    await expect(appRouter.createCaller(adminContext as never).operations.vehiclePassports.save({
+      vehicleId: "2024-chevrolet-malibu-gray",
+      vehicleName: "2024 Chevrolet Malibu",
+      acquisitionStatus: "owned",
+      readinessStatus: "available",
+      currentLocation: "Service lane",
+    })).resolves.toEqual({ success: true, passportId: 91, updated: true });
+
+    expect(activityValues).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "passport.location_changed",
+      metadata: JSON.stringify({ previousLocationRecorded: "true", currentLocationRecorded: "true" }),
+    }));
+    expect(JSON.stringify(activityValues.mock.calls)).not.toContain("Baltimore depot");
+    expect(JSON.stringify(activityValues.mock.calls)).not.toContain("Service lane");
+  });
+
   it("requires a reviewer note before an administrator marks an inspection as needing attention", async () => {
     const caller = appRouter.createCaller(adminContext as never);
     await expect(caller.operations.vehiclePassports.reviewInspection({ inspectionId: 12, status: "needs_attention" })).rejects.toThrow("Add a review note");

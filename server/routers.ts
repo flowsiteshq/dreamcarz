@@ -3658,10 +3658,11 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Vehicle Passport records are temporarily unavailable." });
         const values = { ...input, stockNumber: input.stockNumber || null, vinLast4: input.vinLast4 || null, plateNumber: input.plateNumber || null, currentLocation: input.currentLocation || null, currentOdometer: input.currentOdometer ?? null, fuelOrChargeLevel: input.fuelOrChargeLevel || null, acquisitionReference: input.acquisitionReference || null, insurancePolicyReference: input.insurancePolicyReference || null, notes: input.notes || null };
-        const existing = await db.select({ id: vehiclePassports.id, readinessStatus: vehiclePassports.readinessStatus }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
+        const existing = await db.select({ id: vehiclePassports.id, readinessStatus: vehiclePassports.readinessStatus, currentLocation: vehiclePassports.currentLocation }).from(vehiclePassports).where(eq(vehiclePassports.vehicleId, input.vehicleId)).limit(1);
         if (existing[0]) {
           await db.update(vehiclePassports).set(values).where(eq(vehiclePassports.id, existing[0].id));
           const readinessChanged = existing[0].readinessStatus !== input.readinessStatus;
+          const locationChanged = existing[0].currentLocation !== values.currentLocation;
           await recordVehiclePassportActivity(db, {
             vehiclePassportId: existing[0].id,
             actorUserId: ctx.user.id,
@@ -3670,6 +3671,14 @@ export const appRouter = router({
               ? { fromReadinessStatus: existing[0].readinessStatus, toReadinessStatus: input.readinessStatus }
               : { readinessStatus: input.readinessStatus },
           });
+          if (locationChanged) {
+            await recordVehiclePassportActivity(db, {
+              vehiclePassportId: existing[0].id,
+              actorUserId: ctx.user.id,
+              eventType: "passport.location_changed",
+              metadata: { previousLocationRecorded: String(Boolean(existing[0].currentLocation)), currentLocationRecorded: String(Boolean(values.currentLocation)) },
+            });
+          }
           return { success: true, passportId: existing[0].id, updated: true };
         }
         const created = await db.insert(vehiclePassports).values(values);
