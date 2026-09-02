@@ -380,3 +380,4 @@
 - [x] Add a separate role-gated Administrator user and role-management workspace that uses existing audited role controls and blocks self-demotion.
 - [x] Add an administrator-only immutable role-change history for selected accounts, exposing only role, action, timestamp, and minimal staff attribution.
 - [x] Apply bounded per-administrator rate limits before account-directory and role-change history access in the Administrator portal.
+- [x] Apply bounded per-administrator rate limits before operational role grants, restores, and revocations are recorded.

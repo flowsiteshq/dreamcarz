@@ -73,4 +73,14 @@ describe("DreamCarz role assignment governance", () => {
     for (let attempt = 0; attempt < 120; attempt += 1) await caller.roles.historyForUser({ userId: 91 });
     await expect(caller.roles.historyForUser({ userId: 91 })).rejects.toThrow("Too many administrator role-history requests");
   });
+
+  it("rate-limits operational role changes before the next assignment lookup", async () => {
+    const values = vi.fn().mockResolvedValue([{ insertId: 42 }]);
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => assignmentTerminal([])), insert: vi.fn(() => ({ values })) } as never);
+    const caller = appRouter.createCaller(adminContext as never);
+    for (let attempt = 0; attempt < 30; attempt += 1) await caller.roles.assign({ userId: 91, role: "support" });
+    const dbCallsBeforeBlockedAttempt = mockedGetDb.mock.calls.length;
+    await expect(caller.roles.assign({ userId: 91, role: "support" })).rejects.toThrow("Too many administrator role changes");
+    expect(mockedGetDb).toHaveBeenCalledTimes(dbCallsBeforeBlockedAttempt);
+  });
 });

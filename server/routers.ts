@@ -683,6 +683,8 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const roleChangeLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_change", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!roleChangeLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator role changes. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
         const existing = await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, input.userId), eq(userRoleAssignments.role, input.role))).limit(1);
@@ -700,6 +702,8 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), role: z.enum(DREAMCARZ_ROLES) }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const roleChangeLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_role_change", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!roleChangeLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many administrator role changes. Please try again later." });
         if (input.userId === ctx.user.id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You cannot revoke your own operational role." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Role management is temporarily unavailable." });
