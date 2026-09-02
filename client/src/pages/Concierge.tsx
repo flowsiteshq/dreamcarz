@@ -1,16 +1,16 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel";
 import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
-import { shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
+import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
 import { trpc } from "@/lib/trpc";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
-import { ArrowRight, CarFront, Check, Compass, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CarFront, Check, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
 type Entry = { id: string; role: "concierge" | "member"; text: string };
-type DashboardCreationField = "name" | "email" | "password" | "existingPassword" | null;
+type DashboardCreationField = ConciergeSecureField;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
   sedan: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image,
@@ -108,7 +108,10 @@ export default function Concierge() {
   const savedPathStep = activeTransaction?.currentStep?.replaceAll("_", " ");
   const hasSavedPath = Boolean(savedPathVehicle || activeTransaction || savedJourney);
   const dashboardMode = Boolean(selectedVehicleId || enrollmentReference || savedJourney?.selectedVehicleId || activeTransaction);
-  const latestConciergeMessage = [...history].reverse().find(entry => entry.role === "concierge")?.text ?? "";
+  const activeQuestionIndex = history.map(entry => entry.role).lastIndexOf("concierge");
+  const activeQuestion = history[activeQuestionIndex]?.text ?? welcome(user?.name, isAuthenticated, intent).text;
+  const conversationHistory = history.filter((_, index) => index !== activeQuestionIndex);
+  const latestConciergeMessage = activeQuestion;
   const showVehicleClassChoice = shouldShowVehicleClassChoice({ intent, vehicleClass, hasSelectedVehicle: Boolean(selectedVehicle), latestConciergeMessage });
   const vehicleClassChoices = (["sedan", "suv"] as const).map(kind => ({
     kind,
@@ -116,6 +119,8 @@ export default function Concierge() {
   }));
   const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
   const dashboardPrompt = dashboardCreationField === "email" ? "What email should we use?" : dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "existingPassword" ? "Enter your password to sign in" : "Create a secure password";
+  const secureFieldActive = Boolean(dashboardCreationField && !dashboardQuestionMode);
+  const composerPlaceholder = conciergeComposerPlaceholder(dashboardCreationField, dashboardQuestionMode);
 
   const answerDashboardCreation = async (rawValue: string) => {
     const value = rawValue.trim();
@@ -192,13 +197,13 @@ export default function Concierge() {
     setSelectedVehicleId(vehicleId);
     setTimeline(null);
     const vehicle = inventory.find(item => item.vehicleId === vehicleId);
-    if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: `${vehicle.vehicleName} selected. When would you like to drive?` });
+    if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: `Perfect. I’ve saved the ${vehicle.vehicleName}. When would you like to drive?` });
   };
   const selectVehicleClass = (choice: Exclude<VehicleClass, null>) => {
     setVehicleClass(choice);
     setRecommendedIds(vehicleIdsForClass(inventory, choice));
     append({ id: `${Date.now()}-class`, role: "member", text: choice === "suv" ? "SUV" : "Sedan" });
-    append({ id: `${Date.now() + 1}-class-guide`, role: "concierge", text: `Here are confirmed ${choice === "suv" ? "SUV" : "sedan"} options.` });
+    append({ id: `${Date.now() + 1}-class-guide`, role: "concierge", text: `Here are two confirmed ${choice === "suv" ? "SUV" : "sedan"} options. Choose the one that fits you.` });
   };
   const restore = () => {
     if (!savedJourney) return;
@@ -224,7 +229,7 @@ export default function Concierge() {
     if (dashboardCreationField) return;
     setDashboardQuestionMode(false);
     setDashboardCreationField("email");
-    append({ id: `${Date.now()}-dashboard-start`, role: "concierge", text: "Let me gather a few details and create your DreamCarz dashboard. What email should we use?" });
+    append({ id: `${Date.now()}-dashboard-start`, role: "concierge", text: "I’ll create your DreamCarz dashboard and keep this vehicle path here. What email should we use?" });
   };
   const openEnrollment = (reference: string) => {
     setEnrollmentReference(reference);
@@ -260,30 +265,41 @@ export default function Concierge() {
 
   return (
     <ConciergeWorkspace dashboard={dashboardMode} intent={intent === "rental" || intent === "purchase" ? intent : null} userName={user?.name} isAuthenticated={isAuthenticated} hasSavedPath={hasSavedPath} savedPath={{ vehicleName: savedPathVehicle?.vehicleName ?? selectedVehicle?.vehicleName ?? null, vehicleImage: savedPathVehicle?.image ?? selectedVehicle?.image ?? null, intent: workspacePathIntent, timeline: savedPathTimeline ?? timeline, nextStep: savedPathStep ?? (enrollmentReference ? "Continue enrollment" : null) }} canResume={Boolean(activeTransaction)} onResume={() => activeTransaction ? openEnrollment(activeTransaction.reference) : restore()} onNewConversation={reset} onChoosePath={choosePath} onChangeVehicle={changeVehicle} onAccount={openAccount}>
-        <div className={`mx-auto flex min-h-[calc(100vh-69px)] w-full flex-1 flex-col px-5 py-8 transition-opacity duration-200 motion-reduce:transition-none sm:px-8 sm:py-10 ${dashboardMode ? "max-w-3xl" : "max-w-2xl"} ${hasEntered ? "opacity-100" : "opacity-0"}`}>
+        <div className={`mx-auto flex min-h-[calc(100vh-69px)] w-full flex-1 flex-col px-5 py-8 transition-opacity duration-200 motion-reduce:transition-none sm:px-8 sm:py-10 ${dashboardMode ? "max-w-5xl" : "max-w-3xl"} ${hasEntered ? "opacity-100" : "opacity-0"}`}>
           <div className="space-y-6">
-            {history.map(entry => (
+            {conversationHistory.map(entry => (
               <div key={entry.id} className={`flex min-w-0 gap-3 ${entry.role === "member" ? "flex-row-reverse" : ""}`}>
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${entry.role === "member" ? "bg-[#efefef] text-[#373737]" : "bg-black text-[#d5b35b]"}`}>
                   {entry.role === "member" ? <Compass size={15} /> : <Sparkles size={14} />}
                 </span>
-                <p className={`max-w-[calc(100%-44px)] break-words text-[16px] leading-7 ${entry.role === "member" ? "rounded-2xl rounded-tr-sm bg-[#f0f0f0] px-4 py-3 text-[#1f1f1f]" : "pt-0.5 text-[#2d2d2d]"}`}>{entry.text}</p>
+                <p className={`max-w-[min(720px,calc(100%-44px))] break-words text-[15px] leading-7 ${entry.role === "member" ? "rounded-2xl rounded-tr-sm bg-[#111111] px-4 py-3 text-white" : "rounded-2xl rounded-tl-sm border border-[#eeeeec] bg-white px-4 py-3 text-[#2d2d2d]"}`}>{entry.text}</p>
               </div>
             ))}
             {publicGuide.isPending ? <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={14} /></span><span className="pt-2 text-sm text-gray-400">Thinking…</span></div> : null}
             {!dashboardMode && hasSavedPath ? <section aria-label="Saved Concierge choices" className="border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Your saved path</p><p className="mt-1 text-sm font-semibold">Pick up where you left off.</p></div>{activeTransaction ? <button type="button" onClick={() => openEnrollment(activeTransaction.reference)} className="shrink-0 rounded-full bg-black px-3 py-2 text-xs font-semibold text-white">Resume</button> : null}</div><div className="mt-4 grid gap-2 text-xs text-gray-600">{savedPathVehicle ? <div className="flex items-center gap-3 border-t border-[#eee4c9] pt-3"><img src={savedPathVehicle.image} alt="" className="h-10 w-16 object-contain" /><span><strong className="text-gray-900">Vehicle</strong> · {savedPathVehicle.vehicleName}</span></div> : null}{savedPathIntent === "rental" || savedPathIntent === "purchase" ? <p><strong className="text-gray-900">Path</strong> · {savedPathIntent === "rental" ? "Renting" : "Buying"}</p> : null}{savedPathTimeline ? <p><strong className="text-gray-900">Timing</strong> · {savedPathTimeline === "this_week" ? "This week" : savedPathTimeline === "soon" ? "Soon" : "Exploring"}</p> : null}{savedPathStep ? <p><strong className="text-gray-900">Next</strong> · {savedPathStep}</p> : null}</div></section> : null}
+            <section aria-label="Current Concierge question" className="flex gap-3 pt-2">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={16} /></span>
+              <div className="min-w-0 flex-1 rounded-2xl border border-[#e4cb84] bg-[#fffdf8] px-5 py-4 shadow-[0_8px_30px_rgba(168,131,45,0.08)]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#a8832d]">DreamCarz is asking</p>
+                <p className="mt-2 break-words text-[19px] font-semibold leading-7 text-[#1c1c1c] sm:text-[21px]">{activeQuestion}</p>
+              </div>
+            </section>
             {showVehicleClassChoice ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1">{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold">{option.kind === "suv" ? "SUV" : "Sedan"}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
-            {recommendedIds?.length ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className={`overflow-hidden rounded-xl border bg-white text-left ${selectedVehicleId === vehicle.vehicleId ? "border-black ring-1 ring-black" : "border-[#e6e6e6]"}`}><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">{selectedVehicleId === vehicle.vehicleId ? <><Check size={13} className="text-[#a8832d]" /> Selected</> : <><CarFront size={13} className="text-[#a8832d]" /> Choose</>}</span></div></button>)}</div></div> : null}
-            {selectedVehicle ? <div className="rounded-xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><p className="font-semibold">When would you like to drive?</p><div className="mt-3 flex flex-wrap gap-2">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => { setTimeline(item); if (!isAuthenticated) openAccount(); }} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div>{!isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">I’ll create your dashboard here and keep this vehicle saved.</p> : null}<button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Create your dashboard"}<ArrowRight size={15} /></button></div> : null}
+            {recommendedIds?.length && !selectedVehicle ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className="overflow-hidden rounded-xl border border-[#e6e6e6] bg-white text-left active:scale-[0.98]"><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500"><CarFront size={13} className="text-[#a8832d]" /> Choose</span></div></button>)}</div></div> : null}
+            {selectedVehicle && !dashboardCreationField ? <div className="rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center gap-3"><img src={selectedVehicle.image} alt="" className="h-14 w-20 rounded-lg bg-white object-contain" /><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Selected vehicle</p><p className="mt-1 text-sm font-semibold">{selectedVehicle.vehicleName}</p></div><Check size={17} className="ml-auto text-[#a8832d]" /></div><div className="mt-4 flex flex-wrap gap-2" aria-label="Choose timing">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => { setTimeline(item); if (!isAuthenticated) openAccount(); }} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Just exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div>{timeline && !isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">I’ll create your dashboard here and keep this vehicle saved.</p> : null}{timeline ? <button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Create your dashboard"}<ArrowRight size={15} /></button> : null}</div> : null}
             {enrollmentReference ? <ConciergeEnrollmentPanel reference={enrollmentReference} onProgress={message => append({ id: `${Date.now()}-enrollment-progress`, role: "concierge", text: message })} /> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
           </div>
-          <form onSubmit={submit} className="mt-auto pt-8">
-            <div className="flex items-center gap-2 rounded-[26px] bg-[#f4f4f4] px-4 py-2">
-              <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={(dashboardCreationField === "password" || dashboardCreationField === "existingPassword") && !dashboardQuestionMode ? 128 : 240} disabled={sending} type={(dashboardCreationField === "password" || dashboardCreationField === "existingPassword") && !dashboardQuestionMode ? "password" : "text"} autoComplete={dashboardCreationField === "name" && !dashboardQuestionMode ? "name" : dashboardCreationField === "email" && !dashboardQuestionMode ? "email" : dashboardCreationField === "password" && !dashboardQuestionMode ? "new-password" : dashboardCreationField === "existingPassword" && !dashboardQuestionMode ? "current-password" : "off"} placeholder={dashboardCreationField && !dashboardQuestionMode ? dashboardPrompt : "Ask DreamCarz"} className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-gray-500" />
-              <button type="submit" disabled={!question.trim() || sending} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black text-white disabled:opacity-40" aria-label="Ask DreamCarz Concierge"><Send size={17} /></button>
+          <form onSubmit={submit} className="sticky bottom-3 z-10 mt-auto bg-white/95 pt-8 backdrop-blur-sm sm:bottom-5">
+            <div className={`rounded-[28px] border bg-[#f6f6f5] p-2 shadow-[0_12px_28px_rgba(0,0,0,0.06)] ${secureFieldActive ? "border-[#d9b756] ring-2 ring-[#d9b756]/15" : "border-[#e4e4e2]"}`}>
+              <div className="flex items-end gap-2 px-2">
+                <button type="button" onClick={() => setNotice("Attachments are collected only inside the protected DreamCarz workflow.")} aria-label="Attachments are available in protected workflows" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-gray-500 hover:bg-white"><Paperclip size={18} /></button>
+                <button type="button" onClick={() => setNotice("Voice input is not enabled for this Concierge yet.")} aria-label="Voice input is not enabled" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-gray-500 hover:bg-white"><Mic size={18} /></button>
+                <input autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? 128 : 240} disabled={sending} type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"} autoComplete={secureFieldActive && dashboardCreationField === "name" ? "name" : secureFieldActive && dashboardCreationField === "email" ? "email" : secureFieldActive && dashboardCreationField === "password" ? "new-password" : secureFieldActive && dashboardCreationField === "existingPassword" ? "current-password" : "off"} placeholder={composerPlaceholder} className="min-w-0 flex-1 bg-transparent py-4 text-base outline-none placeholder:text-gray-500" />
+                <button type="submit" disabled={!question.trim() || sending} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#d9b756] text-black disabled:opacity-40" aria-label="Send to DreamCarz Concierge"><Send size={18} /></button>
+              </div>
             </div>
-            {dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="mt-3 px-2 text-[10px] font-semibold text-gray-500 underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : <p className="mt-3 flex items-start gap-1.5 px-2 text-[10px] leading-4 text-gray-400"><ShieldCheck size={12} className="mt-0.5 shrink-0" /> No private details in chat.</p>}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-2 text-[11px] leading-4 text-gray-500"><p className="flex max-w-xl items-start gap-1.5"><ShieldCheck size={13} className="mt-0.5 shrink-0 text-[#a8832d]" /> Your conversation is private and secure. Sensitive information is collected through protected DreamCarz verification screens.</p>{dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="font-semibold text-[#6a5420] underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : null}</div>
           </form>
         </div>
     </ConciergeWorkspace>

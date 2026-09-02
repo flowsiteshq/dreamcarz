@@ -46,7 +46,7 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain('color: "White"');
     expect(home).toContain("Rent or buy");
     expect(homeConcierge).toContain('aria-label="DreamCarz Concierge"');
-    expect(source("client/src/pages/Concierge.tsx")).toContain('aria-label="Ask DreamCarz Concierge"');
+    expect(source("client/src/pages/Concierge.tsx")).toContain('aria-label="Send to DreamCarz Concierge"');
   });
 
   it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
@@ -190,7 +190,7 @@ describe("DreamCarz ecosystem process content", () => {
     expect(home).toContain("<HomeConcierge />");
     expect(homeConcierge).toContain('href="/concierge"');
     expect(conciergePage).toContain('navigate("/pricing")');
-    expect(conciergePage).toContain("Let me gather a few details and create your DreamCarz dashboard.");
+    expect(conciergePage).toContain("I’ll create your DreamCarz dashboard and keep this vehicle path here.");
     expect(conciergePage).toContain("register.mutateAsync");
     expect(conciergePage).toContain("beginTransaction.mutateAsync");
     expect(conciergePage).toContain("openEnrollment(result.reference)");

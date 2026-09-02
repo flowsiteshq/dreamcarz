@@ -1,4 +1,4 @@
-import { ArrowRight, Bookmark, CarFront, CircleUserRound, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowRight, Bookmark, CarFront, CircleUserRound, CreditCard, FileText, Headphones, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 
@@ -80,12 +80,17 @@ export function ConciergeWorkspace({
           <aside className="hidden bg-[#0d0f10] px-4 py-5 text-white lg:flex lg:flex-col">
             <div className="border-b border-white/10 pb-5">
               <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-8 w-8 place-items-center rounded-full bg-[#17191b] text-[#d9b756]"><Sparkles size={15} /></span> DreamCarz Concierge</div>
-              <p className="mt-3 text-xs leading-5 text-white/55">Your selected vehicle and next step stay together here.</p>
+              <div className="mt-3 flex items-center gap-2 text-xs text-white/55"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Ready to guide your next step.</div>
             </div>
             <nav aria-label="Concierge actions" className="mt-5 grid gap-2">
               <button type="button" onClick={() => onChoosePath("rental")} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold active:scale-[0.98] ${intent === "rental" ? "bg-white/10 text-white" : "text-white/75 hover:bg-white/10"}`}><CarFront size={16} className="text-[#d9b756]" /> Rent a vehicle</button>
               <button type="button" onClick={() => onChoosePath("purchase")} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold active:scale-[0.98] ${intent === "purchase" ? "bg-white/10 text-white" : "text-white/75 hover:bg-white/10"}`}><CarFront size={16} className="text-[#d9b756]" /> Buy a vehicle</button>
               <button type="button" onClick={onChangeVehicle} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-white/75 hover:bg-white/10 active:scale-[0.98]"><Bookmark size={16} className="text-[#d9b756]" /> Change vehicle</button>
+              <Link href="/pricing" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/75 hover:bg-white/10"><Sparkles size={16} className="text-[#d9b756]" /> Membership</Link>
+              <Link href="/dashboard/vehicles" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/75 hover:bg-white/10"><CarFront size={16} className="text-[#d9b756]" /> My vehicles / rentals</Link>
+              <Link href="/dashboard/payments" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/75 hover:bg-white/10"><CreditCard size={16} className="text-[#d9b756]" /> Payments</Link>
+              <button type="button" onClick={onAccount} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-white/75 hover:bg-white/10"><FileText size={16} className="text-[#d9b756]" /> Account & documents</button>
+              <Link href="/dashboard/support" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/75 hover:bg-white/10"><Headphones size={16} className="text-[#d9b756]" /> Help</Link>
             </nav>
             <div className="mt-auto border-t border-white/10 pt-5 text-xs leading-5 text-white/55">Ask a question anytime. Your enrollment stays at the exact next step.</div>
           </aside>
@@ -102,7 +107,6 @@ export function ConciergeWorkspace({
               </div>
               {isAuthenticated ? <button type="button" onClick={onAccount} className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-black">My dashboard <ArrowRight size={13} /></button> : <button type="button" onClick={onAccount} className="mt-4 rounded-full bg-black px-3 py-2 text-xs font-semibold text-white">Create your dashboard</button>}
             </div>
-            <div className="mt-4 border border-[#ececec] bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#a8832d]">Keep going</p><p className="mt-2 text-sm font-semibold">Your Concierge stays with you.</p><p className="mt-1 text-xs leading-5 text-gray-500">Ask anything, then continue with your saved step.</p></div>
           </aside>
         </div>
       </section>

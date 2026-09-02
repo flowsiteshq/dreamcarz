@@ -1,5 +1,6 @@
 export type ConciergeIntent = "rental" | "purchase" | "membership" | "explore";
 export type ConciergeVehicleClass = "sedan" | "suv" | null;
+export type ConciergeSecureField = "name" | "email" | "password" | "existingPassword" | null;
 
 export function shouldShowVehicleClassChoice(input: {
   intent: ConciergeIntent;
@@ -19,4 +20,12 @@ export function vehicleIdsForClass(
   choice: Exclude<ConciergeVehicleClass, null>,
 ) {
   return vehicles.filter(vehicle => vehicle.vehicleClass === choice).map(vehicle => vehicle.vehicleId);
+}
+
+export function conciergeComposerPlaceholder(field: ConciergeSecureField, askingGeneralQuestion = false) {
+  if (askingGeneralQuestion || !field) return "Ask DreamCarz…";
+  if (field === "email") return "Enter your email address…";
+  if (field === "name") return "Enter your name…";
+  if (field === "existingPassword") return "Enter your password…";
+  return "Create a secure password…";
 }
