@@ -3068,6 +3068,33 @@ export const appRouter = router({
   }),
 
   communications: router({
+    adminHistory: protectedProcedure.input(z.object({
+      query: z.string().trim().max(120).optional(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(5).max(50).default(10),
+    }).optional()).query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const historyLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "administrator_communication_history", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+      if (!historyLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many communication-history requests. Please try again later." });
+      const page = input?.page ?? 1;
+      const pageSize = input?.pageSize ?? 10;
+      const db = await getDb();
+      if (!db) return { items: [], total: 0, page, pageSize };
+      const events = await db.select({ id: communicationEvents.id, userId: communicationEvents.userId, notificationId: communicationEvents.notificationId, channel: communicationEvents.channel, status: communicationEvents.status, createdAt: communicationEvents.createdAt }).from(communicationEvents).orderBy(desc(communicationEvents.createdAt)).limit(240);
+      if (!events.length) return { items: [], total: 0, page, pageSize };
+      const userIds = Array.from(new Set(events.map(event => event.userId)));
+      const notificationIds = Array.from(new Set(events.map(event => event.notificationId).filter((id): id is number => id !== null)));
+      const [accounts, notices] = await Promise.all([
+        db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, userIds)),
+        notificationIds.length ? db.select({ id: customerNotifications.id, category: customerNotifications.category }).from(customerNotifications).where(inArray(customerNotifications.id, notificationIds)) : Promise.resolve([]),
+      ]);
+      const accountsById = new Map(accounts.map(account => [account.id, account]));
+      const categoriesByNotificationId = new Map(notices.map(notice => [notice.id, notice.category]));
+      const rows = events.map(event => ({ id: event.id, customerName: accountsById.get(event.userId)?.name ?? null, customerEmail: accountsById.get(event.userId)?.email ?? null, channel: event.channel, status: event.status, category: event.notificationId ? categoriesByNotificationId.get(event.notificationId) ?? null : null, createdAt: event.createdAt }));
+      const query = input?.query?.toLowerCase();
+      const filtered = query ? rows.filter(row => [row.customerName, row.customerEmail, row.channel, row.status, row.category].some(value => value?.toLowerCase().includes(query))) : rows;
+      return { items: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize };
+    }),
     listMine: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return { preferences: null, notifications: [] };
