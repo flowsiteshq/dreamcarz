@@ -20,6 +20,7 @@ import { LaunchReadiness } from "@/components/LaunchReadiness";
 import { FleetPartnerAssignmentManager } from "@/components/FleetPartnerAssignmentManager";
 import { DcpPolicyManager } from "@/components/DcpPolicyManager";
 import { FleetOperationsCalendar } from "@/components/FleetOperationsCalendar";
+import { FleetReadinessBoard } from "@/components/FleetReadinessBoard";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -165,7 +166,7 @@ export default function AdminOperations() {
 
         <LaunchReadiness />
 
-        <section id="admin-fleet" className="scroll-mt-6"><VehiclePassportManager /></section>
+        <section id="admin-fleet" className="scroll-mt-6 space-y-6"><FleetReadinessBoard /><VehiclePassportManager /></section>
 
         <FleetIncidentQueue />
 
