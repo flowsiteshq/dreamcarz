@@ -68,6 +68,20 @@ describe("DreamCarz Vehicle Passport operational history", () => {
     expect(result[0]).not.toHaveProperty("insuranceDocumentKey");
   });
 
+  it("returns a bounded, searchable Vehicle Passport directory to administrators", async () => {
+    const rows = [
+      { id: 91, vehicleId: "2024-chevrolet-malibu-gray", vehicleName: "2024 Chevrolet Malibu", readinessStatus: "available", currentLocation: "Baltimore depot", registrationDocumentKey: "private/registration.pdf", insuranceDocumentKey: null, updatedAt: new Date("2026-09-02T10:00:00Z") },
+      { id: 92, vehicleId: "2020-chevrolet-equinox-black", vehicleName: "2020 Chevrolet Equinox", readinessStatus: "maintenance_due", currentLocation: "Service lane", registrationDocumentKey: null, insuranceDocumentKey: null, updatedAt: new Date("2026-09-01T10:00:00Z") },
+    ];
+    mockedGetDb.mockResolvedValue({ select: vi.fn(() => ({ from: vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(rows) })) })) } as never);
+
+    const result = await appRouter.createCaller(adminContext as never).operations.vehiclePassports.directory({ query: "service", page: 1, pageSize: 10 });
+
+    expect(result).toMatchObject({ total: 1, page: 1, pageSize: 10, items: [{ id: 92, vehicleName: "2020 Chevrolet Equinox", hasRegistrationDocument: false, hasInsuranceDocument: false }] });
+    expect(result.items[0]).not.toHaveProperty("registrationDocumentKey");
+    expect(result.items[0]).not.toHaveProperty("insuranceDocumentKey");
+  });
+
   it("records a location-change audit signal without copying location values into Vehicle Passport history", async () => {
     const updateWhere = vi.fn().mockResolvedValue(undefined);
     const activityValues = vi.fn().mockResolvedValue(undefined);

@@ -3614,6 +3614,23 @@ export const appRouter = router({
         return passports.map(({ registrationDocumentKey, insuranceDocumentKey, ...passport }) => ({ ...passport, hasRegistrationDocument: Boolean(registrationDocumentKey), hasInsuranceDocument: Boolean(insuranceDocumentKey) }));
       }),
 
+      directory: protectedProcedure.input(z.object({
+        query: z.string().trim().max(120).optional(),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(5).max(50).default(10),
+      }).optional()).query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const page = input?.page ?? 1;
+        const pageSize = input?.pageSize ?? 10;
+        const db = await getDb();
+        if (!db) return { items: [], total: 0, page, pageSize };
+        const passports = await db.select().from(vehiclePassports).orderBy(desc(vehiclePassports.updatedAt));
+        const rows = passports.map(({ registrationDocumentKey, insuranceDocumentKey, ...passport }) => ({ ...passport, hasRegistrationDocument: Boolean(registrationDocumentKey), hasInsuranceDocument: Boolean(insuranceDocumentKey) }));
+        const query = input?.query?.toLowerCase();
+        const filtered = query ? rows.filter(passport => [passport.vehicleName, passport.vehicleId, passport.readinessStatus, passport.currentLocation].some(value => value?.toLowerCase().includes(query))) : rows;
+        return { items: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize };
+      }),
+
       operationalHistory: protectedProcedure.input(z.object({ vehiclePassportId: z.number().int().positive() })).query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
         const historyLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "vehicle_passport_history", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
