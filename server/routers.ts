@@ -3145,8 +3145,14 @@ export const appRouter = router({
       relatedTransactionId: z.number().int().positive().optional(),
     })).mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+      const issueLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "administrator_in_app_notice", String(ctx.user.id)), limit: 25, windowMs: 60 * 60_000 });
+      if (!issueLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many in-app notices. Please try again later." });
+      assertSafeRestrictedContent(input.title, "operational report");
+      assertSafeRestrictedContent(input.body, "operational report");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Notifications are temporarily unavailable." });
+      const recipient = (await db.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
+      if (!recipient) throw new TRPCError({ code: "NOT_FOUND", message: "Customer account not found." });
       const preference = (await db.select().from(communicationPreferences).where(eq(communicationPreferences.userId, input.userId)).limit(1))[0];
       if (preference?.transactionalInAppEnabled === false) {
         await db.insert(communicationEvents).values({ userId: input.userId, channel: "in_app", status: "suppressed", detail: "Customer disabled transactional in-app notices." });

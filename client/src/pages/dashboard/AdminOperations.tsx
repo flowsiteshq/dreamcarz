@@ -24,6 +24,7 @@ import { FleetReadinessBoard } from "@/components/FleetReadinessBoard";
 import { CustomerManagementPanel } from "@/components/CustomerManagementPanel";
 import { AdministratorUserRoleManager } from "@/components/AdministratorUserRoleManager";
 import { AdministratorCommunicationHistory } from "@/components/AdministratorCommunicationHistory";
+import { AdministratorServiceNotice } from "@/components/AdministratorServiceNotice";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -154,6 +155,7 @@ export function AdminOperationsContent() {
         <section id="admin-customers" className="scroll-mt-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6">
           <CustomerManagementPanel onReviewTransactions={(query) => { setTransactionSearch(query); document.getElementById("admin-customers")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
           <AdministratorUserRoleManager />
+          <AdministratorServiceNotice />
           <AdministratorCommunicationHistory />
           <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="flex items-center gap-2"><FileText size={17} className="text-[#B8860B]" /><h3 className="text-[16px] font-bold text-black">Transaction console</h3></div><p className="mt-1 text-[12px] text-gray-500">Private rental and purchase records, provider states, manual-review exceptions, and the immutable activity trail.</p></div><div className="border border-gray-200 bg-white px-3 py-2"><label className="flex items-center gap-2"><Search size={14} className="text-gray-400" /><input value={transactionSearch} onChange={event => setTransactionSearch(event.target.value)} placeholder="Search reference, vehicle, customer…" className="w-52 bg-transparent text-[12px] outline-none" /></label></div></div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Open transactions</p><p className="mt-1 text-2xl font-bold text-black">{transactionRows.length}</p></div><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Manual exceptions</p><p className="mt-1 text-2xl font-bold text-[#a46c18]">{transactionExceptions}</p></div><div className="border border-gray-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Provider integrations</p><p className="mt-1 text-xs font-semibold text-black">Configuration-gated</p></div></div>
