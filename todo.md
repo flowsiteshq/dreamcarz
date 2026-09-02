@@ -367,3 +367,4 @@
 - [x] Redesign Concierge around one visually dominant active question, a connected response composer, contextual answer controls, and compact saved-path context while preserving protected workflows and no chat persistence.
 - [x] Prevent generic transaction-state updates from bypassing the dedicated policy-backed eligibility decision path and its review audit.
 - [x] Label a separately saved rental or purchase path explicitly whenever Concierge is actively exploring the other journey.
+- [x] Require a reviewed return condition report before a rental settlement can be finalized or waived, without initiating collection.

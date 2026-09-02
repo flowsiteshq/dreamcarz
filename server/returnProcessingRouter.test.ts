@@ -39,4 +39,25 @@ describe("DreamCarz returned vehicle processing", () => {
     expect(updateSet).toHaveBeenCalledWith({ readinessStatus: "maintenance_due" });
     expect(eventValues).toHaveBeenCalledWith(expect.objectContaining({ transactionId: 81, eventType: "return.vehicle_processing_recorded", actorType: "admin" }));
   });
+
+  it("requires a reviewed return condition report before an administrator finalizes a settlement", async () => {
+    const transaction = { id: 82, transactionType: "rental" as const, settlementStatus: "pending" as const, userId: 3 };
+    const settlement = { id: 17, status: "under_review" as const };
+    const select = vi.fn()
+      .mockReturnValueOnce(one([transaction]))
+      .mockReturnValueOnce(one([settlement]))
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn(() => ({ orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([{ id: 31, status: "submitted" }]) })) })) })) });
+    mockedGetDb.mockResolvedValue({ select } as never);
+
+    await expect(appRouter.createCaller(adminContext as never).operations.settlements.finalize({
+      reference: "DCR-2026-SETTLEMENT-GUARD",
+      approvedSubtotalCents: 0,
+      depositAppliedCents: 0,
+      status: "settled",
+      summary: "Reviewed return settlement record.",
+    })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "A reviewed return condition report is required before a return settlement can be finalized.",
+    });
+  });
 });

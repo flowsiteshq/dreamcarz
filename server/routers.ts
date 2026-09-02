@@ -3839,6 +3839,12 @@ export const appRouter = router({
         if (!transaction || transaction.transactionType !== "rental") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Final settlement is available only for rental transactions." });
         const settlement = (await db.select().from(transactionSettlements).where(eq(transactionSettlements.transactionId, transaction.id)).limit(1))[0];
         if (!settlement) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Record an itemized adjustment or settlement review before finalizing." });
+        if (["settled", "waived"].includes(input.status)) {
+          const returnCondition = (await db.select({ id: vehicleConditionReports.id, status: vehicleConditionReports.status }).from(vehicleConditionReports).where(and(eq(vehicleConditionReports.transactionId, transaction.id), eq(vehicleConditionReports.stage, "return"))).orderBy(desc(vehicleConditionReports.updatedAt)).limit(1))[0];
+          if (returnCondition?.status !== "reviewed") {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A reviewed return condition report is required before a return settlement can be finalized." });
+          }
+        }
         const adjustments = await db.select().from(transactionAdjustments).where(eq(transactionAdjustments.settlementId, settlement.id));
         const approvedAdjustmentsCents = adjustments.filter(item => item.status === "approved").reduce((total, item) => total + item.amountCents, 0);
         const finalAmountCents = Math.max(0, input.approvedSubtotalCents - input.depositAppliedCents + approvedAdjustmentsCents);
