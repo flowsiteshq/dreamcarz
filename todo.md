@@ -217,6 +217,7 @@
 - [x] Keep new membership plans draft-only until approved plan configurations are defined, preventing unverified public pricing or enrollment effects.
 - [x] Build an auditable DreamCarz wallet ledger for credits, refunds, deposits/holds, membership and referral credits, receipts, and transaction history without silent balance changes.
 - [ ] Build protected DreamCarz Vehicle Passports with vehicle lifecycle, location, readiness, acquisition, maintenance, inspection, damage, document, reservation, and utilization/revenue record support.
+- [x] Initialize protected Vehicle Passports for the eight confirmed inventory vehicles using inspection-due readiness and no inferred acquisition, location, VIN, plate, pricing, or document data.
 - [x] Add bounded administrator Vehicle Passport directory search and pagination while preserving private fleet-record access controls.
 - [x] Add an administrator-only selected Vehicle Passport operational timeline using existing protected history, inspection, maintenance, reservation-count, and rental-count data.
 - [x] Add a dedicated immutable Vehicle Passport activity timeline for administrator actions without storing document keys, sensitive vehicle details, or customer records in audit metadata.
