@@ -11,6 +11,8 @@ describe("selected-vehicle Concierge workspace", () => {
     expect(conciergeSource).toContain("<ConciergeWorkspace dashboard={dashboardMode}");
     expect(workspaceSource).toContain("Ready to guide your next step.");
     expect(workspaceSource).toContain("Ask a question anytime. Your enrollment stays at the exact next step.");
+    expect(workspaceSource).toContain("Saved ${path === \"rental\" ? \"rental\" : \"purchase\"} path");
+    expect(workspaceSource).toContain("Resume ${path === \"rental\" ? \"rental\" : \"purchase\"}");
   });
 
   it("guides guests to create an account and returns them to their selected Concierge path", () => {

@@ -27,6 +27,8 @@ type ConciergeWorkspaceProps = {
 };
 
 const timelineLabel = (timeline: SavedPath["timeline"]) => timeline === "this_week" ? "This week" : timeline === "soon" ? "Soon" : timeline === "exploring" ? "Exploring" : null;
+const savedPathHeading = (path: SavedPath["intent"], activePath: ConciergeWorkspaceProps["intent"]) => path && activePath && path !== activePath ? `Saved ${path === "rental" ? "rental" : "purchase"} path` : "Your saved path";
+const resumeLabel = (path: SavedPath["intent"], activePath: ConciergeWorkspaceProps["intent"]) => path && activePath && path !== activePath ? `Resume ${path === "rental" ? "rental" : "purchase"}` : "Resume";
 
 export function ConciergeWorkspace({
   dashboard,
@@ -45,6 +47,8 @@ export function ConciergeWorkspace({
 }: ConciergeWorkspaceProps) {
   const [entered, setEntered] = useState(false);
   const firstName = userName?.trim().split(/\s+/)[0] || "there";
+  const pathHeading = savedPathHeading(savedPath.intent, intent);
+  const continueLabel = resumeLabel(savedPath.intent, intent);
 
   useEffect(() => {
     if (!dashboard) { setEntered(false); return; }
@@ -97,7 +101,7 @@ export function ConciergeWorkspace({
           <section className="min-w-0 bg-white">{children}</section>
           <aside className="hidden border-l border-[#ececec] bg-[#fafaf9] p-5 xl:block">
             <div className="border border-[#e7dcc0] bg-white p-4">
-              <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#a8832d]">Your saved path</p>{canResume ? <button type="button" onClick={onResume} className="text-xs font-semibold text-black">Resume</button> : null}</div>
+              <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#a8832d]">{pathHeading}</p>{canResume ? <button type="button" onClick={onResume} className="text-xs font-semibold text-black">{continueLabel}</button> : null}</div>
               {savedPath.vehicleImage ? <img src={savedPath.vehicleImage} alt="" className="mx-auto mt-3 h-24 w-full object-contain" /> : null}
               {savedPath.vehicleName ? <p className="mt-2 text-sm font-semibold leading-5">{savedPath.vehicleName}</p> : <p className="mt-3 text-sm text-gray-500">Choose a vehicle to start your path.</p>}
               <div className="mt-4 grid gap-2 border-t border-[#eeeeee] pt-3 text-xs text-gray-600">

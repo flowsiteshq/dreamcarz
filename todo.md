@@ -366,3 +366,4 @@
 - [x] Audit every public and member membership-plan reference against the supplied deck, correct approved naming and vehicle-value context, and continue excluding illustrative pricing from live terms.
 - [x] Redesign Concierge around one visually dominant active question, a connected response composer, contextual answer controls, and compact saved-path context while preserving protected workflows and no chat persistence.
 - [x] Prevent generic transaction-state updates from bypassing the dedicated policy-backed eligibility decision path and its review audit.
+- [x] Label a separately saved rental or purchase path explicitly whenever Concierge is actively exploring the other journey.
