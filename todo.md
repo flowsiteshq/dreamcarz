@@ -277,6 +277,7 @@
 - [x] Correct the public Fleet Partner route so the partnership page is reachable from its intended navigation target without a 404.
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
+- [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
 - [x] Allow an Associate to update only the status of their own consented leads, without creating a customer outcome, application decision, or commission entitlement.
 - [x] Reject likely payment-card numbers, passwords, and labeled driver-license values before private Associate lead notes are stored.
