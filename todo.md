@@ -363,3 +363,4 @@
 - [x] Prevent purchase-only trade-in steps from rendering or advancing in any rental Concierge enrollment path.
 - [x] Restore the protected driver-license upload storage configuration and verify account-owned document handling without exposing private storage references.
 - [x] Extract approved homepage and membership-vehicle experience content from the supplied presentation and apply it to the DreamCarz website and app without unsupported pricing, inventory, or workflow claims.
+- [x] Audit every public and member membership-plan reference against the supplied deck, correct approved naming and vehicle-value context, and continue excluding illustrative pricing from live terms.

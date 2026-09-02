@@ -124,16 +124,14 @@ describe("DreamCarz ecosystem process content", () => {
     expect(content).not.toContain("$2,850 Value");
   });
 
-  it("uses vehicle-access packages instead of unsupported membership pricing and links them to confirmed inventory", () => {
+  it("uses the audited seven membership paths without unsupported pricing and links them to confirmed inventory", () => {
     const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
     const fleet = source("client/src/pages/Fleet.tsx");
 
-    for (const packageLabel of ["Entry vehicle access", "Mid-Range vehicle access", "Elite vehicle access"]) {
-      expect(membership).toContain(packageLabel);
+    for (const planName of ["Freedom", "Plus", "Pro", "Elite", "Silver", "Gold", "Black"]) {
+      expect(membership).toContain(`name: "${planName}"`);
     }
-    expect(membership).toContain('href: "/fleet?access=entry"');
-    expect(membership).toContain('href: "/fleet?access=mid-range"');
-    expect(membership).toContain('href: "/fleet?access=elite"');
+    expect(membership).toContain('href={`/fleet?plan=${path.name.toLowerCase()}`}');
     expect(membership).not.toContain("$39.95");
     expect(membership).not.toContain("$69.95");
     expect(membership).not.toContain("$99.95");

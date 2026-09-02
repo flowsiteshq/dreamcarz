@@ -26,7 +26,7 @@ type ViewState = "overview" | "rental" | "purchase" | "reserve" | "success";
 
 type VehicleExperienceDialogProps = {
   vehicle: InventoryVehicle;
-  membershipPlan?: { name: string; enrollment: string; monthly: string };
+  membershipPlan?: { name: string; focus: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialView?: "overview" | "rental" | "purchase" | "reserve";
@@ -107,7 +107,7 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
       requestedStartDate: isRental ? form.requestedStartDate : undefined,
       requestedEndDate: isRental ? form.requestedEndDate : undefined,
       pickupLocation: isRental ? form.pickupLocation : undefined,
-      notes: [membershipPlan ? `Selected membership context: ${membershipPlan.name} (${membershipPlan.enrollment} enrollment; ${membershipPlan.monthly}). Vehicle costs remain separate.` : "", form.notes].filter(Boolean).join("\n") || undefined,
+      notes: [membershipPlan ? `Selected membership context: ${membershipPlan.name} (${membershipPlan.focus}). Membership and vehicle-specific terms remain separate.` : "", form.notes].filter(Boolean).join("\n") || undefined,
     });
   };
 
@@ -153,7 +153,7 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
                 <DialogTitle className="font-display text-4xl font-bold tracking-[-0.05em] text-black">{isRental ? "Start your rental request." : isPurchase ? "Send a purchase inquiry." : "Reserve your vehicle."}</DialogTitle>
                 <DialogDescription className="max-w-xl leading-relaxed text-gray-600">{isRental ? "We will confirm vehicle availability, then help you complete the required rental steps." : isPurchase ? "We will confirm current availability and discuss the applicable purchase path directly with you." : "This vehicle is labeled Coming Soon. Submit your interest and DreamCarz will guide you when a suitable option is ready."}</DialogDescription>
               </DialogHeader>
-              {membershipPlan && <div className="mt-6 border-l-2 border-[#a8832d] bg-[#fcfaf2] px-4 py-3 text-sm leading-6 text-gray-700"><strong className="text-black">Your selected membership: {membershipPlan.name}</strong> · {membershipPlan.enrollment} enrollment · {membershipPlan.monthly}. This membership amount is separate from the vehicle costs reviewed for this {isRental ? "rental" : isPurchase ? "purchase" : "reserve"} request.</div>}
+              {membershipPlan && <div className="mt-6 border-l-2 border-[#a8832d] bg-[#fcfaf2] px-4 py-3 text-sm leading-6 text-gray-700"><strong className="text-black">Your selected membership: {membershipPlan.name}</strong> · {membershipPlan.focus}. Membership and vehicle-specific terms are reviewed separately for this {isRental ? "rental" : isPurchase ? "purchase" : "reserve"} request.</div>}
               <form onSubmit={submitInquiry} className="mt-9 grid gap-5">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-semibold text-black">Your name<input required value={form.contactName} onChange={(event) => setForm({ ...form, contactName: event.target.value })} className={inputClass} placeholder="Full name" /></label>

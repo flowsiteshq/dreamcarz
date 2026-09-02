@@ -2,85 +2,16 @@ import { Check, ChevronRight, Crown, Gauge, ShieldCheck, Sparkles } from "lucide
 import { Link } from "wouter";
 import DashboardShell from "@/components/DashboardShell";
 
-const packages = [
-  {
-    name: "Entry",
-    access: "Entry vehicle access",
-    eyebrow: "Practical driving",
-    description: "Designed for members beginning with practical, lower-tier vehicles in the confirmed DreamCarz lineup.",
-    details: ["Explore practical sedan and SUV options", "Start with rental readiness and a vehicle request", "Review availability and final terms before approval"],
-    href: "/fleet?access=entry",
-    cta: "Explore Entry vehicles",
-    icon: Gauge,
-    featured: false,
-  },
-  {
-    name: "Mid-Range",
-    access: "Mid-Range vehicle access",
-    eyebrow: "Everyday flexibility",
-    description: "Designed for members seeking balanced everyday, family, and mid-range vehicle options.",
-    details: ["Explore balanced sedan and SUV options", "Choose a rental or purchase request path", "Use My Account to manage your next steps"],
-    href: "/fleet?access=mid-range",
-    cta: "Explore Mid-Range vehicles",
-    icon: ShieldCheck,
-    featured: true,
-  },
-  {
-    name: "Elite",
-    access: "Elite vehicle access",
-    eyebrow: "Highest current category",
-    description: "Designed for members considering the highest vehicle category represented in the current confirmed lineup.",
-    details: ["Explore the highest current vehicle category", "Request review for rental or purchase options", "Final vehicle access remains subject to review"],
-    href: "/fleet?access=elite",
-    cta: "Explore Elite vehicles",
-    icon: Crown,
-    featured: false,
-  },
+const memberPaths = [
+  { name: "Freedom", focus: "Rentals + DCP", description: "A membership path for qualifying rental access and DCP program guidance.", icon: Gauge },
+  { name: "Plus", focus: "Subscribe & Save exploration", description: "A guided path for eligible membership, subscription, and rental exploration.", icon: Sparkles },
+  { name: "Pro", focus: "Broader vehicle path", description: "A path for members exploring broader program-level vehicle options.", icon: ShieldCheck },
+  { name: "Elite", focus: "Lease-to-own exploration", description: "An ownership-oriented path subject to program review and terms.", icon: Crown },
+  { name: "Silver", focus: "Silver and below guidance", description: "Premium program guidance and current vehicle-path exploration.", icon: Sparkles },
+  { name: "Gold", focus: "Host + fleet guidance", description: "Explore qualifying vehicle, host, and fleet participation guidance.", icon: ShieldCheck },
+  { name: "Black", focus: "Application-led exploration", description: "Application-led guidance for Black-level and future exotic programs.", icon: Crown },
 ] as const;
 
 export default function MembershipPage() {
-  return (
-    <DashboardShell title="Vehicle Access Packages">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <section className="border-b border-gray-200 pb-10 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">Vehicle access packages</p>
-          <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.045em] text-black sm:text-5xl">Choose the vehicle category that fits your drive.</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">Start with your need, compare vehicle access, and understand DCP program rules before you select a rental or purchase path.</p>
-        </section>
-
-        <section className="grid gap-px overflow-hidden border border-gray-200 bg-gray-200 md:grid-cols-4">
-          {[['01', 'Your need', 'Choose the transportation goal you are working toward.'], ['02', 'Vehicle access', 'Explore the matching confirmed sedan and SUV options.'], ['03', 'Membership context', 'Compare the program path and vehicle access in one view.'], ['04', 'DCP rules', 'Eligible activity, verification, and redemption requirements apply.']].map(([number, title, copy]) => <div key={number} className="min-h-[154px] bg-white p-5"><p className="text-[10px] font-bold tracking-[0.16em] text-[#a8832d]">{number}</p><Sparkles className="mt-4 text-[#a8832d]" size={17} /><p className="mt-3 text-sm font-bold">{title}</p><p className="mt-2 text-xs leading-relaxed text-gray-500">{copy}</p></div>)}
-        </section>
-
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {packages.map((pkg) => {
-            const Icon = pkg.icon;
-            return (
-              <article key={pkg.name} className={`flex min-h-[440px] flex-col border p-7 ${pkg.featured ? "border-black bg-black text-white" : "border-gray-200 bg-white text-black"}`}>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pkg.featured ? "bg-white text-black" : "bg-black text-white"}`}><Icon size={18} /></div>
-                <p className={`mt-6 text-[11px] font-bold uppercase tracking-[0.16em] ${pkg.featured ? "text-[#d8bc79]" : "text-[#a8832d]"}`}>{pkg.eyebrow}</p>
-                <h3 className="mt-2 font-display text-3xl font-bold tracking-[-0.04em]">{pkg.name}</h3>
-                <p className={`mt-1 text-sm font-semibold ${pkg.featured ? "text-white" : "text-gray-700"}`}>{pkg.access}</p>
-                <p className={`mt-5 text-sm leading-relaxed ${pkg.featured ? "text-gray-300" : "text-gray-500"}`}>{pkg.description}</p>
-                <div className={`mt-7 space-y-3 border-t pt-5 ${pkg.featured ? "border-gray-700" : "border-gray-200"}`}>
-                  {pkg.details.map((detail) => <p key={detail} className={`flex gap-2 text-sm leading-relaxed ${pkg.featured ? "text-gray-200" : "text-gray-600"}`}><Check size={15} className={`mt-0.5 shrink-0 ${pkg.featured ? "text-[#d8bc79]" : "text-[#a8832d]"}`} />{detail}</p>)}
-                </div>
-                <Link href={pkg.href} className={`mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold ${pkg.featured ? "bg-white text-black" : "bg-black text-white"}`}>{pkg.cta} <ChevronRight size={15} /></Link>
-              </article>
-            );
-          })}
-        </section>
-
-        <section className="grid gap-7 border-y border-gray-200 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">How vehicle access works</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">Select. Explore. Request.</h3><p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-500">Choose a vehicle-access package, explore the matching confirmed inventory, then open a vehicle to request rental review or purchase information.</p></div>
-          <div className="grid gap-3 sm:grid-cols-3">{[["01", "Select", "Choose the vehicle category that fits your current needs."], ["02", "Explore", "Review the confirmed vehicles represented in that category."], ["03", "Request", "Submit a rental or purchase request for DreamCarz review."]].map(([number, title, description]) => <div key={number} className="border border-gray-200 bg-[#f7f5f0] p-4"><p className="text-[10px] font-bold tracking-[0.16em] text-[#a8832d]">{number}</p><p className="mt-4 font-semibold">{title}</p><p className="mt-2 text-sm leading-relaxed text-gray-500">{description}</p></div>)}</div>
-        </section>
-
-        <section className="grid gap-6 bg-[#f7f5f0] p-6 lg:grid-cols-[1fr_0.95fr] lg:p-8">
-          <div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">Important to know</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">The package guides the request. It does not promise a vehicle.</h3></div>
-          <p className="text-sm leading-relaxed text-gray-600">Vehicle availability, rental terms, purchase terms, member eligibility, and final approval are confirmed by DreamCarz for each request. The displayed inventory is current as provided and may change.</p>
-        </section>
-      </div>
-    </DashboardShell>
-  );
+  return <DashboardShell title="Membership Vehicle Paths"><div className="mx-auto max-w-6xl space-y-8"><section className="border-b border-gray-200 pb-10 text-center"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">DreamCarz membership paths</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.045em] text-black sm:text-5xl">Choose the path that supports your drive.</h2><p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">Compare the membership focus, current confirmed vehicle context, and DCP program rules before you choose a rental or purchase path.</p></section><section className="grid gap-px overflow-hidden border border-gray-200 bg-gray-200 md:grid-cols-4">{[['01', 'Your need', 'Choose the transportation goal you are working toward.'], ['02', 'Membership path', 'Understand the plan focus before you submit a request.'], ['03', 'Vehicle context', 'Explore confirmed sedan and SUV options separately.'], ['04', 'DCP rules', 'Eligible activity, verification, and redemption requirements apply.']].map(([number, title, copy]) => <div key={number} className="min-h-[154px] bg-white p-5"><p className="text-[10px] font-bold tracking-[0.16em] text-[#a8832d]">{number}</p><Sparkles className="mt-4 text-[#a8832d]" size={17} /><p className="mt-3 text-sm font-bold">{title}</p><p className="mt-2 text-xs leading-relaxed text-gray-500">{copy}</p></div>)}</section><section><div className="flex flex-col justify-between gap-3 border-b border-gray-200 pb-5 sm:flex-row sm:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">Membership plans</p><h3 className="mt-2 font-display text-3xl font-bold">Your plan focus stays visible.</h3></div><Link href="/pricing" className="text-sm font-semibold underline underline-offset-4">Compare membership paths</Link></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{memberPaths.map((path) => { const Icon = path.icon; return <article key={path.name} className="flex min-h-[270px] flex-col border border-gray-200 bg-white p-6"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white"><Icon size={18} /></div><p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">{path.name}</p><h4 className="mt-2 font-display text-2xl font-bold">{path.focus}</h4><p className="mt-4 flex-1 text-sm leading-relaxed text-gray-500">{path.description}</p><Link href={`/fleet?plan=${path.name.toLowerCase()}`} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Explore confirmed vehicles <ChevronRight size={15} /></Link></article>})}</div></section><section className="grid gap-7 border-y border-gray-200 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">How membership value works</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">Choose. Compare. Understand.</h3><p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-500">Membership plans provide a visible program context. Current confirmed inventory, eligibility, availability, and all vehicle-specific terms are reviewed separately.</p></div><div className="grid gap-3 sm:grid-cols-3">{[['01', 'Choose', 'Select the program path you want to explore.'], ['02', 'Compare', 'Review confirmed vehicles without assumed vehicle pricing.'], ['03', 'Understand', 'DCP eligibility and redemption remain subject to program rules.']].map(([number, title, description]) => <div key={number} className="border border-gray-200 bg-[#f7f5f0] p-4"><p className="text-[10px] font-bold tracking-[0.16em] text-[#a8832d]">{number}</p><p className="mt-4 font-semibold">{title}</p><p className="mt-2 text-sm leading-relaxed text-gray-500">{description}</p></div>)}</div></section><section className="grid gap-6 bg-[#f7f5f0] p-6 lg:grid-cols-[1fr_0.95fr] lg:p-8"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">Important to know</p><h3 className="mt-3 font-display text-3xl font-bold tracking-[-0.04em]">A plan guides your request. It does not guarantee a vehicle.</h3></div><p className="text-sm leading-relaxed text-gray-600">Membership terms, vehicle availability, rental and purchase terms, eligibility, DCP treatment, and final approval are confirmed by DreamCarz for each request.</p></section></div></DashboardShell>;
 }

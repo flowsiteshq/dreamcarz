@@ -1,0 +1,61 @@
+client/src/pages/Calculator.tsx:42:                <div><h2 className="font-display text-2xl font-bold text-black">$39.95 / month</h2><p className="mt-1 text-sm text-gray-500">Cancel anytime.</p></div>
+client/src/pages/FAQ.tsx:14:        a: "DreamCarz offers four membership tiers:\n\n• **Freedom** ($39.95/mo) — cancel anytime, DCP on qualifying activity, Credit Free access starts day 1 for qualifying members, roadside assistance\n• **Plus** ($69.95/mo) — enhanced access and DCP benefits\n• **Pro** ($99.95/mo) — enhanced DCP benefits, Interest Free and Drive Free eligibility\n• **Elite** ($149.95/mo) — maximum benefits and Be Free ownership-pathway eligibility\n\nProgram eligibility is subject to applicable terms.",
+client/src/pages/FAQ.tsx:22:        a: "Freedom membership starts at $39.95 per month and can be cancelled anytime. Any additional program terms, promotional offers, and eligibility requirements are provided during enrollment.",
+client/src/pages/Fleet.tsx:13:  { id: "2019-chevrolet-malibu-black", year: 2019, make: "Chevrolet", model: "Malibu", color: "Black", type: "Sedan", access: "entry", availability: "confirmed" as const, image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
+client/src/pages/Fleet.tsx:16:  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", access: "entry", availability: "confirmed" as const, image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+client/src/pages/Fleet.tsx:21:  { id: "coming-soon-2022-toyota-camry-xse", year: 2022, make: "Toyota", model: "Camry XSE", color: "Silver", type: "Sedan", access: "mid-range", availability: "coming-soon" as const, image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/PIRNNIziJCMKrKtY.png" },
+client/src/pages/Fleet.tsx:23:  { id: "coming-soon-2023-mercedes-e-class", year: 2023, make: "Mercedes-Benz", model: "E-Class", color: "Black", type: "Sedan", access: "elite", availability: "coming-soon" as const, image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/PLJYKMoLegFKavHq.png" },
+client/src/pages/Fleet.tsx:33:  free: { name: "Free", enrollment: "$0", monthly: "No monthly fee" }, freedom: { name: "Freedom", enrollment: "$199", monthly: "$39 monthly" }, plus: { name: "Plus", enrollment: "$499", monthly: "$99 monthly" }, pro: { name: "Pro", enrollment: "$1,499", monthly: "$149 monthly" }, elite: { name: "Elite", enrollment: "$2,965", monthly: "$249 monthly" }, silver: { name: "Silver", enrollment: "$4,785", monthly: "$399 monthly" }, gold: { name: "Gold", enrollment: "$9,985", monthly: "$699 monthly" }, black: { name: "Black", enrollment: "$24,950", monthly: "$1,250 monthly" },
+client/src/pages/Home.tsx:13:  { id: "2019-chevrolet-malibu-black", year: "2019", make: "Chevrolet", model: "Malibu", color: "Black", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
+client/src/pages/Home.tsx:16:  { id: "2020-chevrolet-equinox-black", year: "2020", make: "Chevrolet", model: "Equinox", color: "Black", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+client/src/pages/Pricing.tsx:38:    name: "Freedom",
+client/src/pages/Pricing.tsx:39:    enrollment: "$199",
+client/src/pages/Pricing.tsx:40:    monthly: "$39 monthly",
+client/src/pages/Pricing.tsx:47:    name: "Plus",
+client/src/pages/Pricing.tsx:48:    enrollment: "$499",
+client/src/pages/Pricing.tsx:49:    monthly: "$99 monthly",
+client/src/pages/Pricing.tsx:57:    name: "Pro",
+client/src/pages/Pricing.tsx:58:    enrollment: "$1,499",
+client/src/pages/Pricing.tsx:59:    monthly: "$149 monthly",
+client/src/pages/Pricing.tsx:66:    name: "Elite",
+client/src/pages/Pricing.tsx:67:    enrollment: "$2,965",
+client/src/pages/Pricing.tsx:68:    monthly: "$249 monthly",
+client/src/pages/Pricing.tsx:75:    name: "Silver",
+client/src/pages/Pricing.tsx:76:    enrollment: "$4,785",
+client/src/pages/Pricing.tsx:77:    monthly: "$399 monthly",
+client/src/pages/Pricing.tsx:84:    name: "Gold",
+client/src/pages/Pricing.tsx:85:    enrollment: "$9,985",
+client/src/pages/Pricing.tsx:86:    monthly: "$699 monthly",
+client/src/pages/Pricing.tsx:93:    name: "Black",
+client/src/pages/Pricing.tsx:94:    enrollment: "$24,950",
+client/src/pages/Pricing.tsx:95:    monthly: "$1,250 monthly",
+client/src/pages/TermsConditions.tsx:26:    content: `DreamCarz Network offers multiple membership tiers (Freedom, Plus, Pro, and Elite), each with distinct monthly fees, program fees, and benefits. Freedom membership currently starts at $39.95 per month and may be cancelled at any time, subject to the applicable enrollment and billing terms. By enrolling in a membership tier, you agree to pay the applicable monthly membership fee on the date it is due each month.
+client/src/pages/VehicleDetail.tsx:13:  { id: "2019-chevrolet-malibu-black", year: 2019, make: "Chevrolet", model: "Malibu", color: "Black", type: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
+client/src/pages/VehicleDetail.tsx:16:  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+client/src/pages/VehicleDetail.tsx:21:  freedom: { name: "Freedom", enrollment: "$199", monthly: "$39 monthly" },
+client/src/pages/VehicleDetail.tsx:22:  plus: { name: "Plus", enrollment: "$499", monthly: "$99 monthly" },
+client/src/pages/VehicleDetail.tsx:23:  pro: { name: "Pro", enrollment: "$1,499", monthly: "$149 monthly" },
+client/src/pages/VehicleDetail.tsx:24:  elite: { name: "Elite", enrollment: "$2,965", monthly: "$249 monthly" },
+client/src/pages/VehicleDetail.tsx:25:  silver: { name: "Silver", enrollment: "$4,785", monthly: "$399 monthly" },
+client/src/pages/VehicleDetail.tsx:26:  gold: { name: "Gold", enrollment: "$9,985", monthly: "$699 monthly" },
+client/src/pages/VehicleDetail.tsx:27:  black: { name: "Black", enrollment: "$24,950", monthly: "$1,250 monthly" },
+client/src/pages/dashboard/MembershipPage.tsx:29:    name: "Elite",
+client/src/pages/dashboard/MyVehicles.tsx:12:  { id: "2019-chevrolet-malibu-black", year: 2019, make: "Chevrolet", model: "Malibu", color: "Black", type: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
+client/src/pages/dashboard/MyVehicles.tsx:15:  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+client/src/pages/dashboard/Payments.tsx:5:  { id: "INV-2026-042", date: "Jun 1, 2026", desc: "Pro Membership — June", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+client/src/pages/dashboard/Payments.tsx:6:  { id: "INV-2026-041", date: "May 1, 2026", desc: "Pro Membership — May", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+client/src/pages/dashboard/Payments.tsx:8:  { id: "INV-2026-039", date: "Apr 1, 2026", desc: "Pro Membership — April", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+client/src/pages/dashboard/Payments.tsx:9:  { id: "INV-2026-038", date: "Mar 1, 2026", desc: "Pro Membership — March", amount: "$99.95", status: "Paid", dcp: "Qualifying DCP" },
+client/src/pages/dashboard/Payments.tsx:27:            { label: "Next Amount", value: "$99.95", icon: CreditCard },
+server/ecosystemProcessContent.test.ts:45:    expect(home).toContain('color: "Black"');
+server/ecosystemProcessContent.test.ts:137:    expect(membership).not.toContain("$39.95");
+server/ecosystemProcessContent.test.ts:139:    expect(membership).not.toContain("$99.95");
+server/ecosystemProcessContent.test.ts:140:    expect(membership).not.toContain("$149.95");
+server/ecosystemProcessContent.test.ts:154:    expect(concierge).not.toContain("$99.95/month");
+server/pricingExperience.test.ts:17:    expect(pricing).toContain("$199");
+server/pricingExperience.test.ts:18:    expect(pricing).toContain("$39 monthly");
+server/pricingExperience.test.ts:19:    expect(pricing).toContain("$499");
+server/pricingExperience.test.ts:20:    expect(pricing).toContain("$99 monthly");
+server/pricingExperience.test.ts:21:    expect(pricing).toContain("$24,950");
+server/pricingExperience.test.ts:22:    expect(pricing).toContain("$1,250 monthly");
+server/homeMembershipDeckContent.test.ts:18:    expect(membership).not.toContain("$1,250/mo");

@@ -39,8 +39,8 @@ export default function Calculator() {
             <div className="reveal rounded-2xl border border-gray-200 bg-white p-8">
               <p className="section-label mb-2">Freedom Membership</p>
               <div className="flex items-end justify-between border-b border-gray-100 pb-6">
-                <div><h2 className="font-display text-2xl font-bold text-black">$39.95 / month</h2><p className="mt-1 text-sm text-gray-500">Cancel anytime.</p></div>
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-[#B8860B]">Approved offer</span>
+                <div><h2 className="font-display text-2xl font-bold text-black">Terms confirmed during enrollment</h2><p className="mt-1 text-sm text-gray-500">Plan availability and membership terms are reviewed before enrollment.</p></div>
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-[#B8860B]">Planning view</span>
               </div>
               <div className="mt-7">
                 <div className="mb-3 flex items-center justify-between"><label className="text-sm font-medium text-gray-700">Planning horizon</label><span className="font-mono text-sm font-bold text-black">{years} year{years > 1 ? "s" : ""}</span></div>

@@ -22,18 +22,16 @@ These Terms constitute a legally binding agreement between you and DreamCarz Net
 Membership is personal and non-transferable. You may not share your account credentials with any other person. We reserve the right to refuse membership or terminate accounts at our sole discretion.`,
   },
   {
-    title: "3. Membership Tiers & Fees",
-    content: `DreamCarz Network offers multiple membership tiers (Freedom, Plus, Pro, and Elite), each with distinct monthly fees, program fees, and benefits. Freedom membership currently starts at $39.95 per month and may be cancelled at any time, subject to the applicable enrollment and billing terms. By enrolling in a membership tier, you agree to pay the applicable monthly membership fee on the date it is due each month.
+    title: "3. Membership Paths & Terms",
+    content: `DreamCarz Network may offer membership paths described as Freedom, Plus, Pro, Elite, Silver, Gold, and Black. Path availability, membership terms, applicable fees, program benefits, eligibility requirements, and any vehicle-access context are presented for review during the applicable enrollment process or agreement.
 
-All fees are non-refundable unless otherwise stated in writing. We reserve the right to modify membership fees upon 30 days' written notice. Continued use of the Services after the effective date of a fee change constitutes your acceptance of the new fees.`,
+By enrolling in a membership path, you agree to the terms presented for your account. Membership selection does not include a vehicle or guarantee vehicle access. Vehicle availability, rental or purchase terms, insurance, taxes, and other vehicle charges are reviewed separately for the vehicle you select.`,
   },
   {
     title: "4. DCP (Dream Carz Points) Program",
-    content: `The DCP program is a loyalty rewards program that may allow members to accumulate points through qualifying membership payments, vehicle rentals, RTO/LTO payments, vehicle purchases, successful membership referrals, and anniversary activity. DCP points have no cash value and cannot be sold, transferred, or exchanged for cash.
+    content: `The DCP program may record eligible program activity under the applicable membership and transaction rules. DCP is not cash and cannot be sold, transferred, or exchanged for cash. Eligibility, verification, earning treatment, retention, multipliers, redemption limits, and permitted uses are governed by the applicable program materials and may change as permitted by those materials.
 
-    Eligible DCP may be used toward qualifying rewards such as free rental days, lease and interest credits, down-payment assistance, vehicle-purchase credits, service and maintenance savings, and exclusive member perks. Redemption values, multipliers, and eligibility requirements are subject to change at our discretion. The Company makes no guarantee regarding the future value or redemption rate of DCP points. Points may expire if your account becomes inactive or is terminated.
-
-The "Credit Free" program and "Be Free" milestones described in our marketing materials are aspirational goals based on projected program participation. Actual outcomes depend on individual member activity, market conditions, and program availability at the time of redemption.`,
+DreamCarz does not guarantee any future DCP value, redemption rate, vehicle outcome, financial result, or program availability. Any DCP treatment applicable to an account is reviewed under the then-current program rules.`,
   },
   {
     title: "5. Vehicle Use & Conduct",

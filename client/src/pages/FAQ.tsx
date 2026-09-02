@@ -11,23 +11,23 @@ const categories = [
     questions: [
       {
         q: "What membership tiers does DreamCarz offer?",
-        a: "DreamCarz offers four membership tiers:\n\n• **Freedom** ($39.95/mo) — cancel anytime, DCP on qualifying activity, Credit Free access starts day 1 for qualifying members, roadside assistance\n• **Plus** ($69.95/mo) — enhanced access and DCP benefits\n• **Pro** ($99.95/mo) — enhanced DCP benefits, Interest Free and Drive Free eligibility\n• **Elite** ($149.95/mo) — maximum benefits and Be Free ownership-pathway eligibility\n\nProgram eligibility is subject to applicable terms.",
+        a: "DreamCarz membership paths include:\n\n• **Freedom** — rentals + DCP guidance\n• **Plus** — subscribe-and-save exploration\n• **Pro** — broader vehicle-path guidance\n• **Elite** — lease-to-own exploration\n• **Silver** — Silver-and-below guidance\n• **Gold** — host + fleet guidance\n• **Black** — application-led exploration\n\nMembership terms, vehicle access, DCP treatment, and eligibility are confirmed during review; a plan does not guarantee a vehicle.",
       },
       {
         q: "Can I upgrade or downgrade my membership?",
-        a: "Yes. You can request a tier change at any time by contacting our concierge team at (301) 772-2500 or visiting our office. Upgrades take effect immediately. Downgrades take effect at your next billing cycle.",
+        a: "You can ask DreamCarz to review a membership-path change. The effective date, applicable terms, and any impact on your active vehicle path are confirmed during that review.",
       },
       {
         q: "Is there a contract or long-term commitment?",
-        a: "Freedom membership starts at $39.95 per month and can be cancelled anytime. Any additional program terms, promotional offers, and eligibility requirements are provided during enrollment.",
+        a: "Membership terms and any commitment requirements are provided for review during enrollment. Vehicle-specific terms, eligibility, and final approval are separate from membership selection.",
       },
       {
         q: "What is the Founding Member benefit?",
-        a: "Founding Members who join during our launch period receive a locked-in rate for life, a 2x DCP bonus on their first 6 months, priority vehicle access, and exclusive invitations to DreamCarz events.",
+        a: "DreamCarz will present any active launch or member program in writing during enrollment. Do not rely on a promotion, DCP treatment, or vehicle-access benefit until it is confirmed for your account.",
       },
       {
         q: "How do I cancel my membership?",
-        a: "To cancel, contact our team at (301) 772-2500 or visit 10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Please provide 30 days' notice. Your DCP balance is retained for 12 months after cancellation.",
+        a: "Contact DreamCarz at (301) 772-2500 or visit 10001 Derekwood Ln, Suite 204, Lanham, MD 20706 to request a membership review or cancellation. The applicable terms and any account effect are confirmed during that review.",
       },
     ],
   },
@@ -37,23 +37,23 @@ const categories = [
     questions: [
       {
         q: "What are DCP (Dream Carz Points)?",
-        a: "DCP (Dream Carz Points) are DreamCarz's proprietary loyalty currency. You earn DCP on every dollar you spend — monthly membership fees, vehicle upgrades, and add-on services. DCP accumulates over time and converts into real transportation purchasing power.",
+        a: "DCP is a DreamCarz program record, not cash. Eligible activity may be reviewed and recorded under program rules. DCP eligibility, verification, redemption limits, and applicable use are confirmed for your account.",
       },
       {
         q: "How do I earn DCP?",
-        a: "You can earn DCP on qualifying activity including:\n\n• Membership payments\n• Vehicle rentals\n• RTO/LTO payments\n• Vehicle purchases\n• Referrals once a referral becomes a member\n• Anniversary activity\n\nAvailability and amounts are subject to program terms.",
+        a: "DCP may apply to qualifying transportation activity under the applicable program rules. DreamCarz reviews eligibility before recording any DCP. No fixed earning amount or rate is promised in advance.",
       },
       {
         q: "How do I redeem DCP?",
-        a: "Eligible DCP can be redeemed for:\n\n• Free rental days\n• Lease and interest credits\n• Down-payment assistance\n• Vehicle-purchase credits\n• Service and maintenance savings\n• Exclusive member perks\n\nContact our concierge team to review your eligible redemption options.",
+        a: "Eligible DCP may be considered for approved program uses under applicable redemption rules. Contact DreamCarz to review the DCP record, eligibility, limits, and available options for your account.",
       },
       {
         q: "What is the DCP multiplier?",
-        a: "The DCP multiplier increases the value of your accumulated points. A 1.2x multiplier (Pro tier) means every 1,000 DCP is worth $12 in transportation power instead of $10. Elite members at 1.5x get $15 per 1,000 DCP.",
+        a: "Any DCP multiplier is governed by the applicable membership and program rules. DreamCarz confirms whether a multiplier applies and does not publish a fixed conversion value in advance.",
       },
       {
         q: "Do DCP points expire?",
-        a: "DCP points remain active as long as your membership is active. If you cancel, your DCP balance is retained for 12 months. After 12 months of inactivity, points may expire. Founding Members receive lifetime DCP retention.",
+        a: "DCP retention and expiration are governed by the applicable program rules. DreamCarz can review the current treatment of your account and any applicable terms with you.",
       },
     ],
   },
