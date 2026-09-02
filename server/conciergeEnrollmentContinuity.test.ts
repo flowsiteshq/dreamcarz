@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const conciergeSource = readFileSync(resolve(import.meta.dirname, "../client/src/pages/Concierge.tsx"), "utf8");
+const enrollmentSource = readFileSync(resolve(import.meta.dirname, "../client/src/components/ConciergeEnrollmentPanel.tsx"), "utf8");
 
 describe("Concierge enrollment continuity", () => {
   it("opens the protected enrollment panel in the Concierge instead of redirecting after the first journey choices", () => {
@@ -16,5 +17,12 @@ describe("Concierge enrollment continuity", () => {
     expect(conciergeSource).toContain("Your conversation is private and secure.");
     expect(conciergeSource).toContain("Ask a question instead");
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");
+  });
+
+  it("captures an additional driver in Concierge only for separate review", () => {
+    expect(enrollmentSource).toContain("trpc.transactions.addAdditionalDriver.useMutation");
+    expect(enrollmentSource).toContain("Add for review");
+    expect(enrollmentSource).toContain("does not authorize them to operate the vehicle");
+    expect(enrollmentSource).toContain('continueStep("membership"');
   });
 });
