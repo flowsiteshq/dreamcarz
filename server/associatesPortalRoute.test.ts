@@ -19,6 +19,12 @@ describe("separate Associate portal route", () => {
     expect(page).toContain("Recent wallet activity");
     expect(page).toContain("walletEntries");
     expect(page).not.toContain("providerReference");
+    expect(page).toContain("Add consented lead");
+    expect(page).toContain('scrollTo("associate-referrals")');
+    expect(page).toContain('setLocation("/dashboard/rewards")');
+    expect(page).toContain('setLocation("/dashboard/notifications")');
+    expect(page).toContain('setLocation("/dashboard/support")');
+    expect(page).toContain("navigator.share");
     expect(page).toContain("Recorded relationship status");
     expect(page).toContain("Customer identity, application details, screening, and eligibility decisions remain private.");
     expect(page).toContain("fallbackCopy");
