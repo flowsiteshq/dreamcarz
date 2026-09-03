@@ -280,7 +280,7 @@
 - [x] Replace fleet incident photo storage-key responses with evidence indicators and controlled access pathways.
 - [x] Remove unsupported public Fleet Partner payout, fee, customer-pool, and financing claims before exposing the new role-isolated portal.
 - [x] Correct the public Fleet Partner route so the partnership page is reachable from its intended navigation target without a 404.
-- [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
+- [x] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [x] Create a separate role-isolated Associate portal at /associates with working recorded referral, lead, commission, DCP, and qualification workspace controls.
 - [x] Apply a bounded per-account rate limit before the private Associate overview loads referral, lead, wallet, and recorded commission data.
 - [x] Add a privacy-minimized Associate referral-progress view that combines recorded attribution statuses and non-financial conversion milestones without customer or application details.

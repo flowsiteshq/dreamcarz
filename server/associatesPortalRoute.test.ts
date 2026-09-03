@@ -12,6 +12,10 @@ describe("separate Associate portal route", () => {
     expect(page).toContain("trpc.associate.createLead.useMutation");
     expect(page).toContain("trpc.associate.updateLead.useMutation");
     expect(page).toContain("trpc.wallet.mine.useQuery");
+    expect(page).toContain("QRCodeSVG");
+    expect(page).toContain("conversionEvents");
+    expect(page).toContain("commissionRecords");
+    expect(page).toContain("AssociateTrainingHub");
     expect(page).toContain("Recorded relationship status");
     expect(page).toContain("Customer identity, application details, screening, and eligibility decisions remain private.");
     expect(page).toContain("fallbackCopy");
