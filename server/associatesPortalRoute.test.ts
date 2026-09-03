@@ -19,8 +19,9 @@ describe("separate Associate portal route", () => {
     expect(page).toContain("Recent wallet activity");
     expect(page).toContain("walletEntries");
     expect(page).not.toContain("providerReference");
-    expect(page).toContain("Add consented lead");
-    expect(page).toContain('scrollTo("associate-referrals")');
+    expect(page).toContain("Add a consented lead");
+    expect(page).toContain('openMode("network", "associate-referrals")');
+    expect(page).toContain('onAcademy={() => openMode("academy")}');
     expect(page).toContain('setLocation("/dashboard/rewards")');
     expect(page).toContain('setLocation("/dashboard/notifications")');
     expect(page).toContain('setLocation("/dashboard/support")');
