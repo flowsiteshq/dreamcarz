@@ -12,6 +12,8 @@ describe("separate Associate portal route", () => {
     expect(page).toContain("trpc.associate.createLead.useMutation");
     expect(page).toContain("trpc.associate.updateLead.useMutation");
     expect(page).toContain("trpc.wallet.mine.useQuery");
+    expect(page).toContain("dreamcarz-dc-monogram-gold_085f22a2.png");
+    expect(page).toContain("dreamcarz-wordmark-gold_8bf4fbfa.png");
     expect(page).toContain("QRCodeSVG");
     expect(page).toContain("conversionEvents");
     expect(page).toContain("commissionRecords");
