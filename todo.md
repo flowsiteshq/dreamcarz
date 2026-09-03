@@ -288,6 +288,7 @@
 - [x] Make Associate referral copy and native-share controls fail gracefully without interrupting the private workspace.
 - [x] Apply a bounded per-account rate limit before account-owned wallet summaries are loaded in member and Associate workspaces.
 - [x] Apply a bounded per-administrator rate limit before wallet-ledger entries are recorded, without initiating payment, cash conversion, redemption, or payout actions.
+- [x] Add a privacy-minimized recent wallet-activity panel to the Associate portal using only account-owned ledger type, status, amount, and timestamp data.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
 - [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
