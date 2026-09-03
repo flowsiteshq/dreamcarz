@@ -41,6 +41,7 @@ import DreamCarzId from "./pages/dashboard/DreamCarzId";
 import IncidentCenter from "./pages/dashboard/IncidentCenter";
 import FleetPartnerPortal from "./pages/dashboard/FleetPartnerPortal";
 import AssociatePortal from "./pages/dashboard/AssociatePortal";
+import Associates from "./pages/Associates";
 import CommandCenter from "./pages/dashboard/CommandCenter";
 import NotificationsCenter from "./pages/dashboard/NotificationsCenter";
 
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/dashboard/incidents" component={IncidentCenter} />
       <Route path="/dashboard/fleet-partner" component={FleetPartnerPortal} />
       <Route path="/dashboard/associate" component={AssociatePortal} />
+      <Route path="/associates" component={Associates} />
       <Route path="/opportunity" component={Opportunity} />
       <Route path="/dashboard/drive-network" component={DriveNetwork} />
       <Route path="/dashboard/rental-setup" component={RentalOnboarding} />

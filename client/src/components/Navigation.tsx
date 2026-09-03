@@ -12,7 +12,7 @@ const navLinks = [
   { href: "/membership", label: "Members" },
   { href: "/pricing", label: "Pricing" },
   { href: "/contact", label: "Locations" },
-  { href: "/opportunity", label: "Associate Path" },
+  { href: "/associates", label: "Associate Path" },
   { href: "/opportunity#fleet-partner", label: "Fleet Partners" },
 ];
 

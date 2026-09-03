@@ -355,7 +355,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
   const headerStatus = membershipName ? `${membershipName} member` : profileStatus === "manual_review" ? "Identity review" : `Profile ${profileStatus.replaceAll("_", " ")}`;
   const operatingRoles = dreamcarzId.data?.roles ?? [];
   const operatingLinks = [
-    ...(operatingRoles.includes("associate") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/associate", label: "Associate Workspace", icon: Network }] : []),
+    ...(operatingRoles.includes("associate") || operatingRoles.includes("administrator") ? [{ href: "/associates", label: "Associate Workspace", icon: Network }] : []),
     ...(operatingRoles.includes("fleet_partner") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/fleet-partner", label: "Fleet Partner Portal", icon: Car }] : []),
     ...(user?.role === "admin" ? [{ href: "/admin", label: "Admin Panel", icon: ShieldCheck }, { href: "/dashboard/command-center", label: "Command Center", icon: Gauge }, { href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : []),
   ];
