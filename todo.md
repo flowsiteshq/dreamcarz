@@ -283,6 +283,7 @@
 - [ ] Expand the Associate portal with durable referral attribution, QR/digital business card, leads, customer/application/conversion views, audited commission ledger, and training access.
 - [x] Create a separate role-isolated Associate portal at /associates with working recorded referral, lead, commission, DCP, and qualification workspace controls.
 - [x] Apply a bounded per-account rate limit before the private Associate overview loads referral, lead, wallet, and recorded commission data.
+- [x] Add a privacy-minimized Associate referral-progress view that combines recorded attribution statuses and non-financial conversion milestones without customer or application details.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
 - [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
