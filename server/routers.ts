@@ -3040,6 +3040,8 @@ export const appRouter = router({
 
   associate: router({
     overview: protectedProcedure.query(async ({ ctx }) => {
+      const overviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_overview", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
+      if (!overviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate overview requests. Please try again later." });
       const db = await getDb();
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
       const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
