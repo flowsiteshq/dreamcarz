@@ -602,6 +602,8 @@ export const appRouter = router({
       .input(z.object({ userId: z.number().int().positive(), transactionId: z.number().int().positive().optional(), entryType: z.enum(DREAMCARZ_WALLET_ENTRY_TYPES), amountCents: z.number().int().min(1).max(10_000_000), description: z.string().trim().min(2).max(255), providerReference: z.string().trim().min(1).max(160).optional(), status: z.enum(["pending", "posted"]).default("pending") }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const walletEntryLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "wallet_ledger_entry_mutation", String(ctx.user.id)), limit: 20, windowMs: 60 * 60_000 });
+        if (!walletEntryLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many wallet-ledger entry requests. Please try again later." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Wallet records are temporarily unavailable." });
         let account = (await db.select().from(walletAccounts).where(eq(walletAccounts.userId, input.userId)).limit(1))[0];
