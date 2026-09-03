@@ -61,16 +61,45 @@ export default function Associates() {
     setMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const setShareFeedback = (message: string) => {
+    setCopyState(message);
+    window.setTimeout(() => setCopyState("Copy link"), 1500);
+  };
+  const fallbackCopy = (value: string) => {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    return copied;
+  };
   const copyLink = async () => {
     if (!referralLink) return;
-    await navigator.clipboard.writeText(referralLink);
-    setCopyState("Copied");
-    window.setTimeout(() => setCopyState("Copy link"), 1500);
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(referralLink);
+      else if (!fallbackCopy(referralLink)) throw new Error("Copy is unavailable");
+      setShareFeedback("Copied");
+    } catch {
+      try {
+        setShareFeedback(fallbackCopy(referralLink) ? "Copied" : "Copy unavailable");
+      } catch {
+        setShareFeedback("Copy unavailable");
+      }
+    }
   };
   const shareLink = async () => {
     if (!referralLink) return;
-    if (navigator.share) await navigator.share({ title: "DreamCarz", text: "Explore DreamCarz through my referral link.", url: referralLink });
-    else await copyLink();
+    if (!navigator.share) return copyLink();
+    try {
+      await navigator.share({ title: "DreamCarz", text: "Explore DreamCarz through my referral link.", url: referralLink });
+      setShareFeedback("Shared");
+    } catch {
+      setShareFeedback("Share unavailable");
+    }
   };
   const submitLead = async (event: React.FormEvent) => {
     event.preventDefault();

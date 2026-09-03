@@ -14,6 +14,9 @@ describe("separate Associate portal route", () => {
     expect(page).toContain("trpc.wallet.mine.useQuery");
     expect(page).toContain("Recorded relationship status");
     expect(page).toContain("Customer identity, application details, screening, and eligibility decisions remain private.");
+    expect(page).toContain("fallbackCopy");
+    expect(page).toContain("Copy unavailable");
+    expect(page).toContain("Share unavailable");
     expect(page).toContain("This private portal shows recorded account data.");
     expect(page).toContain("does not promise earnings");
   });
