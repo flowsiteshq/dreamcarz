@@ -588,6 +588,8 @@ export const appRouter = router({
 
   wallet: router({
     mine: protectedProcedure.query(async ({ ctx }) => {
+      const walletReadLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "wallet_summary_read", String(ctx.user.id)), limit: 120, windowMs: 60 * 60_000 });
+      if (!walletReadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many wallet-summary requests. Please try again later." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Wallet records are temporarily unavailable." });
       const accounts = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, ctx.user.id)).limit(1);

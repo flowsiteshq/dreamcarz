@@ -286,6 +286,7 @@
 - [x] Add a privacy-minimized Associate referral-progress view that combines recorded attribution statuses and non-financial conversion milestones without customer or application details.
 - [x] Apply a bounded per-account rate limit to Associate lead creation and lead-status changes without changing consent, ownership, or lead-content safeguards.
 - [x] Make Associate referral copy and native-share controls fail gracefully without interrupting the private workspace.
+- [x] Apply a bounded per-account rate limit before account-owned wallet summaries are loaded in member and Associate workspaces.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
 - [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
