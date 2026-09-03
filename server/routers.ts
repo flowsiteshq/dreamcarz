@@ -3077,6 +3077,8 @@ export const appRouter = router({
       consentToContact: z.literal(true),
       notes: z.string().trim().max(2_000).optional(),
     }).refine(input => Boolean(input.contactEmail || input.contactPhone), { message: "An email address or phone number is required." })).mutation(async ({ ctx, input }) => {
+      const leadActionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_lead_mutation", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+      if (!leadActionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate lead actions. Please try again later." });
       const db = await getDb();
       if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
       const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
@@ -3089,6 +3091,8 @@ export const appRouter = router({
       return { id: leadId };
     }),
     updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
+      const leadActionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_lead_mutation", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+      if (!leadActionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate lead actions. Please try again later." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
       if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
