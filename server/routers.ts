@@ -99,6 +99,7 @@ import {
   TRANSACTION_MEMBERSHIP_PLANS,
   TRANSACTION_REFERENCE_PREFIX,
 } from "../shared/transactionLifecycle";
+import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -369,6 +370,27 @@ export const appRouter = router({
           reservationStatus: input.context.reservationStatus,
         }) : "No structured journey context.";
         const vehicleIds = inventory.map(vehicle => vehicle.vehicleId);
+        const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
+        const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
+        const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
+        if (asksForCost && requestedDays && input.context?.selectedVehicleId && isApprovedTransactionVehicle(input.context.selectedVehicleId)) {
+          const estimate = getBwiMarketRentalEstimate(input.context.selectedVehicleId, requestedDays);
+          const selectedVehicle = APPROVED_TRANSACTION_VEHICLES[input.context.selectedVehicleId];
+          const dailyText = estimate.isRange
+            ? `${formatUsdFromCents(estimate.dailyLowCents)}–${formatUsdFromCents(estimate.dailyHighCents)} per day`
+            : `${formatUsdFromCents(estimate.dailyLowCents)} per day`;
+          const totalText = estimate.isRange
+            ? `${formatUsdFromCents(estimate.totalLowCents)}–${formatUsdFromCents(estimate.totalHighCents)}`
+            : formatUsdFromCents(estimate.totalLowCents);
+          return {
+            answer: `Using the recorded BWI market comparison, the ${selectedVehicle.vehicleName} is ${dailyText}. For ${requestedDays} days, the estimate is ${totalText} before DreamCarz-specific charges or final availability.`,
+            intent: "rental" as const,
+            vehicleClass: input.context.vehicleType,
+            nextPrompt: "Would you like to set your pickup and return details?",
+            recommendedVehicleIds: [input.context.selectedVehicleId],
+            source: "bwi_market_estimate" as const,
+          };
+        }
         const fallback = {
           answer: "I can help you find a confirmed vehicle. What are you looking for?",
           intent: "explore" as const,

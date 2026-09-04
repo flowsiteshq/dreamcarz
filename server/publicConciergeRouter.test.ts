@@ -53,6 +53,24 @@ describe("public DreamCarz concierge", () => {
     }));
   });
 
+  it("calculates a selected vehicle’s documented seven-day BWI market estimate without invoking the model", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "How much will it cost total for 7 days?",
+      context: { customerIntent: "rental", selectedVehicleId: "2024-ford-fusion-gray", vehicleType: "sedan", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: "dates", reservationStatus: "in_progress" },
+    });
+
+    expect(result).toMatchObject({
+      source: "bwi_market_estimate",
+      intent: "rental",
+      vehicleClass: "sedan",
+      recommendedVehicleIds: ["2024-ford-fusion-gray"],
+    });
+    expect(result.answer).toContain("$62.33 per day");
+    expect(result.answer).toContain("$436.31");
+    expect(result.answer).toContain("before DreamCarz-specific charges or final availability");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
   it("rejects sensitive input before model invocation", async () => {
     await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "My card number is 4111 1111 1111 1111" })).rejects.toThrow("For your privacy");
     expect(invokeLLM).not.toHaveBeenCalled();
