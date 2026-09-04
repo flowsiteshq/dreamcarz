@@ -81,6 +81,7 @@ import { createStripeIdentityVerificationSession, getIdentityProviderStatus } fr
 import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, getAwsFaceLivenessResult, getAwsFaceLivenessStatus } from "./awsFaceLiveness";
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { invokeLLM, listLLMModels } from "./_core/llm";
+import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
@@ -166,6 +167,10 @@ function assertSafeRestrictedContent(value: string, destination: "support messag
 
 function assertSafeSupportContent(value: string) {
   assertSafeRestrictedContent(value, "support message");
+}
+
+function containsSensitiveConciergeContent(value: string) {
+  return /\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b(?:card|cvv|password|passcode|pin|license\s*(?:number|#)?|driver'?s\s*license)\b/i.test(value);
 }
 
 async function recordVehiclePassportActivity(
@@ -292,6 +297,23 @@ export const appRouter = router({
       vehicleClass: vehicleId.includes("traverse") || vehicleId.includes("equinox") ? "suv" as const : "sedan" as const,
     }))),
 
+    transcribeVoice: publicProcedure
+      .input(z.object({ audioData: z.string().min(24).max(900_000) }))
+      .mutation(async ({ ctx, input }) => {
+        const voiceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "public_concierge_voice", "guest"), limit: 8, windowMs: 60 * 60_000 });
+        if (!voiceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before using DreamCarz Concierge voice input again." });
+        try {
+          const result = await transcribeConciergeVoice(input.audioData);
+          if (containsSensitiveConciergeContent(result.text)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "For your privacy, do not speak contact, payment, license, password, or government-identification details in DreamCarz Concierge. Sign in and use the protected onboarding steps when you are ready." });
+          }
+          return { text: result.text } as const;
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Voice transcription is temporarily unavailable." });
+        }
+      }),
+
     publicGuide: publicProcedure
       .input(z.object({
         question: z.string().trim().min(2).max(240),
@@ -304,7 +326,7 @@ export const appRouter = router({
         const guidanceLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "public_concierge_guidance", "guest"), limit: 12, windowMs: 60 * 60_000 });
         if (!guidanceLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before asking DreamCarz Concierge another question." });
         const conversationText = (input.conversation ?? []).map(entry => `${entry.role.toUpperCase()}: ${entry.text}`).join("\n");
-        const containsSensitiveInput = /\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b(?:card|cvv|password|passcode|pin|license\s*(?:number|#)?|driver'?s\s*license)\b/i.test(`${conversationText}\n${input.question}`);
+        const containsSensitiveInput = containsSensitiveConciergeContent(`${conversationText}\n${input.question}`);
         if (containsSensitiveInput) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "For your privacy, do not enter contact, payment, license, password, or government-identification details in DreamCarz Concierge. Sign in and use the protected onboarding steps when you are ready." });
         }

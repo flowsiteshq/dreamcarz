@@ -5,8 +5,10 @@ vi.mock("./storage", () => ({ storageGetSignedUrl: vi.fn(), storagePut: vi.fn() 
 vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPaymentProviderStatus: vi.fn(), verifyCoCardCheckoutReturn: vi.fn() }));
 vi.mock("./rateLimit", () => ({ consumeRateLimit: vi.fn(() => ({ allowed: true })), rateLimitKey: vi.fn((_: unknown, scope: string, subject: string) => `${scope}:${subject}`) }));
 vi.mock("./_core/llm", () => ({ listLLMModels: vi.fn(), invokeLLM: vi.fn() }));
+vi.mock("./elevenLabsTranscription", () => ({ transcribeConciergeVoice: vi.fn() }));
 
 import { invokeLLM, listLLMModels } from "./_core/llm";
+import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { consumeRateLimit } from "./rateLimit";
 import { appRouter } from "./routers";
 
@@ -16,6 +18,7 @@ describe("public DreamCarz concierge", () => {
   beforeEach(() => {
     vi.mocked(invokeLLM).mockReset();
     vi.mocked(listLLMModels).mockReset();
+    vi.mocked(transcribeConciergeVoice).mockReset();
     vi.mocked(consumeRateLimit).mockReset();
     vi.mocked(consumeRateLimit).mockReturnValue({ allowed: true, remaining: 11, retryAfterMs: 0 });
   });
@@ -74,5 +77,13 @@ describe("public DreamCarz concierge", () => {
     vi.mocked(consumeRateLimit).mockReturnValue({ allowed: false, remaining: 0, retryAfterMs: 60_000 });
     await expect(appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "Show me an SUV" })).rejects.toThrow("Please wait before asking DreamCarz Concierge");
     expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("transcribes a bounded voice clip without retaining audio and rejects sensitive spoken content", async () => {
+    vi.mocked(transcribeConciergeVoice).mockResolvedValue({ text: "Please show an SUV" });
+    await expect(appRouter.createCaller(guestContext as never).concierge.transcribeVoice({ audioData: "data:audio/webm;base64,dm9pY2UtbWVzc2FnZQ==" })).resolves.toEqual({ text: "Please show an SUV" });
+
+    vi.mocked(transcribeConciergeVoice).mockResolvedValue({ text: "My card number is 4111 1111 1111 1111" });
+    await expect(appRouter.createCaller(guestContext as never).concierge.transcribeVoice({ audioData: "data:audio/webm;base64,dm9pY2UtbWVzc2FnZQ==" })).rejects.toThrow("For your privacy");
   });
 });

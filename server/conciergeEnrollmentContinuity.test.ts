@@ -13,7 +13,7 @@ describe("Concierge enrollment continuity", () => {
   });
 
   it("keeps the natural-language question form available alongside in-page enrollment", () => {
-    expect(conciergeSource).toContain('placeholder={composerPlaceholder}');
+    expect(conciergeSource).toContain('placeholder={isRecording ? "Listening… pause to send" : composerPlaceholder}');
     expect(conciergeSource).toContain("Your conversation is private and secure.");
     expect(conciergeSource).toContain("Ask a question instead");
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");

@@ -5,7 +5,7 @@ import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsF
 import { trpc } from "@/lib/trpc";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
 import { ArrowRight, CarFront, Check, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
@@ -48,6 +48,7 @@ export default function Concierge() {
   const vehicles = trpc.concierge.confirmedVehicles.useQuery(undefined, { staleTime: 300_000 });
   const overview = trpc.dreamcarzId.overview.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
   const publicGuide = trpc.concierge.publicGuide.useMutation();
+  const transcribeVoice = trpc.concierge.transcribeVoice.useMutation();
   const savePreference = trpc.concierge.saveJourneyPreference.useMutation();
   const beginTransaction = trpc.transactions.begin.useMutation();
   const register = trpc.auth.register.useMutation();
@@ -68,6 +69,12 @@ export default function Concierge() {
   const [dashboardName, setDashboardName] = useState("");
   const [dashboardEmail, setDashboardEmail] = useState("");
   const [continueAfterRegistration, setContinueAfterRegistration] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const maxRecordingTimerRef = useRef<number | null>(null);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -117,7 +124,7 @@ export default function Concierge() {
     kind,
     image: inventory.find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
   }));
-  const sending = publicGuide.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
+  const sending = publicGuide.isPending || transcribeVoice.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
   const dashboardPrompt = dashboardCreationField === "email" ? "What email should we use?" : dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "existingPassword" ? "Enter your password to sign in" : "Create a secure password";
   const secureFieldActive = Boolean(dashboardCreationField && !dashboardQuestionMode);
   const composerPlaceholder = conciergeComposerPlaceholder(dashboardCreationField, dashboardQuestionMode);
@@ -193,6 +200,79 @@ export default function Concierge() {
     }
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void ask(question); };
+  const stopVoiceInput = () => {
+    if (animationFrameRef.current !== null) window.cancelAnimationFrame(animationFrameRef.current);
+    if (maxRecordingTimerRef.current !== null) window.clearTimeout(maxRecordingTimerRef.current);
+    animationFrameRef.current = null;
+    maxRecordingTimerRef.current = null;
+    audioContextRef.current?.close().catch(() => undefined);
+    audioContextRef.current = null;
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    setIsRecording(false);
+    if (recorder?.state === "recording") recorder.stop();
+  };
+  const startVoiceInput = async () => {
+    if (sending || isRecording) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { setNotice("Voice input is not available in this browser. Please type your question."); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"].find(candidate => MediaRecorder.isTypeSupported(candidate));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+      recorder.onstop = async () => {
+        const clip = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        chunks.length = 0;
+        if (!clip.size) { setNotice("I could not hear a question. Please try again."); return; }
+        try {
+          const audioData = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error("Voice input could not be read."));
+            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Voice input could not be read."));
+            reader.readAsDataURL(clip);
+          });
+          const result = await transcribeVoice.mutateAsync({ audioData });
+          setQuestion(result.text);
+          await ask(result.text);
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Voice transcription is temporarily unavailable.");
+        }
+      };
+      streamRef.current = stream;
+      recorderRef.current = recorder;
+      setNotice("Listening… pause briefly when you are done.");
+      setIsRecording(true);
+      recorder.start();
+
+      const context = new AudioContext();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 1024;
+      context.createMediaStreamSource(stream).connect(analyser);
+      audioContextRef.current = context;
+      const levels = new Uint8Array(analyser.fftSize);
+      let heardSpeech = false;
+      let silenceSince: number | null = null;
+      const watchForPause = () => {
+        analyser.getByteTimeDomainData(levels);
+        const peak = levels.reduce((highest, level) => Math.max(highest, Math.abs(level - 128)), 0);
+        if (peak > 9) { heardSpeech = true; silenceSince = null; }
+        else if (heardSpeech) {
+          silenceSince ??= Date.now();
+          if (Date.now() - silenceSince > 1_100) { stopVoiceInput(); return; }
+        }
+        animationFrameRef.current = window.requestAnimationFrame(watchForPause);
+      };
+      animationFrameRef.current = window.requestAnimationFrame(watchForPause);
+      maxRecordingTimerRef.current = window.setTimeout(stopVoiceInput, 20_000);
+    } catch {
+      stopVoiceInput();
+      setNotice("Microphone access is needed for voice input. Please allow it and try again.");
+    }
+  };
+  useEffect(() => () => stopVoiceInput(), []);
   const selectVehicle = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
     setTimeline(null);
@@ -295,10 +375,10 @@ export default function Concierge() {
               <div className={`rounded-[30px] border bg-[#151618]/95 p-2 shadow-[0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl ${secureFieldActive ? "border-[#d9b756] ring-2 ring-[#d9b756]/25" : "border-white/20"}`}>
                 <div className="flex items-end gap-2 px-2">
                   <button type="button" onClick={() => setNotice("Attachments are collected only inside the protected DreamCarz workflow.")} aria-label="Attachments are available in protected workflows" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"><Paperclip size={18} /></button>
-                  <button type="button" onClick={() => setNotice("Voice input is not enabled for this Concierge yet.")} aria-label="Voice input is not enabled" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"><Mic size={18} /></button>
+                  <button type="button" onClick={() => void (isRecording ? stopVoiceInput() : startVoiceInput())} disabled={sending && !isRecording} aria-label={isRecording ? "Stop DreamCarz Concierge voice input" : "Start DreamCarz Concierge voice input"} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full disabled:opacity-40 ${isRecording ? "bg-[#d9b756] text-black" : "text-white/60 hover:bg-white/10 hover:text-white"}`}><Mic size={18} className={isRecording ? "animate-pulse" : ""} /></button>
                   <label htmlFor="dreamcarz-concierge-input" className="sr-only">Ask DreamCarz Concierge</label>
-                  <input id="dreamcarz-concierge-input" autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? 128 : 240} disabled={sending} type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"} autoComplete={secureFieldActive && dashboardCreationField === "name" ? "name" : secureFieldActive && dashboardCreationField === "email" ? "email" : secureFieldActive && dashboardCreationField === "password" ? "new-password" : secureFieldActive && dashboardCreationField === "existingPassword" ? "current-password" : "off"} placeholder={composerPlaceholder} className="min-w-0 flex-1 bg-transparent py-4 text-base text-white outline-none placeholder:text-white/45" />
-                  <button type="submit" disabled={!question.trim() || sending} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#d9b756] text-black shadow-[0_4px_16px_rgba(217,183,86,0.28)] disabled:opacity-40" aria-label="Send to DreamCarz Concierge"><Send size={18} /></button>
+                  <input id="dreamcarz-concierge-input" autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? 128 : 240} disabled={sending || isRecording} type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"} autoComplete={secureFieldActive && dashboardCreationField === "name" ? "name" : secureFieldActive && dashboardCreationField === "email" ? "email" : secureFieldActive && dashboardCreationField === "password" ? "new-password" : secureFieldActive && dashboardCreationField === "existingPassword" ? "current-password" : "off"} placeholder={isRecording ? "Listening… pause to send" : composerPlaceholder} className="min-w-0 flex-1 bg-transparent py-4 text-base text-white outline-none placeholder:text-white/45" />
+                  <button type="submit" disabled={!question.trim() || sending || isRecording} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#d9b756] text-black shadow-[0_4px_16px_rgba(217,183,86,0.28)] disabled:opacity-40" aria-label="Send to DreamCarz Concierge"><Send size={18} /></button>
                 </div>
               </div>
               <div className="mx-2 mt-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#151618]/92 px-3 py-2 text-[11px] leading-4 text-[#e9e9e6]"><p className="flex max-w-xl items-start gap-1.5"><ShieldCheck size={13} className="mt-0.5 shrink-0 text-[#d9b756]" /> Your conversation is private and secure. Sensitive information is collected through protected DreamCarz verification screens.</p>{dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="font-semibold text-[#f0ce7f] underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : null}</div>
