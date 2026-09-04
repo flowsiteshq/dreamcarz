@@ -423,3 +423,4 @@
 - [x] Minimize and rate-limit the legacy administrator role-assignment record projection without changing operational role capabilities.
 - [x] Create a custom DreamCarz voice concierge agent in the authorized ElevenLabs account with natural conversational behavior and verified inventory, privacy, and transaction boundaries.
 - [x] Connect the floating DreamCarz Concierge microphone control to the verified ElevenLabs voice agent through protected short-lived session access, while preserving typed input and existing speech-to-text handling.
+- [x] Redesign only the DreamCarz Concierge prompt system into a 60–64px mobile-first context-aware input with one microphone, focused listening state, compact vehicle context, and a collapsible secure-and-private notice.

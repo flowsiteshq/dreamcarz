@@ -14,7 +14,7 @@ describe("Concierge dashboard creation", () => {
 
   it("keeps password entry masked and offers a question interruption path", () => {
     expect(source).toContain('type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"}');
-    expect(source).toContain('isRecording ? "Listening… pause to send" : composerPlaceholder');
+    expect(source).toContain('placeholder={composerPlaceholder}');
     expect(source).toContain("Ask a question instead");
     expect(source).toContain("When you’re ready");
     expect(source).toContain("register.mutateAsync({ name: dashboardName, email: dashboardEmail, password: rawValue, acceptedTerms: true })");

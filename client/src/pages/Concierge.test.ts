@@ -20,11 +20,17 @@ describe("shouldShowVehicleClassChoice", () => {
 });
 
 describe("conciergeComposerPlaceholder", () => {
-  it("uses an answer instruction rather than repeating the active Concierge question", () => {
-    expect(conciergeComposerPlaceholder("email")).toBe("Enter your email address…");
-    expect(conciergeComposerPlaceholder("name")).toBe("Enter your name…");
-    expect(conciergeComposerPlaceholder("password")).toBe("Create a secure password…");
-    expect(conciergeComposerPlaceholder("existingPassword")).toBe("Enter your password…");
-    expect(conciergeComposerPlaceholder("email", true)).toBe("Ask DreamCarz…");
+  it("uses secure answer instructions and retains the underlying Concierge context for general questions", () => {
+    expect(conciergeComposerPlaceholder({ field: "email" })).toBe("Enter your email address…");
+    expect(conciergeComposerPlaceholder({ field: "name" })).toBe("Enter your name…");
+    expect(conciergeComposerPlaceholder({ field: "password" })).toBe("Create a secure password…");
+    expect(conciergeComposerPlaceholder({ field: "existingPassword" })).toBe("Enter your password…");
+    expect(conciergeComposerPlaceholder({ field: "email", askingGeneralQuestion: true, selectedVehicleName: "2024 Chevrolet Malibu · Gray" })).toBe("Ask about this Chevrolet Malibu…");
+  });
+
+  it("changes the prompt for discovery, reservation assistance, and member context", () => {
+    expect(conciergeComposerPlaceholder({ field: null })).toBe("What car are you looking for?");
+    expect(conciergeComposerPlaceholder({ field: null, hasActiveReservation: true })).toBe("Need help with your reservation?");
+    expect(conciergeComposerPlaceholder({ field: null, isMember: true })).toBe("Ask DreamCarz anything…");
   });
 });

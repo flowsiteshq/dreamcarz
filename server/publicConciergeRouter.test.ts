@@ -44,11 +44,12 @@ describe("public DreamCarz concierge", () => {
         { role: "concierge", text: "Hi. I’m your DreamCarz concierge. What can I help you with today?" },
         { role: "member", text: "I want to rent a vehicle." },
       ],
+      context: { customerIntent: "rental", selectedVehicleId: "2022-chevrolet-traverse-white", vehicleType: "suv", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
     })).resolves.toMatchObject({ intent: "rental", source: "live_guidance" });
 
     expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({
       model: "claude-haiku-4-5",
-      messages: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining("TEMPORARY_CONVERSATION_CONTEXT") })]),
+      messages: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining("JOURNEY_CONTEXT") })]),
     }));
   });
 

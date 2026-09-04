@@ -13,19 +13,29 @@ describe("Concierge enrollment continuity", () => {
   });
 
   it("keeps the natural-language question form available alongside in-page enrollment", () => {
-    expect(conciergeSource).toContain('voiceAgentState === "connected" ? "Live Concierge is listening…"');
-    expect(conciergeSource).toContain('isRecording ? "Listening… pause to send" : composerPlaceholder');
+    expect(conciergeSource).toContain('isRecording ? <div className="flex h-16 items-center');
+    expect(conciergeSource).toContain('Listening…');
     expect(conciergeSource).toContain("Your conversation is private and secure.");
     expect(conciergeSource).toContain("Ask a question instead");
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");
   });
 
   it("keeps the Concierge composer screen-locked and reserves reading space beneath the conversation", () => {
-    expect(conciergeSource).toContain("fixed inset-x-3 bottom-4 z-40");
+    expect(conciergeSource).toContain("fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40");
     expect(conciergeSource).toContain("pointer-events-auto mx-auto w-full max-w-3xl");
-    expect(conciergeSource).toContain("pb-48 pt-8");
+    expect(conciergeSource).toContain("pb-40 pt-8");
     expect(conciergeSource).toContain('htmlFor="dreamcarz-concierge-input"');
-    expect(conciergeSource).toContain('aria-label={voiceAgentState === "connected" ? "End live DreamCarz voice conversation" : "Start live DreamCarz voice conversation"}');
+    expect(conciergeSource).toContain("Secure &amp; private");
+    expect(conciergeSource).toContain('aria-label="Start DreamCarz voice input"');
+    expect(conciergeSource).toContain('aria-label="Cancel voice input"');
+  });
+
+  it("moves the fixed Concierge prompt above a mobile keyboard and collapses its disclosure", () => {
+    expect(conciergeSource).toContain("window.visualViewport");
+    expect(conciergeSource).toContain("setKeyboardInset(inset > 150 ? inset : 0)");
+    expect(conciergeSource).toContain("style={keyboardInset ? { bottom:");
+    expect(conciergeSource).toContain("if (!keyboardOpen) return;");
+    expect(conciergeSource).toContain("setPrivacyOpen(false)");
   });
 
   it("captures an additional driver in Concierge only for separate review", () => {

@@ -4,15 +4,13 @@ import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
 import { trpc } from "@/lib/trpc";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
-import { ArrowRight, AudioLines, CarFront, Check, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles } from "lucide-react";
-import { Conversation } from "@elevenlabs/react";
+import { ArrowRight, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
 type Entry = { id: string; role: "concierge" | "member"; text: string };
 type DashboardCreationField = ConciergeSecureField;
-type ActiveVoiceSession = Awaited<ReturnType<typeof Conversation.startSession>>;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
   sedan: APPROVED_TRANSACTION_VEHICLES["2024-chevrolet-malibu-gray"].image,
@@ -51,7 +49,6 @@ export default function Concierge() {
   const overview = trpc.dreamcarzId.overview.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
   const publicGuide = trpc.concierge.publicGuide.useMutation();
   const transcribeVoice = trpc.concierge.transcribeVoice.useMutation();
-  const startVoiceAgentSession = trpc.concierge.startVoiceAgentSession.useMutation();
   const savePreference = trpc.concierge.saveJourneyPreference.useMutation();
   const beginTransaction = trpc.transactions.begin.useMutation();
   const register = trpc.auth.register.useMutation();
@@ -73,13 +70,16 @@ export default function Concierge() {
   const [dashboardEmail, setDashboardEmail] = useState("");
   const [continueAfterRegistration, setContinueAfterRegistration] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [voiceAgentState, setVoiceAgentState] = useState<"idle" | "connecting" | "connected">("idle");
+  const [voiceLevel, setVoiceLevel] = useState(0);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const maxRecordingTimerRef = useRef<number | null>(null);
-  const voiceAgentRef = useRef<ActiveVoiceSession | null>(null);
+  const discardRecordingRef = useRef(false);
+  const composerInputRef = useRef<HTMLInputElement | null>(null);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -129,10 +129,17 @@ export default function Concierge() {
     kind,
     image: inventory.find(vehicle => vehicle.vehicleClass === kind)?.image ?? VEHICLE_CLASS_IMAGES[kind],
   }));
-  const sending = publicGuide.isPending || transcribeVoice.isPending || startVoiceAgentSession.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
+  const sending = publicGuide.isPending || transcribeVoice.isPending || savePreference.isPending || beginTransaction.isPending || register.isPending || login.isPending || accountPath.isPending;
   const dashboardPrompt = dashboardCreationField === "email" ? "What email should we use?" : dashboardCreationField === "name" ? "What should I call you?" : dashboardCreationField === "existingPassword" ? "Enter your password to sign in" : "Create a secure password";
   const secureFieldActive = Boolean(dashboardCreationField && !dashboardQuestionMode);
-  const composerPlaceholder = conciergeComposerPlaceholder(dashboardCreationField, dashboardQuestionMode);
+  const composerPlaceholder = conciergeComposerPlaceholder({
+    field: dashboardCreationField,
+    askingGeneralQuestion: dashboardQuestionMode,
+    selectedVehicleName: selectedVehicle?.vehicleName,
+    hasActiveReservation: Boolean(enrollmentReference || activeTransaction),
+    isMember: isAuthenticated,
+  });
+  const keyboardOpen = keyboardInset > 0;
 
   const answerDashboardCreation = async (rawValue: string) => {
     const value = rawValue.trim();
@@ -191,7 +198,19 @@ export default function Concierge() {
     setNotice("");
     append(memberEntry);
     try {
-      const response = await publicGuide.mutateAsync({ question: value, conversation });
+      const response = await publicGuide.mutateAsync({
+        question: value,
+        conversation,
+        context: {
+          customerIntent: intent,
+          selectedVehicleId,
+          vehicleType: vehicleClass,
+          customerStatus: isAuthenticated ? "member" : "guest",
+          authenticationStatus: isAuthenticated ? "authenticated" : "guest",
+          onboardingStage: enrollmentReference ? "in_progress" : activeTransaction?.currentStep ?? null,
+          reservationStatus: enrollmentReference || activeTransaction ? "in_progress" : "none",
+        },
+      });
       setIntent(response.intent);
       setVehicleClass(response.vehicleClass === "sedan" || response.vehicleClass === "suv" ? response.vehicleClass : null);
       setRecommendedIds(/\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value) ? response.recommendedVehicleIds : null);
@@ -210,6 +229,7 @@ export default function Concierge() {
     if (maxRecordingTimerRef.current !== null) window.clearTimeout(maxRecordingTimerRef.current);
     animationFrameRef.current = null;
     maxRecordingTimerRef.current = null;
+    setVoiceLevel(0);
     audioContextRef.current?.close().catch(() => undefined);
     audioContextRef.current = null;
     streamRef.current?.getTracks().forEach(track => track.stop());
@@ -219,62 +239,10 @@ export default function Concierge() {
     setIsRecording(false);
     if (recorder?.state === "recording") recorder.stop();
   };
-  const endVoiceAgentSession = async () => {
-    const session = voiceAgentRef.current;
-    voiceAgentRef.current = null;
-    setVoiceAgentState("idle");
-    if (!session) return;
-    try {
-      await session.endSession();
-    } catch {
-      // The session may already be closed by the provider or browser.
-    }
-  };
-  const startVoiceAgent = async () => {
-    if (sending || isRecording || voiceAgentState === "connecting") return;
-    if (voiceAgentState === "connected") {
-      await endVoiceAgentSession();
-      setNotice("Live voice ended. You can keep typing or record a brief voice message.");
-      return;
-    }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setNotice("Live voice is not available in this browser. Please type your question.");
-      return;
-    }
-    setNotice("Connecting you to the DreamCarz live concierge…");
-    setVoiceAgentState("connecting");
-    try {
-      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      permissionStream.getTracks().forEach(track => track.stop());
-      const { signedUrl } = await startVoiceAgentSession.mutateAsync();
-      const session = await Conversation.startSession({
-        signedUrl,
-        onConnect: () => {
-          setVoiceAgentState("connected");
-          setNotice("Live Concierge is listening. Tap the microphone to end the voice conversation.");
-        },
-        onDisconnect: () => {
-          voiceAgentRef.current = null;
-          setVoiceAgentState("idle");
-        },
-        onError: () => {
-          voiceAgentRef.current = null;
-          setVoiceAgentState("idle");
-          setNotice("Live voice disconnected. You can try again or keep typing.");
-        },
-        onMessage: message => {
-          if (message.role !== "agent") return;
-          const response = message.message.trim();
-          if (!response) return;
-          append({ id: `live-voice-${message.event_id ?? Date.now()}`, role: "concierge", text: response.slice(0, 420) });
-        },
-      });
-      voiceAgentRef.current = session;
-    } catch (error) {
-      voiceAgentRef.current = null;
-      setVoiceAgentState("idle");
-      setNotice(error instanceof Error && /permission|denied/i.test(error.message) ? "Microphone access is needed for live voice. Please allow it and try again." : "Live DreamCarz voice is temporarily unavailable. You can keep typing or record a brief voice message.");
-    }
+  const cancelVoiceInput = () => {
+    discardRecordingRef.current = true;
+    stopVoiceInput();
+    setNotice("Voice input cancelled.");
   };
   const startVoiceInput = async () => {
     if (sending || isRecording) return;
@@ -288,6 +256,7 @@ export default function Concierge() {
       recorder.onstop = async () => {
         const clip = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
         chunks.length = 0;
+        if (discardRecordingRef.current) { discardRecordingRef.current = false; return; }
         if (!clip.size) { setNotice("I could not hear a question. Please try again."); return; }
         try {
           const audioData = await new Promise<string>((resolve, reject) => {
@@ -298,14 +267,15 @@ export default function Concierge() {
           });
           const result = await transcribeVoice.mutateAsync({ audioData });
           setQuestion(result.text);
-          await ask(result.text);
+          setNotice("Voice input is ready. You can edit it or send it when you’re ready.");
         } catch (error) {
           setNotice(error instanceof Error ? error.message : "Voice transcription is temporarily unavailable.");
         }
       };
       streamRef.current = stream;
       recorderRef.current = recorder;
-      setNotice("Listening… pause briefly when you are done.");
+      discardRecordingRef.current = false;
+      setNotice("");
       setIsRecording(true);
       recorder.start();
 
@@ -320,6 +290,7 @@ export default function Concierge() {
       const watchForPause = () => {
         analyser.getByteTimeDomainData(levels);
         const peak = levels.reduce((highest, level) => Math.max(highest, Math.abs(level - 128)), 0);
+        setVoiceLevel(Math.min(1, peak / 44));
         if (peak > 9) { heardSpeech = true; silenceSince = null; }
         else if (heardSpeech) {
           silenceSince ??= Date.now();
@@ -336,9 +307,28 @@ export default function Concierge() {
   };
   useEffect(() => () => {
     stopVoiceInput();
-    void voiceAgentRef.current?.endSession().catch(() => undefined);
-    voiceAgentRef.current = null;
   }, []);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateKeyboardInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(inset > 150 ? inset : 0);
+    };
+    updateKeyboardInset();
+    viewport.addEventListener("resize", updateKeyboardInset);
+    viewport.addEventListener("scroll", updateKeyboardInset);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardInset);
+      viewport.removeEventListener("scroll", updateKeyboardInset);
+    };
+  }, []);
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    setPrivacyOpen(false);
+    const frame = window.requestAnimationFrame(() => composerInputRef.current?.scrollIntoView({ block: "nearest" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [keyboardOpen]);
   const selectVehicle = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
     setTimeline(null);
@@ -411,7 +401,7 @@ export default function Concierge() {
 
   return (
     <ConciergeWorkspace dashboard={dashboardMode} intent={intent === "rental" || intent === "purchase" ? intent : null} userName={user?.name} isAuthenticated={isAuthenticated} hasSavedPath={hasSavedPath} savedPath={{ vehicleName: savedPathVehicle?.vehicleName ?? selectedVehicle?.vehicleName ?? null, vehicleImage: savedPathVehicle?.image ?? selectedVehicle?.image ?? null, intent: workspacePathIntent, timeline: savedPathTimeline ?? timeline, nextStep: savedPathStep ?? (enrollmentReference ? "Continue enrollment" : null) }} canResume={Boolean(activeTransaction)} onResume={() => activeTransaction ? openEnrollment(activeTransaction.reference) : restore()} onNewConversation={reset} onChoosePath={choosePath} onChangeVehicle={changeVehicle} onAccount={openAccount}>
-        <div className={`mx-auto flex min-h-[calc(100vh-69px)] w-full flex-1 flex-col px-5 pb-48 pt-8 transition-opacity duration-200 motion-reduce:transition-none sm:px-8 sm:pb-52 sm:pt-10 ${dashboardMode ? "max-w-5xl" : "max-w-3xl"} ${hasEntered ? "opacity-100" : "opacity-0"}`}>
+        <div className={`mx-auto flex min-h-[calc(100vh-69px)] w-full flex-1 flex-col px-5 pb-40 pt-8 transition-opacity duration-200 motion-reduce:transition-none sm:px-8 sm:pb-44 sm:pt-10 ${dashboardMode ? "max-w-5xl" : "max-w-3xl"} ${hasEntered ? "opacity-100" : "opacity-0"}`}>
           <div className="space-y-6">
             {conversationHistory.map(entry => (
               <div key={entry.id} className={`flex min-w-0 gap-3 ${entry.role === "member" ? "flex-row-reverse" : ""}`}>
@@ -436,19 +426,13 @@ export default function Concierge() {
             {enrollmentReference ? <ConciergeEnrollmentPanel reference={enrollmentReference} onProgress={message => append({ id: `${Date.now()}-enrollment-progress`, role: "concierge", text: message })} /> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
           </div>
-          <div className="pointer-events-none fixed inset-x-3 bottom-4 z-40 sm:inset-x-6 sm:bottom-6">
+          <div className="pointer-events-none fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 sm:inset-x-6 sm:bottom-6" style={keyboardInset ? { bottom: `${keyboardInset + 12}px` } : undefined}>
             <form onSubmit={submit} className="pointer-events-auto mx-auto w-full max-w-3xl">
-              <div className={`rounded-[30px] border bg-[#151618]/95 p-2 shadow-[0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl ${secureFieldActive ? "border-[#d9b756] ring-2 ring-[#d9b756]/25" : "border-white/20"}`}>
-                <div className="flex items-end gap-2 px-2">
-                  <button type="button" onClick={() => setNotice("Attachments are collected only inside the protected DreamCarz workflow.")} aria-label="Attachments are available in protected workflows" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"><Paperclip size={18} /></button>
-                  <button type="button" onClick={() => void (isRecording ? stopVoiceInput() : startVoiceInput())} disabled={sending && !isRecording} aria-label={isRecording ? "Stop brief DreamCarz voice input" : "Record a brief voice message for transcription"} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full disabled:opacity-40 ${isRecording ? "bg-[#d9b756] text-black" : "text-white/60 hover:bg-white/10 hover:text-white"}`}><AudioLines size={18} className={isRecording ? "animate-pulse" : ""} /></button>
-                  <button type="button" onClick={() => void startVoiceAgent()} disabled={sending && voiceAgentState !== "connected"} aria-label={voiceAgentState === "connected" ? "End live DreamCarz voice conversation" : "Start live DreamCarz voice conversation"} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 disabled:opacity-40 ${voiceAgentState === "connected" ? "bg-[#d9b756] text-black" : voiceAgentState === "connecting" ? "bg-white/15 text-[#f0ce7f]" : "bg-[#d9b756] text-black hover:bg-[#f0ce7f]"}`}><Mic size={18} className={voiceAgentState === "connected" || voiceAgentState === "connecting" ? "animate-pulse" : ""} /></button>
-                  <label htmlFor="dreamcarz-concierge-input" className="sr-only">Ask DreamCarz Concierge</label>
-                  <input id="dreamcarz-concierge-input" autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? 128 : 240} disabled={sending || isRecording} type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"} autoComplete={secureFieldActive && dashboardCreationField === "name" ? "name" : secureFieldActive && dashboardCreationField === "email" ? "email" : secureFieldActive && dashboardCreationField === "password" ? "new-password" : secureFieldActive && dashboardCreationField === "existingPassword" ? "current-password" : "off"} placeholder={voiceAgentState === "connected" ? "Live Concierge is listening…" : voiceAgentState === "connecting" ? "Connecting live voice…" : isRecording ? "Listening… pause to send" : composerPlaceholder} className="min-w-0 flex-1 bg-transparent py-4 text-base text-white outline-none placeholder:text-white/45" />
-                  <button type="submit" disabled={!question.trim() || sending || isRecording} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#d9b756] text-black shadow-[0_4px_16px_rgba(217,183,86,0.28)] disabled:opacity-40" aria-label="Send to DreamCarz Concierge"><Send size={18} /></button>
-                </div>
+              {selectedVehicle ? <div className="mb-2 flex min-h-14 items-center gap-3 rounded-2xl border border-[#e5d6a3] bg-white px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"><img src={selectedVehicle.image} alt="" className="h-10 w-16 shrink-0 object-contain" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-[#1c1c1c]">{selectedVehicle.vehicleName}</p><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a8832d]">Vehicle selected</p></div><button type="button" onClick={changeVehicle} className="shrink-0 text-xs font-semibold text-[#a8832d]">Change</button></div> : null}
+              <div className={`min-h-16 rounded-[28px] border bg-[#151618]/95 px-2 shadow-[0_18px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl ${secureFieldActive ? "border-[#d9b756] ring-2 ring-[#d9b756]/25" : "border-white/20"}`}>
+                {isRecording ? <div className="flex h-16 items-center gap-3 px-3"><div className="flex h-8 flex-1 items-center justify-center gap-1.5 text-[#e8c661]" aria-label="Listening to your voice input">{[0.45, 0.8, 1, 0.7, 0.5, 0.85, 0.6].map((base, index) => <span key={index} className="w-1 rounded-full bg-current" style={{ height: `${8 + (14 * base * (0.35 + voiceLevel))}px` }} />)}</div><span className="text-base font-medium text-white">Listening…</span><button type="button" onClick={cancelVoiceInput} aria-label="Cancel voice input" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/30 text-white"><X size={19} /></button></div> : <div className="flex h-16 items-center gap-2 px-2"><button type="button" onClick={() => setNotice("Attachments are collected only inside the protected DreamCarz workflow.")} aria-label="Attachments are available in protected workflows" className="grid h-10 w-9 shrink-0 place-items-center border-r border-white/15 pr-2 text-white/65 hover:text-white"><Paperclip size={18} /></button><label htmlFor="dreamcarz-concierge-input" className="sr-only">Ask DreamCarz Concierge</label><input ref={composerInputRef} id="dreamcarz-concierge-input" autoFocus value={question} onChange={event => setQuestion(event.target.value)} maxLength={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? 128 : 240} disabled={sending} type={secureFieldActive && (dashboardCreationField === "password" || dashboardCreationField === "existingPassword") ? "password" : "text"} autoComplete={secureFieldActive && dashboardCreationField === "name" ? "name" : secureFieldActive && dashboardCreationField === "email" ? "email" : secureFieldActive && dashboardCreationField === "password" ? "new-password" : secureFieldActive && dashboardCreationField === "existingPassword" ? "current-password" : "off"} placeholder={composerPlaceholder} className="min-w-0 flex-1 bg-transparent py-3 text-[16px] text-white outline-none placeholder:text-white/45" /><button type="button" onClick={() => void startVoiceInput()} disabled={sending} aria-label="Start DreamCarz voice input" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/25 text-white hover:border-[#d9b756] hover:text-[#f0ce7f] disabled:opacity-40"><Mic size={19} /></button><button type="submit" disabled={!question.trim() || sending} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#d9b756] text-black shadow-[0_4px_16px_rgba(217,183,86,0.25)] disabled:opacity-40" aria-label="Send to DreamCarz Concierge"><Send size={17} /></button></div>}
               </div>
-              <div className="mx-2 mt-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#151618]/92 px-3 py-2 text-[11px] leading-4 text-[#e9e9e6]"><p className="flex max-w-xl items-start gap-1.5"><ShieldCheck size={13} className="mt-0.5 shrink-0 text-[#d9b756]" /> {voiceAgentState === "connected" ? "Live voice is active. Do not speak payment, license, password, or identity details." : "Your conversation is private and secure. Sensitive information is collected through protected DreamCarz verification screens."}</p>{dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="font-semibold text-[#f0ce7f] underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : null}</div>
+              {!keyboardOpen ? <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 text-[11px] leading-4 text-[#555]">{privacyOpen ? <p className="max-w-xl text-[#555]">Your conversation is private and secure. Sensitive information is collected through protected DreamCarz verification screens.</p> : <button type="button" onClick={() => setPrivacyOpen(true)} className="inline-flex items-center gap-1.5 font-medium text-[#4a4a4a]"><ShieldCheck size={13} className="text-[#b18a2d]" /> Secure &amp; private <ChevronDown size={13} /></button>}{privacyOpen ? <button type="button" onClick={() => setPrivacyOpen(false)} className="font-semibold text-[#a8832d]">Less</button> : null}{dashboardCreationField ? <button type="button" onClick={() => setDashboardQuestionMode(value => !value)} className="font-semibold text-[#a8832d] underline underline-offset-4">{dashboardQuestionMode ? `Continue: ${dashboardPrompt}` : "Ask a question instead"}</button> : null}</div> : null}
             </form>
           </div>
         </div>
