@@ -82,6 +82,7 @@ import { createAwsFaceLivenessBrowserCredentials, createAwsFaceLivenessSession, 
 import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardCheckoutReturn } from "./paymentProvider";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { transcribeConciergeVoice } from "./elevenLabsTranscription";
+import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
@@ -311,6 +312,17 @@ export const appRouter = router({
         } catch (error) {
           if (error instanceof TRPCError) throw error;
           throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Voice transcription is temporarily unavailable." });
+        }
+      }),
+
+    startVoiceAgentSession: publicProcedure
+      .mutation(async ({ ctx }) => {
+        const voiceSessionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "public_concierge_live_voice", "guest"), limit: 6, windowMs: 60 * 60_000 });
+        if (!voiceSessionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before starting DreamCarz live voice again." });
+        try {
+          return await createDreamCarzVoiceSession();
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Live DreamCarz voice is temporarily unavailable." });
         }
       }),
 

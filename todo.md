@@ -422,3 +422,4 @@
 - [x] Prevent operational role assignment from representing or granting base DreamCarz administrator access.
 - [x] Minimize and rate-limit the legacy administrator role-assignment record projection without changing operational role capabilities.
 - [x] Create a custom DreamCarz voice concierge agent in the authorized ElevenLabs account with natural conversational behavior and verified inventory, privacy, and transaction boundaries.
+- [x] Connect the floating DreamCarz Concierge microphone control to the verified ElevenLabs voice agent through protected short-lived session access, while preserving typed input and existing speech-to-text handling.

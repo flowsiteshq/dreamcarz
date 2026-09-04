@@ -13,7 +13,8 @@ describe("Concierge enrollment continuity", () => {
   });
 
   it("keeps the natural-language question form available alongside in-page enrollment", () => {
-    expect(conciergeSource).toContain('placeholder={isRecording ? "Listening… pause to send" : composerPlaceholder}');
+    expect(conciergeSource).toContain('voiceAgentState === "connected" ? "Live Concierge is listening…"');
+    expect(conciergeSource).toContain('isRecording ? "Listening… pause to send" : composerPlaceholder');
     expect(conciergeSource).toContain("Your conversation is private and secure.");
     expect(conciergeSource).toContain("Ask a question instead");
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");
@@ -24,6 +25,7 @@ describe("Concierge enrollment continuity", () => {
     expect(conciergeSource).toContain("pointer-events-auto mx-auto w-full max-w-3xl");
     expect(conciergeSource).toContain("pb-48 pt-8");
     expect(conciergeSource).toContain('htmlFor="dreamcarz-concierge-input"');
+    expect(conciergeSource).toContain('aria-label={voiceAgentState === "connected" ? "End live DreamCarz voice conversation" : "Start live DreamCarz voice conversation"}');
   });
 
   it("captures an additional driver in Concierge only for separate review", () => {
