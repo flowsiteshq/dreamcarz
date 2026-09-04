@@ -295,6 +295,7 @@
 - [x] Replace the crowded /associates dashboard with a cinematic automotive command screen and focused work modes while preserving all protected Associate functions.
 - [x] Replace the temporary Associate initials mark with the actual DreamCarz logo asset in the focused Associate experience.
 - [x] Apply the supplied gold DC monogram and DREAMCARZ wordmark assets throughout the Associate portal header, loading, and access states.
+- [x] Make the DreamCarz AI Concierge input a prominent, screen-locked floating bar that remains available while a customer scrolls.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
 - [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.

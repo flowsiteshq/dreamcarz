@@ -19,6 +19,13 @@ describe("Concierge enrollment continuity", () => {
     expect(conciergeSource).toContain("{enrollmentReference ? <ConciergeEnrollmentPanel");
   });
 
+  it("keeps the Concierge composer screen-locked and reserves reading space beneath the conversation", () => {
+    expect(conciergeSource).toContain("fixed inset-x-3 bottom-4 z-40");
+    expect(conciergeSource).toContain("pointer-events-auto mx-auto w-full max-w-3xl");
+    expect(conciergeSource).toContain("pb-48 pt-8");
+    expect(conciergeSource).toContain('htmlFor="dreamcarz-concierge-input"');
+  });
+
   it("captures an additional driver in Concierge only for separate review", () => {
     expect(enrollmentSource).toContain("trpc.transactions.addAdditionalDriver.useMutation");
     expect(enrollmentSource).toContain("Add for review");
