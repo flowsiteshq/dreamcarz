@@ -297,6 +297,8 @@
 - [x] Apply the supplied gold DC monogram and DREAMCARZ wordmark assets throughout the Associate portal header, loading, and access states.
 - [x] Make the DreamCarz AI Concierge input a prominent, screen-locked floating bar that remains available while a customer scrolls.
 - [x] Add protected ElevenLabs speech-to-text capture to the DreamCarz Concierge so spoken customer input joins the existing conversational flow without retaining audio by default.
+- [x] Collect current Priceline comparable daily rental rates for the confirmed DreamCarz sedan and SUV fleet classes with source-date and market limitations documented.
+- [x] Use BWI as the Maryland default and DCA as the Washington-area comparison market for the current Priceline daily-rate reference.
 - [x] Add an Associate-only recorded commission ledger that distinguishes recorded amounts from eligibility, approval, and payout status.
 - [x] Show consented lead contact details only to the owning Associate for private follow-up.
 - [x] Add an account-owned Associate digital referral business card with a copyable attribution link, without commission, earnings, or conversion guarantees.
