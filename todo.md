@@ -421,3 +421,4 @@
 - [x] Apply bounded per-administrator rate limits before operational role grants, restores, and revocations are recorded.
 - [x] Prevent operational role assignment from representing or granting base DreamCarz administrator access.
 - [x] Minimize and rate-limit the legacy administrator role-assignment record projection without changing operational role capabilities.
+- [x] Create a custom DreamCarz voice concierge agent in the authorized ElevenLabs account with natural conversational behavior and verified inventory, privacy, and transaction boundaries.
