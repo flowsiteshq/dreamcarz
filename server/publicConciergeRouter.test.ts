@@ -18,6 +18,8 @@ import { resolve } from "node:path";
 
 const guestContext = { req: { headers: {}, ip: "203.0.113.30" }, res: {} };
 const conciergePageSource = readFileSync(resolve(process.cwd(), "client/src/pages/Concierge.tsx"), "utf8");
+const fleetPageSource = readFileSync(resolve(process.cwd(), "client/src/pages/Fleet.tsx"), "utf8");
+const vehicleDialogSource = readFileSync(resolve(process.cwd(), "client/src/components/VehicleExperienceDialog.tsx"), "utf8");
 
 describe("public DreamCarz concierge", () => {
   beforeEach(() => {
@@ -79,6 +81,25 @@ describe("public DreamCarz concierge", () => {
       pickupMarket: "BWI",
     });
     expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("routes Tesla requests to the Tesla Model 3 coming-soon waiting list without presenting it as confirmed inventory", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "Do you have a Tesla I can rent?" });
+
+    expect(result).toMatchObject({
+      source: "tesla_model_3_waitlist",
+      intent: "rental",
+      vehicleClass: "sedan",
+      waitlistVehicleId: "coming-soon-2024-tesla-model-3",
+      recommendedVehicleIds: [],
+    });
+    expect(result.answer).toContain("Tesla Model 3s are coming soon");
+    expect(result.answer).toContain("not part of current confirmed DreamCarz inventory");
+    expect(invokeLLM).not.toHaveBeenCalled();
+    expect(conciergePageSource).toContain('aria-label="Tesla Model 3 waitlist"');
+    expect(conciergePageSource).toContain("Join waiting list");
+    expect(fleetPageSource).toContain("requestedReserveVehicleId");
+    expect(vehicleDialogSource).toContain("Join Tesla Model 3 waiting list");
   });
 
   it("renders the market estimate card with transparent included and pending charge labels", () => {

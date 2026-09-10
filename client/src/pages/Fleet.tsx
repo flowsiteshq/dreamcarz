@@ -56,9 +56,13 @@ export default function Fleet() {
   const [filter, setFilter] = useState<FilterType>("All");
   const requestedAccess = new URLSearchParams(window.location.search).get("access");
   const requestedPlan = new URLSearchParams(window.location.search).get("plan");
+  const requestedReserveVehicleId = new URLSearchParams(window.location.search).get("reserve");
   const selectedMembershipPlan = requestedPlan && requestedPlan in planPricing ? planPricing[requestedPlan as keyof typeof planPricing] : undefined;
   const [accessFilter, setAccessFilter] = useState<AccessFilter>(accessFilters.includes(requestedAccess as AccessFilter) ? requestedAccess as AccessFilter : "all");
-  const [selectedVehicle, setSelectedVehicle] = useState<{ vehicle: FleetVehicle; view: "overview" | "rental" | "purchase" | "reserve" } | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<{ vehicle: FleetVehicle; view: "overview" | "rental" | "purchase" | "reserve" } | null>(() => {
+    const reserveVehicle = (comingSoonVehicles as readonly FleetVehicle[]).find(vehicle => vehicle.id === requestedReserveVehicleId);
+    return reserveVehicle ? { vehicle: reserveVehicle, view: "reserve" } : null;
+  });
   const matches = (vehicle: FleetVehicle) => (filter === "All" || vehicle.type === filter) && (accessFilter === "all" || vehicle.access === accessFilter);
   const currentVehicles = (confirmedInventory as readonly FleetVehicle[]).filter(matches);
   const reserveVehicles = (comingSoonVehicles as readonly FleetVehicle[]).filter(matches);

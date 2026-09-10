@@ -390,6 +390,19 @@ export const appRouter = router({
             recommendedVehicleIds: [input.context.selectedVehicleId],
             source: "bwi_market_estimate" as const,
             marketEstimate: estimate,
+            waitlistVehicleId: null,
+          };
+        }
+        if (/\btesla\b|\bmodel\s*3\b/i.test(input.question)) {
+          return {
+            answer: "Tesla Model 3s are coming soon. They are not part of current confirmed DreamCarz inventory yet, but you can join the waiting list for a future review.",
+            intent: "rental" as const,
+            vehicleClass: "sedan" as const,
+            nextPrompt: "Would you like to join the Tesla Model 3 waiting list?",
+            recommendedVehicleIds: [],
+            source: "tesla_model_3_waitlist" as const,
+            marketEstimate: null,
+            waitlistVehicleId: "coming-soon-2024-tesla-model-3",
           };
         }
         const fallback = {
@@ -400,6 +413,7 @@ export const appRouter = router({
           recommendedVehicleIds: vehicleIds,
           source: "fallback" as const,
           marketEstimate: null,
+          waitlistVehicleId: null,
         };
         try {
           const { data: models } = await listLLMModels();
@@ -443,7 +457,7 @@ export const appRouter = router({
             const recommendedVehicleIds = Array.isArray(parsed.recommendedVehicleIds) ? parsed.recommendedVehicleIds.filter((vehicleId): vehicleId is string => typeof vehicleId === "string" && vehicleIds.includes(vehicleId)).slice(0, 4) : [];
             const unsupportedClaim = /\$\s*\d|(?:price|pricing|rate|quote)\s+(?:is|of|at)\b|(?:approved|eligible|guaranteed|released)\s+(?:for|to)\b|(?:available|availability)\s+(?:today|now|this\s+week)\b/i.test(`${answer} ${nextPrompt}`);
             if (!answer || unsupportedClaim) continue;
-            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const, marketEstimate: null };
+            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const, marketEstimate: null, waitlistVehicleId: null };
           }
           return fallback;
         } catch {

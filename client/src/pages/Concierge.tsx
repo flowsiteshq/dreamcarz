@@ -11,7 +11,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
-type Entry = { id: string; role: "concierge" | "member"; text: string; marketEstimate?: MarketRentalEstimate | null };
+type Entry = { id: string; role: "concierge" | "member"; text: string; marketEstimate?: MarketRentalEstimate | null; waitlistVehicleId?: string | null };
 type DashboardCreationField = ConciergeSecureField;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
@@ -218,7 +218,7 @@ export default function Concierge() {
       setIntent(response.intent);
       setVehicleClass(response.vehicleClass === "sedan" || response.vehicleClass === "suv" ? response.vehicleClass : null);
       setRecommendedIds(/\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value) ? response.recommendedVehicleIds : null);
-      append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer, marketEstimate: response.marketEstimate });
+      append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer, marketEstimate: response.marketEstimate, waitlistVehicleId: response.waitlistVehicleId });
       if (dashboardQuestionMode && dashboardCreationField) {
         setDashboardQuestionMode(false);
         append({ id: `${Date.now() + 1}-dashboard-return`, role: "concierge", text: `When you’re ready, ${dashboardPrompt.toLowerCase()}` });
@@ -432,6 +432,12 @@ export default function Concierge() {
                       <div className="flex items-center justify-between gap-4 py-2.5 text-sm"><dt className="text-[#5d584f]">DreamCarz fees &amp; deposit</dt><dd className="text-right font-semibold text-[#8a6b23]">Pending final quote</dd></div>
                     </dl>
                     <p className="border-t border-[#eadfbf] px-4 py-2.5 text-[11px] leading-4 text-[#69645a]">*The recorded BWI marketplace comparison included its displayed taxes and fees. DreamCarz charges, deposit, and live availability are not set by this estimate.</p>
+                  </section> : null}
+                  {entry.role === "concierge" && entry.waitlistVehicleId === "coming-soon-2024-tesla-model-3" ? <section aria-label="Tesla Model 3 waitlist" className="mt-3 rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4 shadow-[0_8px_24px_rgba(168,131,45,0.08)]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Coming soon</p>
+                    <p className="mt-1 text-sm font-semibold text-[#252525]">Tesla Model 3 waiting list</p>
+                    <p className="mt-1 text-xs leading-5 text-[#69645a]">Join the interest list. Timing, availability, and final terms are confirmed separately.</p>
+                    <button type="button" onClick={() => navigate(`/fleet?reserve=${encodeURIComponent(entry.waitlistVehicleId!)}`)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-black px-4 text-xs font-semibold text-white active:scale-[0.97]">Join waiting list <ArrowRight size={14} /></button>
                   </section> : null}
                 </div>
               </div>

@@ -431,3 +431,4 @@
 - [x] Correct the desktop Pricing navigation trigger so it exposes an accessible hover/focus panel while preserving the direct pricing destination.
 - [x] Make the homepage DreamCarz prompt bar accept typed input and carry the submitted prompt into Concierge as the customer’s first message.
 - [x] Add a short, reduced-motion-safe visual handoff when a homepage prompt is submitted and DreamCarz Concierge opens.
+- [x] Recognize Tesla requests in Concierge, state that Tesla Model 3s are coming soon, and provide a clear waitlist enrollment path.
