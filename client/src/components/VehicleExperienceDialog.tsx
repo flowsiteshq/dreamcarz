@@ -40,6 +40,7 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
   const handledInitialAction = useRef(false);
   const [view, setView] = useState<ViewState>("overview");
   const [submittedInquiryType, setSubmittedInquiryType] = useState<"rental" | "purchase" | "reserve" | null>(null);
+  const [successRevealed, setSuccessRevealed] = useState(false);
   const [form, setForm] = useState({
     contactName: "",
     contactEmail: "",
@@ -86,10 +87,20 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
     setView(initialView === "reserve" ? "reserve" : "overview");
   }, [initialView, open]);
 
+  useEffect(() => {
+    if (view !== "success") {
+      setSuccessRevealed(false);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => setSuccessRevealed(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
+
   const resetAndClose = (nextOpen: boolean) => {
     if (!nextOpen) {
       setView("overview");
       setSubmittedInquiryType(null);
+      setSuccessRevealed(false);
       createInquiry.reset();
     }
     onOpenChange(nextOpen);
@@ -173,11 +184,14 @@ export function VehicleExperienceDialog({ vehicle, membershipPlan, open, onOpenC
         )}
 
         {view === "success" && (
-          <div className="flex min-h-[560px] items-center justify-center px-8 py-16 text-center">
+          <div className="flex min-h-[560px] items-center justify-center px-8 py-16 text-center" aria-live="polite">
             <div className="max-w-lg">
-              <CheckCircle2 className="mx-auto h-14 w-14 text-[#a8832d]" />
-              <DialogTitle className="mt-6 font-display text-5xl font-bold tracking-[-0.055em] text-black">Your request is in.</DialogTitle>
-              <DialogDescription className="mt-5 text-base leading-relaxed text-gray-600">DreamCarz received your {submittedInquiryType === "rental" ? "rental request" : submittedInquiryType === "purchase" ? "purchase inquiry" : "reserve request"} for the {fullName}. We will use your selected contact method to confirm the next step.</DialogDescription>
+              <div aria-hidden="true" className={`mx-auto grid h-20 w-20 place-items-center rounded-full border border-[#d7b45e] bg-[#fcfaf2] text-[#a8832d] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${successRevealed ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}>
+                <CheckCircle2 className={`h-11 w-11 transition-[opacity,transform] delay-100 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${successRevealed ? "scale-100 opacity-100" : "scale-75 opacity-0"}`} />
+              </div>
+              <p className={`mt-7 text-[11px] font-bold uppercase tracking-[0.2em] text-[#a8832d] transition-[opacity,transform] delay-75 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${successRevealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}>{isTeslaModel3Waitlist && submittedInquiryType === "reserve" ? "Waiting-list confirmation" : "Request received"}</p>
+              <DialogTitle className={`mt-3 font-display text-5xl font-bold tracking-[-0.055em] text-black transition-[opacity,transform] delay-100 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${successRevealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}>{isTeslaModel3Waitlist && submittedInquiryType === "reserve" ? "You’re on the Tesla Model 3 waiting list." : "Your request is in."}</DialogTitle>
+              <DialogDescription className={`mt-5 text-base leading-relaxed text-gray-600 transition-[opacity,transform] delay-150 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${successRevealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}>{isTeslaModel3Waitlist && submittedInquiryType === "reserve" ? "DreamCarz received your waiting-list interest. We will use your selected contact method to share an update when an appropriate vehicle-access path is available. Timing, availability, and final terms remain subject to confirmation." : <>DreamCarz received your {submittedInquiryType === "rental" ? "rental request" : submittedInquiryType === "purchase" ? "purchase inquiry" : "reserve request"} for the {fullName}. We will use your selected contact method to confirm the next step.</>}</DialogDescription>
               <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row"><button type="button" onClick={() => resetAndClose(false)} className="h-12 bg-black px-6 text-sm font-semibold text-white">Back to inventory</button>{submittedInquiryType === "rental" && <Link href="/dashboard/rental-setup" className="inline-flex h-12 items-center justify-center border border-black px-6 text-sm font-semibold text-black">Open rental setup</Link>}</div>
             </div>
           </div>

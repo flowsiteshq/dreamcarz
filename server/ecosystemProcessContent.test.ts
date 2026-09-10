@@ -111,6 +111,17 @@ describe("DreamCarz ecosystem process content", () => {
     expect(vehicleDialog).toContain("vehicleInquiries.create");
   });
 
+  it("confirms Tesla Model 3 waitlist enrollment with an animated, non-promissory success state", () => {
+    const vehicleDialog = source("client/src/components/VehicleExperienceDialog.tsx");
+
+    expect(vehicleDialog).toContain("You’re on the Tesla Model 3 waiting list.");
+    expect(vehicleDialog).toContain("Waiting-list confirmation");
+    expect(vehicleDialog).toContain("Timing, availability, and final terms remain subject to confirmation.");
+    expect(vehicleDialog).toContain("successRevealed");
+    expect(vehicleDialog).toContain("motion-reduce:transition-none");
+    expect(vehicleDialog).toContain("aria-live=\"polite\"");
+  });
+
   it("keeps member value and dream-journey messaging free of fixed conversion and outcome projections", () => {
     const membership = source("client/src/pages/dashboard/MembershipPage.tsx");
     const journey = source("client/src/pages/dashboard/DreamJourney.tsx");

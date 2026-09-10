@@ -432,3 +432,4 @@
 - [x] Make the homepage DreamCarz prompt bar accept typed input and carry the submitted prompt into Concierge as the customer’s first message.
 - [x] Add a short, reduced-motion-safe visual handoff when a homepage prompt is submitted and DreamCarz Concierge opens.
 - [x] Recognize Tesla requests in Concierge, state that Tesla Model 3s are coming soon, and provide a clear waitlist enrollment path.
+- [x] Add a concise, reduced-motion-safe checkmark animation and clear success message after the Tesla Model 3 waitlist form is submitted, without promising timing, availability, or pricing.
