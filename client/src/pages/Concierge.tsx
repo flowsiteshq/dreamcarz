@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel";
 import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
+import { takeHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 import { trpc } from "@/lib/trpc";
 import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
@@ -82,6 +83,7 @@ export default function Concierge() {
   const maxRecordingTimerRef = useRef<number | null>(null);
   const discardRecordingRef = useRef(false);
   const composerInputRef = useRef<HTMLInputElement | null>(null);
+  const homepagePromptConsumedRef = useRef(false);
   const [history, setHistory] = useState<Entry[]>(() => {
     const routeIntent = getRouteIntent();
     return [welcome(null, false, routeIntent)];
@@ -226,6 +228,12 @@ export default function Concierge() {
     }
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void ask(question); };
+  useEffect(() => {
+    if (homepagePromptConsumedRef.current) return;
+    homepagePromptConsumedRef.current = true;
+    const prompt = takeHomepageConciergePrompt();
+    if (prompt) void ask(prompt);
+  }, [ask]);
   const stopVoiceInput = () => {
     if (animationFrameRef.current !== null) window.cancelAnimationFrame(animationFrameRef.current);
     if (maxRecordingTimerRef.current !== null) window.clearTimeout(maxRecordingTimerRef.current);

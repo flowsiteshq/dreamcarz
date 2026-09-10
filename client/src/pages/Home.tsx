@@ -1,8 +1,10 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import Footer from "@/components/Footer";
 import Navigation from "@/components/Navigation";
+import { saveHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 import { ArrowRight, BadgeCheck, Car, CircleDollarSign, Gift, Headphones, MapPin, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
-import { Link } from "wouter";
+import { FormEvent, useState } from "react";
+import { Link, useLocation } from "wouter";
 
 const currentInventory = [
   { id: "2024-chevrolet-malibu-gray", year: "2024", make: "Chevrolet", model: "Malibu", color: "Gray", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/ogLykrxMFWpmsTbU.png" },
@@ -47,6 +49,14 @@ const dcpSteps = [
 ] as const;
 
 export default function Home() {
+  const [, navigate] = useLocation();
+  const [heroPrompt, setHeroPrompt] = useState("");
+  const submitHeroPrompt = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!saveHomepageConciergePrompt(heroPrompt)) return;
+    navigate("/concierge");
+  };
+
   return <div className="min-h-screen bg-white text-black">
     <Navigation />
     <main>
@@ -62,11 +72,12 @@ export default function Home() {
               <p className="mt-7 max-w-md text-[15px] leading-relaxed text-[#4d4a45] sm:text-lg">Rent it. Buy it. Explore membership. A clearer way to find the right vehicle and take your next step.</p>
               <div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold"><Link href="/concierge?intent=rental" className="inline-flex items-center gap-2 text-[#171717] underline decoration-[#b28d3b] decoration-2 underline-offset-8 transition-opacity hover:opacity-70">Explore rentals <ArrowRight size={15} /></Link><Link href="/concierge?intent=purchase" className="inline-flex items-center gap-2 text-[#171717] underline decoration-[#b28d3b] decoration-2 underline-offset-8 transition-opacity hover:opacity-70">Explore purchases <ArrowRight size={15} /></Link></div>
             </div>
-            <Link href="/concierge" aria-label="Ask DreamCarz anything in Concierge" className="group absolute inset-x-5 bottom-7 mx-auto flex h-[68px] max-w-3xl items-center rounded-full border border-white/70 bg-white/90 px-5 shadow-[0_20px_48px_rgba(65,48,22,0.18)] backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.99] sm:inset-x-8 sm:bottom-9 sm:h-[76px] sm:px-7 lg:bottom-11">
+            <form onSubmit={submitHeroPrompt} className="group absolute inset-x-5 bottom-7 mx-auto flex h-[68px] max-w-3xl items-center rounded-full border border-white/70 bg-white/90 px-5 shadow-[0_20px_48px_rgba(65,48,22,0.18)] backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5 sm:inset-x-8 sm:bottom-9 sm:h-[76px] sm:px-7 lg:bottom-11">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#a98331]"><Sparkles size={20} /></span>
-              <span className="ml-3 flex-1 text-left text-sm text-[#77736b] sm:text-base">Ask DreamCarz anything...</span>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white transition-transform duration-200 group-hover:translate-x-0.5"><ArrowRight size={18} /></span>
-            </Link>
+              <label className="sr-only" htmlFor="dreamcarz-home-concierge-prompt">Ask DreamCarz anything</label>
+              <input id="dreamcarz-home-concierge-prompt" value={heroPrompt} onChange={event => setHeroPrompt(event.target.value)} maxLength={1000} autoComplete="off" placeholder="Ask DreamCarz anything..." className="ml-3 min-w-0 flex-1 bg-transparent text-left text-sm text-[#272521] outline-none placeholder:text-[#77736b] sm:text-base" />
+              <button type="submit" aria-label="Send message to DreamCarz Concierge" disabled={!heroPrompt.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white transition-transform duration-200 hover:translate-x-0.5 disabled:cursor-not-allowed disabled:opacity-45 active:scale-[0.97]"><ArrowRight size={18} /></button>
+            </form>
           </div>
         </div>
         <div className="mx-auto max-w-7xl px-5 pb-7 sm:px-8 lg:px-10"><div className="grid overflow-hidden border border-[#e7e1d7] bg-white md:grid-cols-4">{benefits.map((benefit, index) => { const Icon = benefit.icon; return <div key={benefit.title} className={`flex gap-3 p-4 ${index < benefits.length - 1 ? "border-b border-[#e7e1d7] md:border-b-0 md:border-r" : ""}`}><Icon className="mt-0.5 shrink-0 text-[#b08b35]" size={18} /><div><p className="text-xs font-bold">{benefit.title}</p><p className="mt-1 text-[11px] leading-relaxed text-gray-500">{benefit.detail}</p></div></div>; })}</div></div>
