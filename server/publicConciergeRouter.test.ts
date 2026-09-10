@@ -13,8 +13,11 @@ import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
 import { consumeRateLimit } from "./rateLimit";
 import { appRouter } from "./routers";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const guestContext = { req: { headers: {}, ip: "203.0.113.30" }, res: {} };
+const conciergePageSource = readFileSync(resolve(process.cwd(), "client/src/pages/Concierge.tsx"), "utf8");
 
 describe("public DreamCarz concierge", () => {
   beforeEach(() => {
@@ -68,7 +71,21 @@ describe("public DreamCarz concierge", () => {
     expect(result.answer).toContain("$62.33 per day");
     expect(result.answer).toContain("$436.31");
     expect(result.answer).toContain("before DreamCarz-specific charges or final availability");
+    expect(result.marketEstimate).toMatchObject({
+      days: 7,
+      dailyLowCents: 6233,
+      totalLowCents: 43631,
+      isRange: false,
+      pickupMarket: "BWI",
+    });
     expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("renders the market estimate card with transparent included and pending charge labels", () => {
+    expect(conciergePageSource).toContain('aria-label="Market estimate breakdown"');
+    expect(conciergePageSource).toContain("Comparable taxes &amp; fees");
+    expect(conciergePageSource).toContain("DreamCarz fees &amp; deposit");
+    expect(conciergePageSource).toContain("Pending final quote");
   });
 
   it("rejects sensitive input before model invocation", async () => {

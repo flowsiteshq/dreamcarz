@@ -425,3 +425,4 @@
 - [x] Connect the floating DreamCarz Concierge microphone control to the verified ElevenLabs voice agent through protected short-lived session access, while preserving typed input and existing speech-to-text handling.
 - [x] Redesign only the DreamCarz Concierge prompt system into a 60–64px mobile-first context-aware input with one microphone, focused listening state, compact vehicle context, and a collapsible secure-and-private notice.
 - [x] Integrate the approved DreamCarz daily-rate criteria into Concierge so selected confirmed vehicles receive transparent seven-day estimates instead of an unavailable-pricing response.
+- [x] Add a compact Concierge estimate-breakdown card that shows daily market rate, rental days, subtotal, source-included charges, and unapproved DreamCarz fee or deposit status without inventing financial terms.

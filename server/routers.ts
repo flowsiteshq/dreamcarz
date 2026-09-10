@@ -389,6 +389,7 @@ export const appRouter = router({
             nextPrompt: "Would you like to set your pickup and return details?",
             recommendedVehicleIds: [input.context.selectedVehicleId],
             source: "bwi_market_estimate" as const,
+            marketEstimate: estimate,
           };
         }
         const fallback = {
@@ -398,6 +399,7 @@ export const appRouter = router({
           nextPrompt: "Would you like to compare sedans or SUVs?",
           recommendedVehicleIds: vehicleIds,
           source: "fallback" as const,
+          marketEstimate: null,
         };
         try {
           const { data: models } = await listLLMModels();
@@ -441,7 +443,7 @@ export const appRouter = router({
             const recommendedVehicleIds = Array.isArray(parsed.recommendedVehicleIds) ? parsed.recommendedVehicleIds.filter((vehicleId): vehicleId is string => typeof vehicleId === "string" && vehicleIds.includes(vehicleId)).slice(0, 4) : [];
             const unsupportedClaim = /\$\s*\d|(?:price|pricing|rate|quote)\s+(?:is|of|at)\b|(?:approved|eligible|guaranteed|released)\s+(?:for|to)\b|(?:available|availability)\s+(?:today|now|this\s+week)\b/i.test(`${answer} ${nextPrompt}`);
             if (!answer || unsupportedClaim) continue;
-            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const };
+            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const, marketEstimate: null };
           }
           return fallback;
         } catch {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice } from "@/lib/conciergeFlow";
+
+const conciergePageSource = readFileSync(fileURLToPath(new URL("./Concierge.tsx", import.meta.url)), "utf8");
 
 describe("shouldShowVehicleClassChoice", () => {
   it("shows visual body-style choices only after the relevant rental or purchase question", () => {
@@ -32,5 +36,16 @@ describe("conciergeComposerPlaceholder", () => {
     expect(conciergeComposerPlaceholder({ field: null })).toBe("What car are you looking for?");
     expect(conciergeComposerPlaceholder({ field: null, hasActiveReservation: true })).toBe("Need help with your reservation?");
     expect(conciergeComposerPlaceholder({ field: null, isMember: true })).toBe("Ask DreamCarz anything…");
+  });
+});
+
+describe("Concierge market estimate presentation", () => {
+  it("renders an itemized market estimate while keeping unapproved DreamCarz charges explicitly pending", () => {
+    expect(conciergePageSource).toContain('aria-label="Market estimate breakdown"');
+    expect(conciergePageSource).toContain("Daily market rate");
+    expect(conciergePageSource).toContain("Rental days");
+    expect(conciergePageSource).toContain("Comparable taxes &amp; fees");
+    expect(conciergePageSource).toContain("DreamCarz fees &amp; deposit");
+    expect(conciergePageSource).toContain("Pending final quote");
   });
 });

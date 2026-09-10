@@ -3,13 +3,14 @@ import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel"
 import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
 import { trpc } from "@/lib/trpc";
+import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
 import { ArrowRight, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 type Timeline = "exploring" | "soon" | "this_week" | null;
-type Entry = { id: string; role: "concierge" | "member"; text: string };
+type Entry = { id: string; role: "concierge" | "member"; text: string; marketEstimate?: MarketRentalEstimate | null };
 type DashboardCreationField = ConciergeSecureField;
 const STORAGE_KEY = "dreamcarz-concierge-selection";
 const VEHICLE_CLASS_IMAGES = {
@@ -28,6 +29,7 @@ const CONFIRMED_CONCIERGE_VEHICLES = [
 ] as const;
 
 const firstName = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || "there";
+const formatEstimateRange = (lowCents: number, highCents: number) => lowCents === highCents ? formatUsdFromCents(lowCents) : `${formatUsdFromCents(lowCents)}–${formatUsdFromCents(highCents)}`;
 const getRouteIntent = (): Intent => {
   const routeIntent = new URLSearchParams(window.location.search).get("intent");
   return routeIntent === "rental" || routeIntent === "purchase" ? routeIntent : "explore";
@@ -214,7 +216,7 @@ export default function Concierge() {
       setIntent(response.intent);
       setVehicleClass(response.vehicleClass === "sedan" || response.vehicleClass === "suv" ? response.vehicleClass : null);
       setRecommendedIds(/\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value) ? response.recommendedVehicleIds : null);
-      append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer });
+      append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer, marketEstimate: response.marketEstimate });
       if (dashboardQuestionMode && dashboardCreationField) {
         setDashboardQuestionMode(false);
         append({ id: `${Date.now() + 1}-dashboard-return`, role: "concierge", text: `When you’re ready, ${dashboardPrompt.toLowerCase()}` });
@@ -408,7 +410,22 @@ export default function Concierge() {
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${entry.role === "member" ? "bg-[#efefef] text-[#373737]" : "bg-black text-[#d5b35b]"}`}>
                   {entry.role === "member" ? <Compass size={15} /> : <Sparkles size={14} />}
                 </span>
-                <p className={`max-w-[min(720px,calc(100%-44px))] break-words text-[15px] leading-7 ${entry.role === "member" ? "rounded-2xl rounded-tr-sm bg-[#111111] px-4 py-3 text-white" : "rounded-2xl rounded-tl-sm border border-[#eeeeec] bg-white px-4 py-3 text-[#2d2d2d]"}`}>{entry.text}</p>
+                <div className="max-w-[min(720px,calc(100%-44px))] min-w-0">
+                  <p className={`break-words text-[15px] leading-7 ${entry.role === "member" ? "rounded-2xl rounded-tr-sm bg-[#111111] px-4 py-3 text-white" : "rounded-2xl rounded-tl-sm border border-[#eeeeec] bg-white px-4 py-3 text-[#2d2d2d]"}`}>{entry.text}</p>
+                  {entry.role === "concierge" && entry.marketEstimate ? <section aria-label="Market estimate breakdown" className="mt-3 overflow-hidden rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] text-[#252525] shadow-[0_8px_24px_rgba(168,131,45,0.08)]">
+                    <div className="flex items-end justify-between gap-3 border-b border-[#eadfbf] px-4 py-3">
+                      <div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">BWI market estimate</p><p className="mt-1 text-xs text-[#69645a]">Recorded comparable rental snapshot</p></div>
+                      <div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#69645a]">Estimated total</p><p className="mt-0.5 text-lg font-bold tracking-tight">{formatEstimateRange(entry.marketEstimate.totalLowCents, entry.marketEstimate.totalHighCents)}</p></div>
+                    </div>
+                    <dl className="divide-y divide-[#eee6d0] px-4">
+                      <div className="flex items-center justify-between gap-4 py-2.5 text-sm"><dt className="text-[#5d584f]">Daily market rate</dt><dd className="font-semibold">{formatEstimateRange(entry.marketEstimate.dailyLowCents, entry.marketEstimate.dailyHighCents)} / day</dd></div>
+                      <div className="flex items-center justify-between gap-4 py-2.5 text-sm"><dt className="text-[#5d584f]">Rental days</dt><dd className="font-semibold">{entry.marketEstimate.days}</dd></div>
+                      <div className="flex items-center justify-between gap-4 py-2.5 text-sm"><dt className="text-[#5d584f]">Comparable taxes &amp; fees</dt><dd className="text-right font-semibold">Included in source total*</dd></div>
+                      <div className="flex items-center justify-between gap-4 py-2.5 text-sm"><dt className="text-[#5d584f]">DreamCarz fees &amp; deposit</dt><dd className="text-right font-semibold text-[#8a6b23]">Pending final quote</dd></div>
+                    </dl>
+                    <p className="border-t border-[#eadfbf] px-4 py-2.5 text-[11px] leading-4 text-[#69645a]">*The recorded BWI marketplace comparison included its displayed taxes and fees. DreamCarz charges, deposit, and live availability are not set by this estimate.</p>
+                  </section> : null}
+                </div>
               </div>
             ))}
             {publicGuide.isPending ? <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={14} /></span><span className="pt-2 text-sm text-gray-400">Thinking…</span></div> : null}
