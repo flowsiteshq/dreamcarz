@@ -433,3 +433,4 @@
 - [x] Add a short, reduced-motion-safe visual handoff when a homepage prompt is submitted and DreamCarz Concierge opens.
 - [x] Recognize Tesla requests in Concierge, state that Tesla Model 3s are coming soon, and provide a clear waitlist enrollment path.
 - [x] Add a concise, reduced-motion-safe checkmark animation and clear success message after the Tesla Model 3 waitlist form is submitted, without promising timing, availability, or pricing.
+- [x] Repair the Concierge microphone flow so supported browsers start voice reliably and unsupported audio capture receives a clear, usable fallback rather than a dead-end error.

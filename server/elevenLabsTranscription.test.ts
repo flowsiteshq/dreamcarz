@@ -22,6 +22,16 @@ describe("ElevenLabs Concierge transcription", () => {
     expect((request.body as FormData).get("model_id")).toBe("scribe_v2");
   });
 
+  it("accepts a browser recorder data URL with its supported codec parameter", () => {
+    expect(decodeConciergeAudioData("data:audio/webm;codecs=opus;base64,dm9pY2U=")).toMatchObject({
+      mimeType: "audio/webm;codecs=opus",
+      bytes: expect.any(Buffer),
+    });
+    expect(decodeConciergeAudioData("data:audio/mp4;codecs=mp4a.40.2;base64,dm9pY2U=")).toMatchObject({
+      mimeType: "audio/mp4;codecs=mp4a.40.2",
+    });
+  });
+
   it("rejects unsupported or unbounded audio before it can reach the provider", () => {
     expect(() => decodeConciergeAudioData("data:text/plain;base64,dGVzdA==")).toThrow("supported browser audio");
     const tooLarge = Buffer.alloc(600_001).toString("base64");

@@ -1,5 +1,5 @@
 const MAX_CONCIERGE_AUDIO_BYTES = 600_000;
-const AUDIO_DATA_URL = /^data:(audio\/(?:webm|ogg|wav|mpeg|mp4)|video\/webm);base64,([a-z0-9+/=\r\n]+)$/i;
+const AUDIO_DATA_URL = /^data:((?:audio\/(?:webm|ogg|wav|mpeg|mp4)|video\/webm)(?:;codecs=[a-z0-9._-]+)?);base64,([a-z0-9+/=\r\n]+)$/i;
 
 export type ConciergeVoiceTranscription = {
   text: string;
