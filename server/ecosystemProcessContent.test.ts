@@ -88,9 +88,9 @@ describe("DreamCarz ecosystem process content", () => {
     const memberVehicles = source("client/src/pages/dashboard/MyVehicles.tsx");
     for (const inventorySurface of [home, fleet, detail, memberVehicles]) {
       expect(inventorySurface).toContain("files.manuscdn.com");
-      expect(inventorySurface).not.toContain("/manus-storage/dreamcarz-");
     }
     expect(home).toContain("gyIfJAbATfYnyeYI");
+    expect(home).toContain('alt="Editorial DreamCarz automotive scene at a modern city overlook"');
     expect(fleet).toContain("bg-transparent");
     expect(memberVehicles).toContain("bg-transparent");
   });
@@ -174,7 +174,6 @@ describe("DreamCarz ecosystem process content", () => {
 
   it("gives homepage actions concrete destinations and resets scroll on every route change", () => {
     const home = source("client/src/pages/Home.tsx");
-    const homeConcierge = source("client/src/components/HomeConcierge.tsx");
     const conciergePage = source("client/src/pages/Concierge.tsx");
     const app = source("client/src/App.tsx");
 
@@ -187,8 +186,8 @@ describe("DreamCarz ecosystem process content", () => {
       expect(home).toContain(destination);
     }
 
-    expect(home).toContain("<HomeConcierge />");
-    expect(homeConcierge).toContain('href="/concierge"');
+    expect(home).toContain('href="/concierge"');
+    expect(home).toContain("Ask DreamCarz anything...");
     expect(conciergePage).toContain('navigate("/pricing")');
     expect(conciergePage).toContain("I’ll create your DreamCarz dashboard and keep this vehicle path here.");
     expect(conciergePage).toContain("register.mutateAsync");

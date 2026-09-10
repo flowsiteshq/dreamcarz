@@ -10,6 +10,10 @@ describe("homepage and membership deck content", () => {
     const membership = readClientFile("pages/Membership.tsx");
 
     expect(home).toContain("What do you need today?");
+    expect(home).toContain("/manus-storage/dreamcarz-cinematic-hero-architecture_c73786ec.png");
+    expect(home).toContain("Luxury · Freedom · On your terms.");
+    expect(home).toContain("Ask DreamCarz anything...");
+    expect(home).toContain('href="/concierge"');
     expect(home).toContain("From question to next step.");
     expect(home).toContain("DCP is not cash.");
     expect(home).not.toContain("$59.95/day");
