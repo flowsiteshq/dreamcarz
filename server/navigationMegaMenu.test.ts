@@ -13,6 +13,7 @@ describe("DreamCarz navigation mega menu", () => {
     expect(navigationSource).toContain('onMouseLeave={() => setActiveMegaMenu(null)}');
     expect(navigationSource).toContain('aria-controls="dreamcarz-fleet-menu"');
     expect(navigationSource).toContain('aria-controls="dreamcarz-members-menu"');
+    expect(navigationSource).toContain('aria-controls="dreamcarz-pricing-menu"');
     expect(navigationSource).toContain('aria-controls="dreamcarz-network-menu"');
   });
 
@@ -34,5 +35,7 @@ describe("DreamCarz navigation mega menu", () => {
     expect(navigationSource).toContain("mobileFleetOpen");
     expect(navigationSource).toContain("Confirmed vehicle preview");
     expect(navigationSource).toContain("fleetPreview");
+    expect(navigationSource).toContain('activeMegaMenu === "pricing"');
+    expect(navigationSource).toContain("Pricing with clarity");
   });
 });

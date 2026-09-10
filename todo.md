@@ -428,3 +428,4 @@
 - [x] Add a compact Concierge estimate-breakdown card that shows daily market rate, rental days, subtotal, source-included charges, and unapproved DreamCarz fee or deposit status without inventing financial terms.
 - [x] Redesign the DreamCarz homepage hero around the supplied warm architectural automotive reference, with a full-bleed editorial scene, oversized headline, and a dominant working Concierge entry without representing the hero vehicle as fleet inventory.
 - [x] Add a responsive accessible DreamCarz navigation mega menu with hover/focus desktop panels, tap-safe mobile controls, confirmed vehicle visual links, and preserved existing route destinations.
+- [x] Correct the desktop Pricing navigation trigger so it exposes an accessible hover/focus panel while preserving the direct pricing destination.
