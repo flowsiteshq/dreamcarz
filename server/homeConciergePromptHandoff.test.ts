@@ -16,6 +16,10 @@ describe("homepage Concierge prompt handoff", () => {
     expect(home).toContain("saveHomepageConciergePrompt(heroPrompt)");
     expect(handoff).toContain("sessionStorage.setItem(HOMEPAGE_CONCIERGE_PROMPT_KEY, prompt)");
     expect(handoff).toContain("sessionStorage.removeItem(HOMEPAGE_CONCIERGE_PROMPT_KEY)");
+    expect(home).toContain("isPromptTransitioning");
+    expect(home).toContain('Opening your conversation…');
+    expect(home).toContain('prefers-reduced-motion: reduce');
+    expect(home).toContain('window.setTimeout(() => navigate("/concierge"), 340)');
   });
 
   it("consumes the temporary prompt once and sends it through the existing Concierge ask flow", () => {

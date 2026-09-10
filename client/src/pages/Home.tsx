@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import Navigation from "@/components/Navigation";
 import { saveHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 import { ArrowRight, BadgeCheck, Car, CircleDollarSign, Gift, Headphones, MapPin, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 
 const currentInventory = [
@@ -51,10 +51,20 @@ const dcpSteps = [
 export default function Home() {
   const [, navigate] = useLocation();
   const [heroPrompt, setHeroPrompt] = useState("");
+  const [isPromptTransitioning, setIsPromptTransitioning] = useState(false);
+  const handoffTimerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (handoffTimerRef.current !== null) window.clearTimeout(handoffTimerRef.current);
+  }, []);
   const submitHeroPrompt = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!saveHomepageConciergePrompt(heroPrompt)) return;
-    navigate("/concierge");
+    if (isPromptTransitioning || !saveHomepageConciergePrompt(heroPrompt)) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      navigate("/concierge");
+      return;
+    }
+    setIsPromptTransitioning(true);
+    handoffTimerRef.current = window.setTimeout(() => navigate("/concierge"), 340);
   };
 
   return <div className="min-h-screen bg-white text-black">
@@ -65,6 +75,14 @@ export default function Home() {
           <img src="/manus-storage/dreamcarz-cinematic-hero-architecture_c73786ec.png" alt="Editorial DreamCarz automotive scene at a modern city overlook" className="absolute inset-0 h-full w-full object-cover object-[69%_center]" />
           <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,252,247,0.98)_0%,rgba(255,252,247,0.93)_50%,rgba(255,252,247,0.72)_74%,rgba(255,252,247,0.28)_100%)] lg:bg-[linear-gradient(90deg,rgba(255,252,247,0.98)_0%,rgba(255,252,247,0.92)_32%,rgba(255,252,247,0.36)_57%,rgba(255,252,247,0.02)_78%)]" />
           <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(0deg,rgba(252,247,239,0.72),transparent)]" />
+          <div role="status" aria-live="polite" className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-[#111111]/78 px-5 text-center text-white backdrop-blur-md transition-opacity duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${isPromptTransitioning ? "opacity-100" : "opacity-0"}`}>
+            <div className={`w-full max-w-md transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${isPromptTransitioning ? "translate-y-0 scale-100" : "translate-y-2 scale-[0.98]"}`}>
+              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full border border-[#d9b756]/60 bg-black text-[#e8c661]"><Sparkles size={19} /></span>
+              <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.22em] text-[#e8c661]">DreamCarz Concierge</p>
+              <p className="mt-3 text-lg font-semibold">Opening your conversation…</p>
+              <p className="mx-auto mt-3 max-w-sm truncate rounded-full border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/80">{heroPrompt.trim()}</p>
+            </div>
+          </div>
           <div className="relative z-10 mx-auto flex min-h-[650px] max-w-7xl flex-col justify-center px-5 pb-32 pt-14 sm:min-h-[690px] sm:px-8 sm:pb-36 lg:min-h-[735px] lg:px-10 lg:pb-44 lg:pt-10">
             <div className="max-w-[650px]">
               <p className="text-[10px] font-bold uppercase tracking-[0.34em] text-[#9d7622] sm:text-[11px]">Luxury · Freedom · On your terms.</p>
@@ -72,11 +90,11 @@ export default function Home() {
               <p className="mt-7 max-w-md text-[15px] leading-relaxed text-[#4d4a45] sm:text-lg">Rent it. Buy it. Explore membership. A clearer way to find the right vehicle and take your next step.</p>
               <div className="mt-7 flex flex-wrap gap-3 text-sm font-semibold"><Link href="/concierge?intent=rental" className="inline-flex items-center gap-2 text-[#171717] underline decoration-[#b28d3b] decoration-2 underline-offset-8 transition-opacity hover:opacity-70">Explore rentals <ArrowRight size={15} /></Link><Link href="/concierge?intent=purchase" className="inline-flex items-center gap-2 text-[#171717] underline decoration-[#b28d3b] decoration-2 underline-offset-8 transition-opacity hover:opacity-70">Explore purchases <ArrowRight size={15} /></Link></div>
             </div>
-            <form onSubmit={submitHeroPrompt} className="group absolute inset-x-5 bottom-7 mx-auto flex h-[68px] max-w-3xl items-center rounded-full border border-white/70 bg-white/90 px-5 shadow-[0_20px_48px_rgba(65,48,22,0.18)] backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5 sm:inset-x-8 sm:bottom-9 sm:h-[76px] sm:px-7 lg:bottom-11">
+            <form onSubmit={submitHeroPrompt} className={`group absolute inset-x-5 bottom-7 mx-auto flex h-[68px] max-w-3xl items-center rounded-full border border-white/70 bg-white/90 px-5 shadow-[0_20px_48px_rgba(65,48,22,0.18)] backdrop-blur-md transition-[transform,opacity] duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5 sm:inset-x-8 sm:bottom-9 sm:h-[76px] sm:px-7 lg:bottom-11 ${isPromptTransitioning ? "scale-[0.98] opacity-0" : "opacity-100"}`}>
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#a98331]"><Sparkles size={20} /></span>
               <label className="sr-only" htmlFor="dreamcarz-home-concierge-prompt">Ask DreamCarz anything</label>
-              <input id="dreamcarz-home-concierge-prompt" value={heroPrompt} onChange={event => setHeroPrompt(event.target.value)} maxLength={1000} autoComplete="off" placeholder="Ask DreamCarz anything..." className="ml-3 min-w-0 flex-1 bg-transparent text-left text-sm text-[#272521] outline-none placeholder:text-[#77736b] sm:text-base" />
-              <button type="submit" aria-label="Send message to DreamCarz Concierge" disabled={!heroPrompt.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white transition-transform duration-200 hover:translate-x-0.5 disabled:cursor-not-allowed disabled:opacity-45 active:scale-[0.97]"><ArrowRight size={18} /></button>
+              <input id="dreamcarz-home-concierge-prompt" value={heroPrompt} onChange={event => setHeroPrompt(event.target.value)} maxLength={1000} disabled={isPromptTransitioning} autoComplete="off" placeholder="Ask DreamCarz anything..." className="ml-3 min-w-0 flex-1 bg-transparent text-left text-sm text-[#272521] outline-none placeholder:text-[#77736b] disabled:cursor-wait sm:text-base" />
+              <button type="submit" aria-label="Send message to DreamCarz Concierge" disabled={!heroPrompt.trim() || isPromptTransitioning} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white transition-transform duration-200 hover:translate-x-0.5 disabled:cursor-not-allowed disabled:opacity-45 active:scale-[0.97]"><ArrowRight size={18} /></button>
             </form>
           </div>
         </div>

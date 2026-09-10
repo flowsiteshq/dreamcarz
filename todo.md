@@ -430,3 +430,4 @@
 - [x] Add a responsive accessible DreamCarz navigation mega menu with hover/focus desktop panels, tap-safe mobile controls, confirmed vehicle visual links, and preserved existing route destinations.
 - [x] Correct the desktop Pricing navigation trigger so it exposes an accessible hover/focus panel while preserving the direct pricing destination.
 - [x] Make the homepage DreamCarz prompt bar accept typed input and carry the submitted prompt into Concierge as the customer’s first message.
+- [x] Add a short, reduced-motion-safe visual handoff when a homepage prompt is submitted and DreamCarz Concierge opens.
