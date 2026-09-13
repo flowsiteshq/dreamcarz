@@ -1,6 +1,6 @@
 /* Shared shell layout for all dashboard sidebar pages */
 import AIConcierge from "@/components/AIConcierge";
-import { lazy, Suspense, useState } from "react";
+import { FormEvent, lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Car, CalendarDays, Star, CreditCard, Gift,
@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { SettlementStatementPanel } from "@/components/SettlementStatementPanel";
 import { HandoffAcknowledgementPanel } from "@/components/HandoffAcknowledgementPanel";
+import { saveHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 
 const AwsFaceLivenessDetector = lazy(() => import("@/components/AwsFaceLivenessDetector").then(module => ({ default: module.AwsFaceLivenessDetector })));
 
@@ -47,7 +48,7 @@ function loadCoCardCheckout(scriptUrl: string, checkoutKey: string) {
 }
 
 const sidebarLinks = [
-  { href: "/dashboard", label: "My Account", icon: LayoutDashboard },
+  { href: "/dashboard", label: "My Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/vehicles", label: "My Vehicles", icon: Car },
   { href: "/dashboard/reservations", label: "Reservations", icon: CalendarDays },
   { href: "/dashboard/rental-setup", label: "Rental Setup", icon: ClipboardCheck },
@@ -318,7 +319,7 @@ interface DashboardShellProps {
 export default function DashboardShell({ children, title }: DashboardShellProps) {
   const { user, isAuthenticated, loading, logout } = useAuth();
   const dreamcarzId = trpc.dreamcarzId.overview.useQuery(undefined, { enabled: isAuthenticated, refetchOnWindowFocus: false });
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [aiFocused, setAiFocused] = useState(false);
@@ -347,6 +348,13 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
     await deletionRequest.mutateAsync({ reference: transactionReference });
   };
 
+  const submitConciergePrompt = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!saveHomepageConciergePrompt(aiInput)) return;
+    setAiInput("");
+    navigate("/concierge");
+  };
+
   const firstName = user?.name?.split(" ")[0] || "Member";
   const membershipName = dreamcarzId.data?.membership?.plan.name ?? null;
   const profileStatus = dreamcarzId.data?.profile?.profileStatus ?? "incomplete";
@@ -359,6 +367,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
     ...(operatingRoles.includes("fleet_partner") || operatingRoles.includes("administrator") ? [{ href: "/dashboard/fleet-partner", label: "Fleet Partner Portal", icon: Car }] : []),
     ...(user?.role === "admin" ? [{ href: "/admin", label: "Admin Panel", icon: ShieldCheck }, { href: "/dashboard/command-center", label: "Command Center", icon: Gauge }, { href: "/dashboard/operations", label: "Operations", icon: ShieldCheck }] : []),
   ];
+  const isDashboardHome = location === "/dashboard";
 
   if (loading) {
     return (
@@ -452,7 +461,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-black">
               <Menu size={20} />
             </button>
-            <div className="flex-1 min-w-0">
+            <div className={`min-w-0 ${isDashboardHome ? "lg:hidden" : "flex-1"}`}>
               <h1 className="text-xl font-bold text-black leading-tight" style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>
                 {title || `Welcome back, ${firstName}`}
               </h1>
@@ -463,7 +472,7 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
                 {dreamcarzId.data?.membership?.startsAt && <span className="text-[11px] text-gray-400">· Active since {new Date(dreamcarzId.data.membership.startsAt).getFullYear()}</span>}
               </div>
             </div>
-            <div className={`hidden md:flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2.5 w-64 transition-all duration-200 ${aiFocused ? "shadow-[0_0_0_2px_rgba(0,0,0,0.1)] bg-white" : ""}`}>
+            <form onSubmit={submitConciergePrompt} className={`hidden items-center gap-2 rounded-full px-4 py-2.5 transition-all duration-200 md:flex ${isDashboardHome ? "mx-auto w-full max-w-3xl border border-[#e5dfd4] bg-[#fbfaf7] shadow-[0_8px_22px_rgba(0,0,0,0.05)]" : "w-64 bg-gray-50"} ${aiFocused ? "bg-white shadow-[0_0_0_2px_rgba(168,131,45,0.22)]" : ""}`}>
               <Sparkles size={14} className="text-gray-300 flex-shrink-0" />
               <input
                 type="text"
@@ -474,10 +483,10 @@ export default function DashboardShell({ children, title }: DashboardShellProps)
                 placeholder="Ask DreamCarz anything..."
                 className="flex-1 bg-transparent text-[13px] text-black placeholder-gray-300 outline-none"
               />
-              <button className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${aiInput.trim() ? "bg-black text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
+              <button type="submit" aria-label="Send to DreamCarz Concierge" disabled={!aiInput.trim()} className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${aiInput.trim() ? "bg-black text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
                 <ArrowUp size={13} />
               </button>
-            </div>
+            </form>
             <button className="relative p-2 text-gray-400 hover:text-black transition-colors">
               <Bell size={18} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
