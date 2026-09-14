@@ -7,7 +7,7 @@
 - [x] Add effective-dated vehicle subscription rate-card controls and return `RATE_NOT_CONFIGURED` / manual review when vehicle-specific subscription economics are not configured.
 - [ ] Create approved vehicle-specific subscription rate-card records only after DreamCarz supplies and authorizes the actual term, mileage, coverage, deposit, and DCP-cap economics.
 - [x] Add wallet-specific member DCP balances, immutable event views, and permitted-use visibility without converting DCP to cash or inferring balances.
-- [ ] Add Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule.
+- [x] Complete Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule, including loaded-state synchronization and behavioral coverage.
 - [ ] Add Host DCPR, CPP, commission, and rank event models only after their required source-transaction, eligibility, approval, and chargeback controls are configured.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.

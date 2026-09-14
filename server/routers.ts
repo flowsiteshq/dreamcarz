@@ -14,6 +14,8 @@ import {
   rentalApplicationDocuments,
   customerProfiles,
   conciergeJourneyPreferences,
+  futureDriverProfiles,
+  futureDriverGoalEvents,
   reservationRequests,
   vehicleInquiries,
   vehicleTransactions,
@@ -709,6 +711,54 @@ export const appRouter = router({
         configuration: { code: configuration.code, version: configuration.version, effectiveStart: configuration.effectiveStart },
         wallets: configuration.walletDefinitions.map(definition => ({ ...definition, balance: balanceFor(definition.walletCode) })),
       };
+    }),
+  }),
+
+  futureDriver: router({
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      const futureDriverReadLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "future_driver_profile_read", String(ctx.user.id)), limit: 90, windowMs: 60 * 60_000 });
+      if (!futureDriverReadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Future Driver profile requests. Please try again later." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Future Driver planning is temporarily unavailable." });
+      const profile = (await db.select().from(futureDriverProfiles).where(eq(futureDriverProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
+      const events = profile
+        ? await db.select({ eventType: futureDriverGoalEvents.eventType, fromMode: futureDriverGoalEvents.fromMode, toMode: futureDriverGoalEvents.toMode, createdAt: futureDriverGoalEvents.createdAt }).from(futureDriverGoalEvents).where(and(eq(futureDriverGoalEvents.userId, ctx.user.id), eq(futureDriverGoalEvents.futureDriverProfileId, profile.id))).orderBy(desc(futureDriverGoalEvents.createdAt)).limit(20)
+        : [];
+      return { profile, events };
+    }),
+
+    saveGoal: protectedProcedure.input(z.object({
+      goalArea: z.enum(["vehicle_discovery", "rental_readiness", "membership_review", "transportation_plan"]),
+      desiredVehicleId: z.string().trim().max(96).nullable().optional(),
+      horizon: z.enum(["exploring", "later", "preparing"]),
+    })).mutation(async ({ ctx, input }) => {
+      if (input.desiredVehicleId && !isApprovedTransactionVehicle(input.desiredVehicleId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a confirmed DreamCarz vehicle or leave the vehicle preference open." });
+      const futureDriverWriteLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "future_driver_goal_write", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+      if (!futureDriverWriteLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Future Driver updates. Please try again later." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Future Driver planning is temporarily unavailable." });
+      const existing = (await db.select().from(futureDriverProfiles).where(eq(futureDriverProfiles.userId, ctx.user.id)).limit(1))[0];
+      const values = { mode: "future_driver" as const, goalArea: input.goalArea, desiredVehicleId: input.desiredVehicleId ?? null, horizon: input.horizon };
+      if (existing) {
+        await db.update(futureDriverProfiles).set(values).where(eq(futureDriverProfiles.id, existing.id));
+        await db.insert(futureDriverGoalEvents).values({ futureDriverProfileId: existing.id, userId: ctx.user.id, eventType: "future_driver_goal_updated", fromMode: existing.mode, toMode: "future_driver" });
+        return { success: true, profileId: existing.id };
+      }
+      const created = await db.insert(futureDriverProfiles).values({ userId: ctx.user.id, ...values });
+      const profileId = Number(created[0].insertId);
+      await db.insert(futureDriverGoalEvents).values({ futureDriverProfileId: profileId, userId: ctx.user.id, eventType: "future_driver_profile_created", fromMode: null, toMode: "future_driver" });
+      return { success: true, profileId };
+    }),
+
+    setMode: protectedProcedure.input(z.object({ mode: z.enum(["inactive", "future_driver"]) })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Future Driver planning is temporarily unavailable." });
+      const profile = (await db.select().from(futureDriverProfiles).where(eq(futureDriverProfiles.userId, ctx.user.id)).limit(1))[0];
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Set a Future Driver goal before changing its mode." });
+      if (profile.mode === input.mode) return { success: true, unchanged: true };
+      await db.update(futureDriverProfiles).set({ mode: input.mode }).where(eq(futureDriverProfiles.id, profile.id));
+      await db.insert(futureDriverGoalEvents).values({ futureDriverProfileId: profile.id, userId: ctx.user.id, eventType: "future_driver_mode_changed", fromMode: profile.mode, toMode: input.mode });
+      return { success: true, unchanged: false };
     }),
   }),
 

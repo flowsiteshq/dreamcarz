@@ -755,6 +755,33 @@ export const conciergeJourneyPreferences = mysqlTable("concierge_journey_prefere
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Account-owned Future Driver preference. This records a neutral planning mode
+ * only; it does not create a membership, DCP balance, accelerator schedule,
+ * vehicle reservation, financial eligibility, or program entitlement.
+ */
+export const futureDriverProfiles = mysqlTable("future_driver_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  mode: mysqlEnum("mode", ["inactive", "future_driver"]).default("future_driver").notNull(),
+  goalArea: mysqlEnum("goalArea", ["vehicle_discovery", "rental_readiness", "membership_review", "transportation_plan"]).default("vehicle_discovery").notNull(),
+  desiredVehicleId: varchar("desiredVehicleId", { length: 96 }),
+  horizon: mysqlEnum("horizon", ["exploring", "later", "preparing"]).default("exploring").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** Immutable account-owned mode and goal activity. No financial or eligibility metadata is stored. */
+export const futureDriverGoalEvents = mysqlTable("future_driver_goal_events", {
+  id: int("id").autoincrement().primaryKey(),
+  futureDriverProfileId: int("futureDriverProfileId").notNull(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 64 }).notNull(),
+  fromMode: varchar("fromMode", { length: 24 }),
+  toMode: varchar("toMode", { length: 24 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ── Vehicle Reservation Requests ────────────────────────────────────────────
 
 export const reservationRequests = mysqlTable("reservation_requests", {
