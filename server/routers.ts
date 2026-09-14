@@ -46,6 +46,9 @@ import {
   transactionQuoteLines,
   pricingRules,
   pricingRuleEvents,
+  masterProgramConfigurations,
+  vehicleSubscriptionRateCards,
+  subscriptionRateCardEvents,
   transactionLinks,
   vehiclePassports,
   vehiclePassportActivityEvents,
@@ -84,6 +87,7 @@ import { invokeLLM, listLLMModels } from "./_core/llm";
 import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
 import { getActiveMasterProgramConfiguration } from "./masterProgramConfig";
+import { getActiveSubscriptionRateCard, RATE_NOT_CONFIGURED } from "./subscriptionRateCards";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
@@ -404,6 +408,47 @@ export const appRouter = router({
             source: "tesla_model_3_waitlist" as const,
             marketEstimate: null,
             waitlistVehicleId: "coming-soon-2024-tesla-model-3",
+          };
+        }
+        const asksAboutSubscription = /\b(subscription|subscribe|long[-\s]?term|monthly vehicle|monthly car)\b/i.test(input.question);
+        if (asksAboutSubscription) {
+          const selectedVehicleId = input.context?.selectedVehicleId ?? null;
+          if (!selectedVehicleId) {
+            return {
+              answer: "Choose a confirmed DreamCarz vehicle first so its subscription request can be reviewed against vehicle-specific availability and approved economics.",
+              intent: "rental" as const,
+              vehicleClass: null,
+              nextPrompt: "Which confirmed vehicle would you like to explore for a subscription path?",
+              recommendedVehicleIds: vehicleIds,
+              source: RATE_NOT_CONFIGURED,
+              marketEstimate: null,
+              waitlistVehicleId: null,
+            };
+          }
+          const rateCard = await getActiveSubscriptionRateCard(selectedVehicleId);
+          const selectedVehicle = inventory.find(vehicle => vehicle.vehicleId === selectedVehicleId);
+          const selectedVehicleName = selectedVehicle?.vehicleName ?? "selected DreamCarz vehicle";
+          if (!rateCard) {
+            return {
+              answer: `A DreamCarz subscription rate is not configured for the ${selectedVehicleName} yet. A team member must review availability, membership path, included use, coverage, deposit, and vehicle economics before issuing a quote.`,
+              intent: "rental" as const,
+              vehicleClass: input.context?.vehicleType ?? null,
+              nextPrompt: "Would you like to continue with a protected subscription review?",
+              recommendedVehicleIds: [selectedVehicleId],
+              source: RATE_NOT_CONFIGURED,
+              marketEstimate: null,
+              waitlistVehicleId: null,
+            };
+          }
+          return {
+            answer: `An approved ${rateCard.termMonths}-month subscription reference is configured for the ${selectedVehicleName}: ${formatUsdFromCents(rateCard.monthlyBaseCents)} monthly with up to ${rateCard.includedMilesPerMonth.toLocaleString("en-US")} miles per month. It is not a final quote and requires protected review of availability, eligibility, coverage, deposit, and vehicle terms.`,
+            intent: "rental" as const,
+            vehicleClass: input.context?.vehicleType ?? null,
+            nextPrompt: "Would you like to continue with a protected subscription review?",
+            recommendedVehicleIds: [selectedVehicleId],
+            source: "subscription_rate_reference" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
           };
         }
         const asksAboutMembership = /\bmembership\b|\bdcp(?:r|m|o|w|p|f|e)\b|\b(freedom|plus|pro|elite|silver|gold|black)\s+(?:plan|tier|membership)\b/i.test(input.question);
@@ -3628,6 +3673,73 @@ export const appRouter = router({
         if (rule[0].status === input.nextStatus) return { success: true, unchanged: true };
         await db.update(pricingRules).set({ status: input.nextStatus, approvedByUserId: input.nextStatus === "approved" ? ctx.user.id : rule[0].approvedByUserId, approvedAt: input.nextStatus === "approved" ? new Date() : rule[0].approvedAt }).where(eq(pricingRules.id, input.pricingRuleId));
         await db.insert(pricingRuleEvents).values({ pricingRuleId: input.pricingRuleId, actorUserId: ctx.user.id, eventType: `pricing_rule_${input.nextStatus}`, fromStatus: rule[0].status, toStatus: input.nextStatus, note: input.note });
+        return { success: true, unchanged: false };
+      }),
+    }),
+
+    subscriptionRateCards: router({
+      list: protectedProcedure.query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) return [];
+        const cards = await db.select().from(vehicleSubscriptionRateCards).orderBy(desc(vehicleSubscriptionRateCards.updatedAt));
+        const events = cards.length ? await db.select().from(subscriptionRateCardEvents).where(inArray(subscriptionRateCardEvents.subscriptionRateCardId, cards.map(card => card.id))).orderBy(desc(subscriptionRateCardEvents.createdAt)) : [];
+        return cards.map(card => ({ ...card, history: events.filter(event => event.subscriptionRateCardId === card.id) }));
+      }),
+
+      create: protectedProcedure.input(z.object({
+        vehicleId: z.string().trim().refine(isApprovedTransactionVehicle, "Choose a confirmed DreamCarz vehicle."),
+        membershipPlanCode: z.string().trim().toUpperCase().regex(/^[A-Z]{3,16}$/).optional(),
+        termMonths: z.number().int().min(1).max(60),
+        monthlyBaseCents: z.number().int().min(0).max(10_000_000),
+        includedMilesPerMonth: z.number().int().min(0).max(100_000),
+        includedDaysPerMonth: z.number().int().min(0).max(31),
+        monthlyDcpCap: z.number().int().min(0).max(10_000_000),
+        depositCents: z.number().int().min(0).max(10_000_000).nullable(),
+        coverageConfiguration: z.string().trim().min(3).max(255),
+        effectiveStart: z.coerce.date(),
+        effectiveEnd: z.coerce.date().nullable(),
+        note: z.string().trim().min(3).max(1000),
+      }).refine(input => !input.effectiveEnd || input.effectiveEnd > input.effectiveStart, "The end date must follow the effective start date.")).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Subscription rate-card controls are temporarily unavailable." });
+        const master = (await db.select().from(masterProgramConfigurations).where(eq(masterProgramConfigurations.status, "active")).orderBy(desc(masterProgramConfigurations.effectiveStart)).limit(1))[0];
+        if (!master) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "An active master program configuration is required before creating a subscription rate card." });
+        const created = await db.insert(vehicleSubscriptionRateCards).values({
+          masterProgramConfigurationId: master.id,
+          vehicleId: input.vehicleId,
+          membershipPlanCode: input.membershipPlanCode || null,
+          termMonths: input.termMonths,
+          monthlyBaseCents: input.monthlyBaseCents,
+          includedMilesPerMonth: input.includedMilesPerMonth,
+          includedDaysPerMonth: input.includedDaysPerMonth,
+          monthlyDcpCap: input.monthlyDcpCap,
+          depositCents: input.depositCents,
+          coverageConfiguration: input.coverageConfiguration,
+          effectiveStart: input.effectiveStart,
+          effectiveEnd: input.effectiveEnd,
+          createdByUserId: ctx.user.id,
+        });
+        const subscriptionRateCardId = Number(created[0].insertId);
+        await db.insert(subscriptionRateCardEvents).values({ subscriptionRateCardId, actorUserId: ctx.user.id, eventType: "subscription_rate_card_created", toStatus: "draft", note: input.note });
+        return { success: true, subscriptionRateCardId };
+      }),
+
+      setStatus: protectedProcedure.input(z.object({
+        subscriptionRateCardId: z.number().int().positive(),
+        nextStatus: z.enum(["approved", "paused", "retired"]),
+        note: z.string().trim().min(3).max(1000),
+      })).mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Subscription rate-card controls are temporarily unavailable." });
+        const card = (await db.select().from(vehicleSubscriptionRateCards).where(eq(vehicleSubscriptionRateCards.id, input.subscriptionRateCardId)).limit(1))[0];
+        if (!card) throw new TRPCError({ code: "NOT_FOUND", message: "Subscription rate card not found." });
+        if (card.status === "retired") throw new TRPCError({ code: "BAD_REQUEST", message: "Retired rate cards cannot be changed." });
+        if (card.status === input.nextStatus) return { success: true, unchanged: true };
+        await db.update(vehicleSubscriptionRateCards).set({ status: input.nextStatus, approvedByUserId: input.nextStatus === "approved" ? ctx.user.id : card.approvedByUserId, approvedAt: input.nextStatus === "approved" ? new Date() : card.approvedAt }).where(eq(vehicleSubscriptionRateCards.id, card.id));
+        await db.insert(subscriptionRateCardEvents).values({ subscriptionRateCardId: card.id, actorUserId: ctx.user.id, eventType: `subscription_rate_card_${input.nextStatus}`, fromStatus: card.status, toStatus: input.nextStatus, note: input.note });
         return { success: true, unchanged: false };
       }),
     }),

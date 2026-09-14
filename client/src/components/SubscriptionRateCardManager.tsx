@@ -1,0 +1,57 @@
+import { trpc } from "@/lib/trpc";
+import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
+import { Settings2 } from "lucide-react";
+import { useState } from "react";
+
+function formatCurrency(cents: number | null) {
+  return typeof cents === "number" ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100) : "Not configured";
+}
+
+function formatDate(value: Date | string | null) {
+  return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Open-ended";
+}
+
+const vehicleOptions = Object.entries(APPROVED_TRANSACTION_VEHICLES).map(([vehicleId, vehicle]) => ({ vehicleId, vehicleName: vehicle.vehicleName }));
+
+export function SubscriptionRateCardManager() {
+  const utils = trpc.useUtils();
+  const cards = trpc.operations.subscriptionRateCards.list.useQuery(undefined, { refetchOnWindowFocus: false });
+  const create = trpc.operations.subscriptionRateCards.create.useMutation({ onSuccess: () => { void utils.operations.subscriptionRateCards.list.invalidate(); setNote(""); } });
+  const setStatus = trpc.operations.subscriptionRateCards.setStatus.useMutation({ onSuccess: () => void utils.operations.subscriptionRateCards.list.invalidate() });
+  const [vehicleId, setVehicleId] = useState(vehicleOptions[0]?.vehicleId ?? "");
+  const [membershipPlanCode, setMembershipPlanCode] = useState("");
+  const [termMonths, setTermMonths] = useState("12");
+  const [monthlyBaseCents, setMonthlyBaseCents] = useState("");
+  const [includedMiles, setIncludedMiles] = useState("");
+  const [includedDays, setIncludedDays] = useState("");
+  const [monthlyDcpCap, setMonthlyDcpCap] = useState("0");
+  const [depositCents, setDepositCents] = useState("");
+  const [coverageConfiguration, setCoverageConfiguration] = useState("Pending coverage configuration review");
+  const [effectiveStart, setEffectiveStart] = useState("");
+  const [note, setNote] = useState("");
+  const [statusNotes, setStatusNotes] = useState<Record<number, string>>({});
+
+  const submit = async () => {
+    if (!vehicleId || !effectiveStart) return;
+    await create.mutateAsync({
+      vehicleId,
+      membershipPlanCode: membershipPlanCode.trim() || undefined,
+      termMonths: Number(termMonths),
+      monthlyBaseCents: Number(monthlyBaseCents),
+      includedMilesPerMonth: Number(includedMiles),
+      includedDaysPerMonth: Number(includedDays),
+      monthlyDcpCap: Number(monthlyDcpCap),
+      depositCents: depositCents.trim() ? Number(depositCents) : null,
+      coverageConfiguration,
+      effectiveStart: new Date(`${effectiveStart}T00:00:00`),
+      effectiveEnd: null,
+      note,
+    });
+  };
+
+  const transition = async (subscriptionRateCardId: number, nextStatus: "approved" | "paused" | "retired") => {
+    await setStatus.mutateAsync({ subscriptionRateCardId, nextStatus, note: statusNotes[subscriptionRateCardId]?.trim() || `Administrator set this subscription rate card to ${nextStatus}.` });
+  };
+
+  return <section className="mt-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6"><div className="flex items-start gap-3"><Settings2 className="mt-0.5 text-[#a8832d]" size={18} /><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a8832d]">Subscription rate cards</p><h3 className="mt-1 text-[17px] font-bold text-black">Vehicle economics require approval.</h3><p className="mt-1 max-w-3xl text-[12px] leading-5 text-gray-500">Save a controlled draft for one confirmed vehicle, then explicitly approve it before Concierge can reference it. Drafts never create a customer quote, billing record, DCP effect, vehicle availability, or enrollment approval.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><label className="text-[11px] font-semibold text-gray-600">Confirmed vehicle<select value={vehicleId} onChange={event => setVehicleId(event.target.value)} className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black">{vehicleOptions.map(option => <option key={option.vehicleId} value={option.vehicleId}>{option.vehicleName}</option>)}</select></label><label className="text-[11px] font-semibold text-gray-600">Membership plan code <span className="font-normal text-gray-400">(optional)</span><input value={membershipPlanCode} onChange={event => setMembershipPlanCode(event.target.value.toUpperCase())} placeholder="e.g., PLUS" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Term months<input type="number" min="1" max="60" value={termMonths} onChange={event => setTermMonths(event.target.value)} className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Effective start<input type="date" value={effectiveStart} onChange={event => setEffectiveStart(event.target.value)} className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Monthly base amount (cents)<input inputMode="numeric" value={monthlyBaseCents} onChange={event => setMonthlyBaseCents(event.target.value)} placeholder="No benchmark entry" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Included miles / month<input inputMode="numeric" value={includedMiles} onChange={event => setIncludedMiles(event.target.value)} placeholder="Required" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Included days / month<input inputMode="numeric" value={includedDays} onChange={event => setIncludedDays(event.target.value)} placeholder="Required" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Monthly DCP cap<input inputMode="numeric" value={monthlyDcpCap} onChange={event => setMonthlyDcpCap(event.target.value)} className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600">Deposit amount (cents) <span className="font-normal text-gray-400">(optional)</span><input inputMode="numeric" value={depositCents} onChange={event => setDepositCents(event.target.value)} placeholder="Separate approval if applicable" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600 sm:col-span-2">Coverage configuration<input value={coverageConfiguration} onChange={event => setCoverageConfiguration(event.target.value)} className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label><label className="text-[11px] font-semibold text-gray-600 xl:col-span-1">Required management note<input value={note} onChange={event => setNote(event.target.value)} placeholder="Evidence and approval context" className="mt-1 h-10 w-full border border-gray-300 bg-white px-3 text-sm font-normal text-black outline-none focus:border-black" /></label></div><button type="button" disabled={create.isPending || !effectiveStart || !note.trim() || !monthlyBaseCents || !includedMiles || !includedDays} onClick={() => void submit()} className="mt-4 h-10 bg-black px-4 text-xs font-bold text-white disabled:opacity-50">{create.isPending ? "Saving draft…" : "Save subscription rate-card draft"}</button>{create.error && <p className="mt-2 text-xs text-red-600">{create.error.message}</p>}<div className="mt-6 space-y-3 border-t border-gray-200 pt-5">{cards.data?.map(card => <article key={card.id} className="border border-gray-200 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[13px] font-bold text-black">{APPROVED_TRANSACTION_VEHICLES[card.vehicleId as keyof typeof APPROVED_TRANSACTION_VEHICLES]?.vehicleName ?? card.vehicleId}</p><p className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">{card.termMonths} months · {card.membershipPlanCode || "all membership paths"} · effective {formatDate(card.effectiveStart)}</p></div><span className={card.status === "approved" ? "bg-black px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white" : card.status === "paused" ? "border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800" : "border border-gray-300 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-600"}>{card.status}</span></div><div className="mt-3 grid gap-2 text-[11px] text-gray-600 sm:grid-cols-3"><p>Base: <span className="font-semibold text-black">{formatCurrency(card.monthlyBaseCents)}</span></p><p>Miles: <span className="font-semibold text-black">{card.includedMilesPerMonth.toLocaleString()}/mo</span></p><p>Days: <span className="font-semibold text-black">{card.includedDaysPerMonth}/mo</span></p></div><p className="mt-2 text-[10px] leading-5 text-gray-500">Coverage: {card.coverageConfiguration}. Deposit, taxes, overages, final eligibility, availability, and contract terms remain separately reviewed.</p>{card.status !== "retired" && <div className="mt-3 flex flex-wrap items-end gap-2"><label className="min-w-52 flex-1 text-[10px] font-semibold text-gray-500">Management note<input value={statusNotes[card.id] ?? ""} onChange={event => setStatusNotes(current => ({ ...current, [card.id]: event.target.value }))} placeholder="Required context for the change" className="mt-1 h-8 w-full border border-gray-200 px-2 text-[11px] font-normal text-black outline-none focus:border-black" /></label>{card.status !== "approved" && <button type="button" disabled={setStatus.isPending} onClick={() => void transition(card.id, "approved")} className="h-8 bg-black px-3 text-[10px] font-bold text-white">Approve</button>}{card.status === "approved" && <button type="button" disabled={setStatus.isPending} onClick={() => void transition(card.id, "paused")} className="h-8 border border-amber-300 px-3 text-[10px] font-bold text-amber-800">Pause</button>}<button type="button" disabled={setStatus.isPending} onClick={() => void transition(card.id, "retired")} className="h-8 border border-gray-300 px-3 text-[10px] font-bold text-gray-700">Retire</button></div>}<div className="mt-3 border-t border-gray-100 pt-3">{card.history.slice(0, 3).map(event => <p key={event.id} className="text-[10px] leading-5 text-gray-500">{event.eventType.replaceAll("_", " ")} · {formatDate(event.createdAt)}{event.note ? ` · ${event.note}` : ""}</p>)}</div></article>)}{!cards.isLoading && !cards.data?.length && <p className="py-5 text-center text-xs text-gray-400">No approved vehicle subscription economics are configured. Concierge must keep subscription requests in manual review.</p>}</div></section>;
+}

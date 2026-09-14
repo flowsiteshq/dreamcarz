@@ -4,7 +4,8 @@
 - [x] Add versioned effective-dated membership and DCP wallet definitions from the supplied master specification without automatically creating customer balances or financial effects.
 - [x] Expose the approved membership configuration and DCP wallet taxonomy in Pricing, member, and Concierge views while retaining manual review for unconfigured vehicle-specific rates and financial actions.
 - [x] Add regression coverage for the master specification configuration source, Concierge guardrails, and public membership pricing presentation.
-- [ ] Add approved effective-dated vehicle subscription rate cards and return `RATE_NOT_CONFIGURED` / manual review when vehicle-specific subscription economics are not configured.
+- [x] Add effective-dated vehicle subscription rate-card controls and return `RATE_NOT_CONFIGURED` / manual review when vehicle-specific subscription economics are not configured.
+- [ ] Create approved vehicle-specific subscription rate-card records only after DreamCarz supplies and authorizes the actual term, mileage, coverage, deposit, and DCP-cap economics.
 - [ ] Add wallet-specific member DCP balances, immutable event views, and permitted-use visibility without converting DCP to cash or inferring balances.
 - [ ] Add Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule.
 - [ ] Add Host DCPR, CPP, commission, and rank event models only after their required source-transaction, eligibility, approval, and chargeback controls are configured.

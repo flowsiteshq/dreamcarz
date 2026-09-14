@@ -116,6 +116,44 @@ export const membershipPlanConfigurations = mysqlTable("membership_plan_configur
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [uniqueIndex("membership_plan_config_version_code_unique").on(table.masterProgramConfigurationId, table.planCode)]);
 
+/** Vehicle subscription economics are effective-dated operational configuration, never an automatic customer quote. */
+export const vehicleSubscriptionRateCards = mysqlTable("vehicle_subscription_rate_cards", {
+  id: int("id").autoincrement().primaryKey(),
+  masterProgramConfigurationId: int("masterProgramConfigurationId").notNull(),
+  vehicleId: varchar("vehicleId", { length: 96 }).notNull(),
+  membershipPlanCode: varchar("membershipPlanCode", { length: 32 }),
+  termMonths: int("termMonths").notNull(),
+  monthlyBaseCents: int("monthlyBaseCents").notNull(),
+  includedMilesPerMonth: int("includedMilesPerMonth").notNull(),
+  includedDaysPerMonth: int("includedDaysPerMonth").notNull(),
+  monthlyDcpCap: int("monthlyDcpCap").notNull(),
+  depositCents: int("depositCents"),
+  coverageConfiguration: varchar("coverageConfiguration", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["draft", "approved", "paused", "retired"]).default("draft").notNull(),
+  effectiveStart: timestamp("effectiveStart").notNull(),
+  effectiveEnd: timestamp("effectiveEnd"),
+  createdByUserId: int("createdByUserId").notNull(),
+  approvedByUserId: int("approvedByUserId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("subscription_rate_card_version_vehicle_term_unique").on(table.masterProgramConfigurationId, table.vehicleId, table.termMonths, table.effectiveStart),
+  index("subscription_rate_card_vehicle_status_effective_idx").on(table.vehicleId, table.status, table.effectiveStart),
+]);
+
+/** Append-only administrator history for subscription rate-card creation and status transitions. */
+export const subscriptionRateCardEvents = mysqlTable("subscription_rate_card_events", {
+  id: int("id").autoincrement().primaryKey(),
+  subscriptionRateCardId: int("subscriptionRateCardId").notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 32 }),
+  toStatus: varchar("toStatus", { length: 32 }),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("subscription_rate_card_event_card_created_idx").on(table.subscriptionRateCardId, table.createdAt)]);
+
 /** Wallet definitions govern permitted future ledger behavior; they do not create balances by themselves. */
 export const dcpWalletDefinitions = mysqlTable("dcp_wallet_definitions", {
   id: int("id").autoincrement().primaryKey(),

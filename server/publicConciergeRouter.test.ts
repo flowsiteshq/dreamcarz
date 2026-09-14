@@ -8,11 +8,13 @@ vi.mock("./_core/llm", () => ({ listLLMModels: vi.fn(), invokeLLM: vi.fn() }));
 vi.mock("./elevenLabsTranscription", () => ({ transcribeConciergeVoice: vi.fn() }));
 vi.mock("./elevenLabsVoiceAgent", () => ({ createDreamCarzVoiceSession: vi.fn() }));
 vi.mock("./masterProgramConfig", () => ({ getActiveMasterProgramConfiguration: vi.fn() }));
+vi.mock("./subscriptionRateCards", () => ({ getActiveSubscriptionRateCard: vi.fn(), RATE_NOT_CONFIGURED: "RATE_NOT_CONFIGURED" }));
 
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
 import { getActiveMasterProgramConfiguration } from "./masterProgramConfig";
+import { getActiveSubscriptionRateCard } from "./subscriptionRateCards";
 import { consumeRateLimit } from "./rateLimit";
 import { appRouter } from "./routers";
 import { readFileSync } from "node:fs";
@@ -30,6 +32,7 @@ describe("public DreamCarz concierge", () => {
     vi.mocked(transcribeConciergeVoice).mockReset();
     vi.mocked(createDreamCarzVoiceSession).mockReset();
     vi.mocked(getActiveMasterProgramConfiguration).mockReset();
+    vi.mocked(getActiveSubscriptionRateCard).mockReset();
     vi.mocked(consumeRateLimit).mockReset();
     vi.mocked(consumeRateLimit).mockReturnValue({ allowed: true, remaining: 11, retryAfterMs: 0 });
   });
@@ -123,6 +126,47 @@ describe("public DreamCarz concierge", () => {
     expect(result.answer).toContain("$249.00 enrollment");
     expect(result.answer).toContain("$49.00 monthly");
     expect(result.answer).toContain("not a final vehicle quote");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("returns RATE_NOT_CONFIGURED and manual review when selected vehicle subscription economics are not approved", async () => {
+    vi.mocked(getActiveSubscriptionRateCard).mockResolvedValue(null);
+
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Can I subscribe to this vehicle monthly?",
+      context: { customerIntent: "rental", selectedVehicleId: "2024-ford-fusion-gray", vehicleType: "sedan", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: "dates", reservationStatus: "in_progress" },
+    });
+
+    expect(result).toMatchObject({ source: "RATE_NOT_CONFIGURED", intent: "rental", recommendedVehicleIds: ["2024-ford-fusion-gray"] });
+    expect(result.answer).toContain("subscription rate is not configured");
+    expect(result.answer).toContain("before issuing a quote");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("uses an approved vehicle-specific subscription reference without presenting it as a final quote", async () => {
+    vi.mocked(getActiveSubscriptionRateCard).mockResolvedValue({
+      vehicleId: "2024-ford-fusion-gray",
+      membershipPlanCode: "PLUS",
+      termMonths: 12,
+      monthlyBaseCents: 69900,
+      includedMilesPerMonth: 1200,
+      includedDaysPerMonth: 30,
+      monthlyDcpCap: 25000,
+      depositCents: null,
+      coverageConfiguration: "Approved coverage configuration",
+      effectiveStart: new Date("2026-09-14T00:00:00.000Z"),
+      effectiveEnd: null,
+    });
+
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Can I subscribe to this vehicle monthly?",
+      context: { customerIntent: "rental", selectedVehicleId: "2024-ford-fusion-gray", vehicleType: "sedan", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: "dates", reservationStatus: "in_progress" },
+    });
+
+    expect(result).toMatchObject({ source: "subscription_rate_reference", intent: "rental", recommendedVehicleIds: ["2024-ford-fusion-gray"] });
+    expect(result.answer).toContain("$699.00 monthly");
+    expect(result.answer).toContain("not a final quote");
+    expect(result.answer).toContain("protected review");
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 

@@ -10,6 +10,7 @@ import { VehicleServiceLog } from "@/components/VehicleServiceLog";
 import { MaintenanceCompletionControl } from "@/components/MaintenanceCompletionControl";
 import { HandoffManager } from "@/components/HandoffManager";
 import { PricingRuleManager } from "@/components/PricingRuleManager";
+import { SubscriptionRateCardManager } from "@/components/SubscriptionRateCardManager";
 import { RentalExtensionQueue } from "@/components/RentalExtensionQueue";
 import { SettlementManager } from "@/components/SettlementManager";
 import { EligibilityPolicyManager } from "@/components/EligibilityPolicyManager";
@@ -192,7 +193,7 @@ export function AdminOperationsContent() {
 
         <SettlementManager />
 
-        <section id="admin-dcp" className="scroll-mt-6 space-y-6"><DcpPolicyManager /><PricingRuleManager /></section>
+        <section id="admin-dcp" className="scroll-mt-6 space-y-6"><DcpPolicyManager /><PricingRuleManager /><SubscriptionRateCardManager /></section>
 
         <EligibilityPolicyManager />
         <SupportRequestQueue />
