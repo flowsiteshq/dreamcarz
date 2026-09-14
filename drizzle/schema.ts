@@ -83,6 +83,72 @@ export const membershipPlans = mysqlTable("membership_plans", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Approved effective-dated master configuration versions; financial effects require separate settled source events. */
+export const masterProgramConfigurations = mysqlTable("master_program_configurations", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 96 }).notNull().unique(),
+  version: varchar("version", { length: 32 }).notNull(),
+  sourceLabel: varchar("sourceLabel", { length: 255 }).notNull(),
+  effectiveStart: timestamp("effectiveStart").notNull(),
+  effectiveEnd: timestamp("effectiveEnd"),
+  status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(),
+  faceValueDcpPerDollar: int("faceValueDcpPerDollar").notNull(),
+  standardWalletEarnRatePerEligibleDollar: int("standardWalletEarnRatePerEligibleDollar").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("master_program_config_status_effective_idx").on(table.status, table.effectiveStart)]);
+
+/** Plan values are versioned configuration, not a customer membership enrollment or payment record. */
+export const membershipPlanConfigurations = mysqlTable("membership_plan_configurations", {
+  id: int("id").autoincrement().primaryKey(),
+  masterProgramConfigurationId: int("masterProgramConfigurationId").notNull(),
+  planCode: varchar("planCode", { length: 32 }).notNull(),
+  planName: varchar("planName", { length: 80 }).notNull(),
+  displayOrder: int("displayOrder").notNull(),
+  enrollmentFeeCents: int("enrollmentFeeCents").notNull(),
+  monthlyFeeCents: int("monthlyFeeCents").notNull(),
+  startingDcpr: int("startingDcpr").notNull(),
+  membershipMultiplier: int("membershipMultiplier").notNull(),
+  vehicleAccessLabel: varchar("vehicleAccessLabel", { length: 160 }).notNull(),
+  asLowDailyRateCents: int("asLowDailyRateCents").notNull(),
+  dcpPerDay: int("dcpPerDay").notNull(),
+  walletCodes: varchar("walletCodes", { length: 160 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("membership_plan_config_version_code_unique").on(table.masterProgramConfigurationId, table.planCode)]);
+
+/** Wallet definitions govern permitted future ledger behavior; they do not create balances by themselves. */
+export const dcpWalletDefinitions = mysqlTable("dcp_wallet_definitions", {
+  id: int("id").autoincrement().primaryKey(),
+  masterProgramConfigurationId: int("masterProgramConfigurationId").notNull(),
+  walletCode: varchar("walletCode", { length: 8 }).notNull(),
+  walletName: varchar("walletName", { length: 120 }).notNull(),
+  minimumTier: varchar("minimumTier", { length: 32 }).notNull(),
+  earnMultiplier: int("earnMultiplier").notNull(),
+  primaryUse: varchar("primaryUse", { length: 255 }).notNull(),
+  redemptionPriority: int("redemptionPriority").notNull(),
+  guardrail: varchar("guardrail", { length: 512 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("dcp_wallet_definition_version_code_unique").on(table.masterProgramConfigurationId, table.walletCode)]);
+
+/** Append-only DCP transaction records. A configuration row alone can never write this ledger. */
+export const dcpLedgerEntries = mysqlTable("dcp_ledger_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull(),
+  walletCode: varchar("walletCode", { length: 8 }).notNull(),
+  transactionType: mysqlEnum("transactionType", ["earn", "use", "hold", "release", "expire", "reverse", "adjust"]).notNull(),
+  status: mysqlEnum("status", ["pending", "posted", "reversed", "voided"]).default("pending").notNull(),
+  sourceType: varchar("sourceType", { length: 96 }).notNull(),
+  sourceId: varchar("sourceId", { length: 160 }).notNull(),
+  points: int("points").notNull(),
+  ruleVersion: varchar("ruleVersion", { length: 64 }).notNull(),
+  reasonCode: varchar("reasonCode", { length: 96 }),
+  linkedEntryId: int("linkedEntryId"),
+  createdByUserId: int("createdByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  postedAt: timestamp("postedAt"),
+}, (table) => [index("dcp_ledger_user_wallet_created_idx").on(table.userId, table.walletCode, table.createdAt), index("dcp_ledger_source_idx").on(table.sourceType, table.sourceId)]);
+
 export const membershipBenefits = mysqlTable("membership_benefits", {
   id: int("id").autoincrement().primaryKey(),
   membershipPlanId: int("membershipPlanId").notNull(),

@@ -83,6 +83,7 @@ import { cocardPaymentSetupBlocker, getPaymentProviderStatus, verifyCoCardChecko
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
+import { getActiveMasterProgramConfiguration } from "./masterProgramConfig";
 import { evaluateActiveMembershipBenefits, membershipAllowsVehicle } from "../shared/membershipBenefits";
 import { consumeRateLimit, rateLimitKey } from "./rateLimit";
 import {
@@ -405,6 +406,51 @@ export const appRouter = router({
             waitlistVehicleId: "coming-soon-2024-tesla-model-3",
           };
         }
+        const asksAboutMembership = /\bmembership\b|\bdcp(?:r|m|o|w|p|f|e)\b|\b(freedom|plus|pro|elite|silver|gold|black)\s+(?:plan|tier|membership)\b/i.test(input.question);
+        if (asksAboutMembership) {
+          const configuration = await getActiveMasterProgramConfiguration();
+          if (!configuration) {
+            return {
+              answer: "DreamCarz membership configuration is not available for self-service review right now. A team member can confirm the current program details.",
+              intent: "membership" as const,
+              vehicleClass: null,
+              nextPrompt: "Would you like to speak with DreamCarz about membership options?",
+              recommendedVehicleIds: [],
+              source: "membership_configuration_unavailable" as const,
+              marketEstimate: null,
+              waitlistVehicleId: null,
+            };
+          }
+          const normalizedQuestion = input.question.toUpperCase();
+          const requestedPlan = configuration.membershipPlans.find(plan => new RegExp(`\\b${plan.code}\\b`, "i").test(normalizedQuestion)) ?? null;
+          const plan = requestedPlan ?? configuration.membershipPlans.find(candidate => candidate.code === "FREEDOM") ?? null;
+          if (!plan) {
+            return {
+              answer: "DreamCarz has no approved membership plan configuration available for this question yet. A team member can confirm the current program details.",
+              intent: "membership" as const,
+              vehicleClass: null,
+              nextPrompt: "Would you like to speak with DreamCarz about membership options?",
+              recommendedVehicleIds: [],
+              source: "membership_configuration_unavailable" as const,
+              marketEstimate: null,
+              waitlistVehicleId: null,
+            };
+          }
+          const enrollment = formatUsdFromCents(plan.enrollmentFeeCents);
+          const monthly = formatUsdFromCents(plan.monthlyFeeCents);
+          const dailyReference = formatUsdFromCents(plan.asLowDailyRateCents);
+          const walletText = plan.walletCodes.length ? plan.walletCodes.join(", ") : "no DCP wallet streams";
+          return {
+            answer: `${plan.name} is currently configured at ${enrollment} enrollment and ${monthly} monthly, with ${plan.startingDcpr.toLocaleString("en-US")} starting DCPR after a qualifying settled enrollment. Its ${dailyReference} daily reference is not a final vehicle quote; availability, eligibility, coverage, fees, and vehicle economics still apply.`,
+            intent: "membership" as const,
+            vehicleClass: null,
+            nextPrompt: `This plan’s configured wallet stream${plan.walletCodes.length === 1 ? " is" : "s are"} ${walletText}. Would you like to compare another membership path?`,
+            recommendedVehicleIds: [],
+            source: "master_program_membership_configuration" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const fallback = {
           answer: "I can help you find a confirmed vehicle. What are you looking for?",
           intent: "explore" as const,
@@ -569,6 +615,14 @@ export const appRouter = router({
         console.warn("[DreamCarz Concierge] Guidance unavailable", error instanceof Error ? error.message : "unknown error");
         return fallback;
       }
+    }),
+  }),
+
+  masterProgram: router({
+    publicConfiguration: publicProcedure.query(async () => {
+      const configuration = await getActiveMasterProgramConfiguration();
+      if (!configuration) return null;
+      return configuration;
     }),
   }),
 

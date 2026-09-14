@@ -12,7 +12,7 @@ describe("membership-plan audit", () => {
     const membershipPage = readClientFile("pages/dashboard/MembershipPage.tsx");
 
     for (const name of ["Freedom", "Plus", "Pro", "Elite", "Silver", "Gold", "Black"]) {
-      expect(pricing).toContain(`name: "${name}"`);
+      expect(pricing).toContain(`${name.toUpperCase()}:`);
       expect(fleet).toContain(`name: "${name}"`);
       expect(vehicleDetail).toContain(`name: "${name}"`);
       expect(membershipPage).toContain(`name: "${name}"`);

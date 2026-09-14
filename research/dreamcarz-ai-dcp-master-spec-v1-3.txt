@@ -1,0 +1,2101 @@
+                              DREAM CARZ
+       AI + DCP MASTER PROGRAMMER
+               SPECIFICATION
+  Definitive Source of Truth for the Dream Carz AI Concierge, Membership, DCP, Rental,
+              Vehicle, Host/Partner, Commission, Financial and Audit Engines
+
+
+                      VERSION 1.2 | EFFECTIVE SEPTEMBER 11, 2026
+INTERNAL DEVELOPMENT HANDOFF — SUPERSEDES PRIOR WORKING PROGRAMMER SPECS, OLDER TIER TABLES
+                                AND OUTDATED DCP EXAMPLES
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+Document Control and Precedence
+    THIS DOCUMENT IS THE DEVELOPMENT SOURCE OF TRUTH. When a prior Dream Carz slide,
+    PDF, draft, spreadsheet or example conflicts with this specification, this specification and the
+    live administrator configuration take precedence.
+
+                               Control                                                      Current Rule
+
+Document                                                             Dream Carz AI + DCP Master Programmer Specification
+
+Version                                                              1.3
+
+                                                                     Pricing-source correction: canonical current
+                                                                     membership prices locked; invented Dream Carz
+Revision                                                             subscription sample prices removed; POSH kept only
+                                                                     as an external benchmark; CPP, Host DCPR and all
+                                                                     prior v1.2 logic retained.
+
+Effective date                                                       September 11, 2026
+
+                                                                     Definitive implementation baseline - current
+                                                                     membership pricing + Host DCPR + CPP compensation;
+Status
+                                                                     external POSH benchmark isolated from live Dream
+                                                                     Carz pricing
+
+                                                                     Application developers, AI engineers, data engineers,
+Primary audience                                                     finance/operations administrators, QA and compliance
+                                                                     reviewers
+
+                                                                     Earlier AI Membership Training Guides, Drive Programmer
+Supersedes                                                           v1 working economics, older Diamond-tier architecture,
+                                                                     older DCP multiplier tables, and prior ad-hoc DCP examples
+
+                                                                     All prices, awards, multipliers, caps, eligibility rules and
+                                                                     benefit mappings remain effective-dated and administrator-
+Configuration rule
+                                                                     configurable. Do not hard-code them as permanent
+                                                                     constants.
+
+
+
+Source Materials Consolidated
+     Dream_Carz_AI_Membership_Training_Guide_v3_DCP_Future_Driver.pdf
+     Dream_Carz_Drive_Programmer_Spec_v1.pdf
+     Dream_Carz_Membership_Economics_Engine_Programmer_Spec.pdf
+     Dream_Carz_DCP_Programmer_Breakdown.pptx
+     Dream_Carz_AI_Concierge_Slide.pptx
+     Latest Dream Carz membership, pricing, DCP wallet and rental-rate rules approved in the current program
+      design.
+     Dream_Carz_Associate_Compensation_CPP_Updated_Pricing.pptx
+     POSH public subscription pricing benchmark (poshcars.io/pricing), accessed September 11, 2026; used only
+      as a market benchmark for the sample subscription table.
+
+
+Contents
+     1. Executive Summary and North-Star Architecture
+
+    Internal Development Source of Truth | Effective September 11,                                                         Page 2
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     2. Core Business Rules and Terminology
+     3. Current Membership Configuration
+     4. DCP Wallet Architecture
+     5. DCP Earning and Bonus Engine
+     6. DCP Redemption and Reservation Engine
+     7. Membership Lifecycle, Good Standing and Tenure
+     8. Rental Pricing and Quote Engine
+     9. Vehicle Access and Vehicle Transactions
+     10. Future Driver Mode
+     11. AI Concierge and Recommendation Engine
+     12. Host, Partner, Associate and Commission Integration
+     13. Financial Guardrails and DCP Liability
+     14. Data Model and Ledger Requirements
+     15. Event Architecture and State Transitions
+     16. API and Integration Contracts
+     17. Admin Configuration and Reporting
+     18. Security, Permissions and Audit
+     19. QA Test Matrix and Acceptance Criteria
+     20. Recommended Build Order
+     21. Open Configuration Items Before Production
+     Appendix A. Current Formulas and Worked Examples
+     Appendix B. Event Catalog
+     Appendix C. Deprecated / Do-Not-Implement Rules
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,   Page 3
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+1. Executive Summary and North-Star Architecture
+Dream Carz is to be implemented as one connected, event-driven mobility and economic platform. Membership,
+vehicle access, rental pricing, DCP, future-driver planning, ownership paths, Host/Partner economics, Associate
+production, commissions, company revenue, company cost and AI recommendations must all resolve to
+traceable source transactions and permanent ledger events.
+    NORTH STAR: Start where you are. Drive what you need. Build toward what you want.
+
+1.1 The AI layer
+The AI Concierge is a transportation advisor, not a scripted salesperson. It diagnoses the customer's current
+transportation method, current cost, immediate need, future need, budget, vehicle target and desired outcome.
+It then recommends the lowest adequate Dream Carz path using live pricing, inventory, DCP and eligibility data.
+
+1.2 The economic layer
+The economic engine is authoritative. The AI and front end may explain results, but neither may independently
+create balances, invent multipliers, override eligibility, or calculate a final transaction without the rules engine
+and ledger.
+
+1.3 The ledger principle
+Every material action creates a permanent event, a source transaction and the corresponding financial and DCP
+ledger entries. Do not store only the latest totals. All balances must be reproducible from transaction history.
+
+1.4 Primary platform modules
+     Identity and member account
+     Membership catalog and benefit rules
+     Payments and billing
+     Good-standing and tenure engine
+     DCP wallets and immutable ledger
+     DCP earning and bonus engine
+     DCP reservation/redemption engine
+     Vehicle inventory and access rules
+     Rental quote and booking engine
+     Lease/RTO/LTO and ownership servicing
+     Future Driver planner
+     Host/Partner settlement engine
+     Associate genealogy, production and commission engine
+     AI Concierge and recommendation service
+     Company economics and profitability engine
+     Admin configuration console
+     Reporting, dashboards and audit exports
+
+
+2. Core Business Rules and Terminology
+                                Term                                                          Definition
+
+                                                                     Dream Car Points. Internal rewards / transportation
+DCP                                                                  purchasing-power units. DCP is not cash, a bank deposit,
+                                                                     stock or equity.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                        Page 4
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                             Term                                                          Definition
+
+                                                                  100 DCP = $1 of eligible Dream Carz transportation value,
+Face value
+                                                                  subject to wallet eligibility, caps and program rules.
+
+                                                                  A separate DCP category with its own purpose, eligibility,
+Wallet
+                                                                  redemption rules, caps and liability treatment.
+
+                                                                  An active wallet stream earning 10 DCP for each eligible $1
+1× wallet stream                                                  of qualifying cash activity under the current launch
+                                                                  configuration.
+
+                                                                  Current shorthand for effective earning power. It is
+Membership multiplier                                             implemented through active wallet streams, not by merging
+                                                                  all DCP into one generic balance.
+
+                                                                  Current program: starting award is DCPR only. Other wallet
+Starting DCP                                                      types are earned through eligible activity and/or approved
+                                                                  bonuses.
+
+                                                                  A system state governing benefit, DCP, access and
+Good standing
+                                                                  commission eligibility.
+
+                                                                  A mode inside a membership for a member preparing for a
+Future Driver
+                                                                  future vehicle need. It is not a separate membership tier.
+
+                                                                  A member currently using a qualifying Dream Carz
+Active Driver
+                                                                  vehicle/rental/long-term path.
+
+                                                                  Independent economic settlement requirement for a
+Vehicle Settlement Rate (VSR)                                     Host/Partner vehicle. Member discounts must not
+                                                                  automatically reduce Host/Partner economics.
+
+                                                                  Minimum approved company/vehicle economics after
+Contribution floor
+                                                                  discounts, promotions and DCP.
+
+Reserve                                                           Temporary hold of DCP before a transaction settles.
+
+                                                                  Final conversion of reserved DCP into used DCP after
+Settle
+                                                                  transaction completion.
+
+                                                                  Customer Production Points. Current rule: 1 CPP = $100 of
+CPP                                                               net commissionable customer revenue. CPP is
+                                                                  production/rank accounting, not customer DCP.
+
+                                                                  Cash collected that is approved as commissionable after
+Net commissionable customer revenue                               subtracting taxes, refunds and other noncommissionable
+                                                                  charges.
+
+                                                                  DCP awarded through the Associate compensation plan. It is
+Associate compensation DCP                                        ledgered separately from customer earning events and
+                                                                  follows Associate-specific eligibility/redemption rules.
+
+
+
+  RETIRED CODE RULE: DCPU is eliminated. Do not implement DCPU. The current wallet codes
+  are DCPR, DCPM, DCPO, DCPW, DCPP, DCPF and DCPE.
+
+
+3. Current Membership Configuration
+CANONICAL CURRENT MEMBERSHIP PRICING SOURCE OF TRUTH: The following table is the approved current
+Dream Carz membership baseline. Every API, CPP calculation, AI recommendation, dashboard, quote and QA
+
+ Internal Development Source of Truth | Effective September 11,                                                          Page 5
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+test must retrieve these effective-dated values from configuration. Do not use older decks, examples, cached
+values or external benchmark prices when determining Dream Carz membership pricing. A price change is
+valid only after an approved effective-dated configuration version is published.
+                                                                                             Earned
+                                                             Starting                                           Vehicle         Rate As Low
+          Tier           Enrollment           Monthly                         Multiplier      Wallet                                                 DCP/Day*
+                                                              DCPR                                              Access              As*
+                                                                                             Streams
+
+                                                                                                             Basic eligible
+    FREE                $0               $0              0                   0×            None                                 $49.95           0
+                                                                                                             rental access
+
+    FREEDOM             $249             $49             15,000 DCPR         1×            DCPR              $10K–$15K          $44.95           500
+
+    PLUS                $499             $99             40,000 DCPR         2×            DCPR + DCPM       Up to $20K         $39.95           1,000
+
+                                                                                           DCPR + DCPM
+    PRO                 $1,499           $199            60,000 DCPR         3×                              Up to $30K         $34.95           1,500
+                                                                                           + DCPO
+
+                                                                                           DCPR + DCPM
+    ELITE               $2,499           $349            80,000 DCPR         4×            + DCPO +          Up to $50K         $29.95           2,000
+                                                                                           DCPW
+
+                                                                                           DCPR + DCPM
+    SILVER              $4,995           $499            100,000 DCPR        5×            + DCPO +          Up to $75K         $24.95           2,500
+                                                                                           DCPW + DCPP
+
+                                                                                           DCPR + DCPM
+                                                                                           + DCPO +
+    GOLD                $9,995           $899            200,000 DCPR        6×                              Up to $100K        $19.95           3,000
+                                                                                           DCPW + DCPP
+                                                                                           + DCPF
+
+                                                                                           DCPR + DCPO
+                                                                                           + DCPW +
+    BLACK               $24,995          $1,295          500,000 DCPR        7×                              $100K+             $9.95            4,000
+                                                                                           DCPP + DCPF +
+                                                                                           2× DCPE
+
+
+
+*The “as low as” ladder is currently calculated from the $49.95/day reference rental option. Actual rental prices,
+mileage plans, availability, deposits, coverage, taxes and vehicle economics remain configurable and may
+change the final customer cash due.
+
+3.1 Black special architecture
+      Black does not earn DCPM because Black is the top membership tier.
+      Black earns five standard 1× wallets: DCPR, DCPO, DCPW, DCPP and DCPF.
+      Black also earns DCPE at 2×. Effective total earning power is 7×.
+      DCPE can be directed only to approved eligible categories. It is not cash and not unrestricted value.
+      The member interface should allow Black members to choose eligible DCPE application when multiple approved
+       uses are available.
+
+
+4. DCP Wallet Architecture
+                 Code                             Name                            Starts                   Primary Use                      Guardrail
+
+                                                                                                                                   Daily plan cap; DCPR is
+                                                                                                  Reduce eligible rental base
+    DCPR                              Rental Savings                Freedom+                                                       first priority for rental
+                                                                                                  charge
+                                                                                                                                   redemption.
+
+                                                                                                  Eligible membership              Not used by Black because
+    DCPM                              Membership Progress           Plus–Gold
+                                                                                                  upgrade/progression value        Black is the top tier.
+
+                                                                                                                                   Only approved vehicle
+                                                                                                  Eligible
+                                                                                                                                   paths; cash-equivalent
+    DCPO                              Ownership Power               Pro+                          RTO/LTO/ownership path
+                                                                                                                                   ownership is not
+                                                                                                  value
+                                                                                                                                   guaranteed.
+
+                                                                                                                                   May require activation,
+                                                                                                  Eligible protection /
+    DCPW                              Worry-Free Power              Elite+                                                         eligibility and contract
+                                                                                                  Worry-Free benefits
+                                                                                                                                   limits.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                                                       Page 6
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+             Code                      Name                           Starts          Primary Use                  Guardrail
+
+                                                                               Eligible
+                                                                                                           Cap by agreement, margin
+    DCPP                      Payment Power              Silver+               lease/subscription/paymen
+                                                                                                           and payment rules.
+                                                                               t support
+
+                                                                                                           Requires approval,
+                                                                               Eligible multi-vehicle /    vehicles, insurance,
+    DCPF                      Fleet Power                Gold+
+                                                                               Host / fleet path           utilization and program
+                                                                                                           eligibility.
+
+                                                                               Flexible use across         Black earns 2× DCPE; use
+    DCPE                      Everything DCP™            Black only            approved eligible           remains subject to
+                                                                               categories                  category rules and caps.
+
+
+
+
+4.1 Separate-wallet rule
+Never combine wallet types into a single generic DCP balance. The member dashboard may show an aggregate
+total for convenience, but authoritative balances and all redemption logic must remain wallet-specific.
+
+4.2 Wallet definition fields
+     wallet_code
+     wallet_name
+     effective_start / effective_end
+     minimum_membership_tier
+     earn_rate_per_eligible_dollar
+     earn_multiplier
+     allowed_source_types
+     allowed_redemption_categories
+     redemption_priority
+     daily_cap
+     monthly_cap
+     per_transaction_cap
+     vehicle_value_cap if applicable
+     activation_required
+     expiration_policy
+     good_standing_required
+     black_dcpe_eligible flag
+     liability_cost_model_id
+
+
+5. DCP Earning and Bonus Engine
+5.1 Base value and base earn rate
+     CURRENT CORE RULE: 100 DCP = $1 face value. Each active 1× wallet earns 10 DCP per eligible $1
+     of qualifying cash activity.
+
+Qualifying cash activity currently includes approved membership dues and eligible base rental cash collected.
+Taxes, deposits, tolls, tickets, damage, claims, refunds, chargebacks, non-commissionable pass-through charges
+and other excluded categories must not generate DCP unless an administrator explicitly enables them.
+
+5.2 Event-based earning
+     on event PAYMENT_SETTLED:
+      load member + active plan + good_standing
+      determine eligible_cash_amount
+
+
+    Internal Development Source of Truth | Effective September 11,                                                             Page 7
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+      for wallet in active_plan.wallet_streams:
+           earned = floor(eligible_cash_amount * 10 * wallet.earn_multiplier)
+           post immutable DCP_EARN ledger row
+      if event is on-time membership renewal:
+           post approved renewal bonus by wallet stream
+
+
+5.3 Starting DCP
+     Post only after enrollment payment and eligibility checks succeed.
+     Post to DCPR only under the current architecture.
+     Use a distinct source_type = membership_enrollment and source_id = enrollment transaction ID.
+     If enrollment is reversed/refunded, reverse the DCP through a new ledger transaction; never edit the original
+      award.
+
+5.4 On-time renewal bonus schedule
+                        Tier                                   Bonus Formula                Total Bonus DCP
+    FREE                                          0                               0
+    FREEDOM                                       1,500 × 1                       1,500
+    PLUS                                          3,000 × 2                       6,000
+    PRO                                           6,000 × 3                       18,000
+    ELITE                                         9,000 × 4                       36,000
+    SILVER                                        12,000 × 5                      60,000
+    GOLD                                          15,000 × 6                      90,000
+    BLACK                                         18,000 × 7                      126,000
+
+
+For Black, the 18,000 base bonus is distributed to DCPR, DCPO, DCPW, DCPP and DCPF, with DCPE receiving
+36,000 because it is a 2× stream. Total = 126,000 DCP.
+
+5.5 Renewal timing rule
+     A successful renewal posts earned DCP from eligible cash according to the active wallet streams.
+     If the renewal is on-time, post the bonus as a separate event after the earned-DCP event.
+     A late renewal may post earned DCP from cash if policy permits, but does not receive the on-time bonus unless an
+      administrator-approved rule explicitly allows it.
+     Failed, reversed or charged-back renewals must update good standing and create reversal/hold events as
+      required.
+
+5.6 Host DCPR earning from Host-attributable rental spend
+     CURRENT HOST DCPR RULE: When a qualifying rental settles on a Host vehicle, the Host earns
+     DCPR based on the qualifying rental spend attributable to the Host under the contractual split.
+     This is a separate DCP earning event from the renter's DCP.
+
+Current default formula (effective-dated/configurable):
+     host_dcp_basis = qualifying_rental_spend × host_contractual_split_pct
+     host_dcpr_earned = floor(host_dcp_basis × host_dcpr_rate)
+     current default host_dcpr_rate = 10 DCP per eligible $1
+
+     Credit the Host award to DCPR because the source activity is rental spend.
+     The renter earns DCP independently under the renter's membership tier, wallet streams and live earning
+      rules. Host DCPR is not transferred from, deducted from, or netted against the renter's DCP.
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                               Page 8
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     Host DCPR does not replace or reduce the Host cash settlement. Cash settlement, renter DCP, Host DCPR and
+      Dream Carz economics are separate ledger effects from the same source rental.
+     Use the Host's own effective Host/member configuration for any Host-specific multiplier or accelerator.
+      Never inherit the renter's membership multiplier.
+     Post Host DCPR only after the qualifying rental spend is settled/recognized under the rental-close rules.
+     Refunds, reversals and chargebacks create proportional Host DCPR reversal entries. Never edit or delete the
+      original Host DCPR award.
+     Every Host DCPR award must reference rental_id, vehicle_id, host_partner_account_id, renter_member_id,
+      qualifying_rental_spend, contractual_split_pct, host_dcp_basis, host_dcpr_rate, rule_version and the
+      resulting DCP ledger transaction.
+
+
+6. DCP Redemption and Reservation Engine
+6.1 Rental discount ladder
+              Tier                     As Low As*              Daily Discount           DCP / Day       Wallet Priority
+
+    FREE                      $49.95                     $0                     0                   None
+
+    FREEDOM                   $44.95                     $5                     500                 DCPR
+
+    PLUS                      $39.95                     $10                    1,000               DCPR
+
+    PRO                       $34.95                     $15                    1,500               DCPR
+
+    ELITE                     $29.95                     $20                    2,000               DCPR
+
+    SILVER                    $24.95                     $25                    2,500               DCPR
+
+    GOLD                      $19.95                     $30                    3,000               DCPR
+
+                                                                                                    DCPR first; DCPE second
+    BLACK                     $9.95                      $40                    4,000
+                                                                                                    if selected/eligible
+
+
+
+
+6.2 Redemption workflow
+1.    Quote transaction and determine maximum eligible DCP based on plan, wallet and benefit caps.
+2.    Validate membership status, good standing, benefit activation, inventory, agreement, insurance/risk and any
+      wallet-specific eligibility.
+3.    Reserve DCP before booking/approval. Reserved DCP is unavailable for other transactions.
+4.    At completion, settle only the actual DCP required.
+5.    Release unused reserved DCP.
+6.    Post purchasing power delivered and actual Dream Carz fulfillment cost separately.
+7.    Release the associated DCP accounting liability when redemption is completed.
+
+6.3 Rental redemption priority
+     DCPR is always first priority for rental savings. Black may then apply DCPE if DCPR is
+     insufficient or if the member selects an approved DCPE application. Other wallets do not
+     automatically substitute for DCPR.
+
+6.4 Partial redemption
+If the member has insufficient eligible DCP for the full target discount, the quote engine may calculate a partial
+DCP discount if the current plan permits partial redemption. The UI must show the DCP used, remaining DCP,
+cash rate after DCP, and any non-discountable charges.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                   Page 9
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+6.5 Non-redeemable default charges
+     Coverage / protection charges unless specifically enabled
+     Taxes and government fees
+     Deposits
+     Tolls, tickets and citations
+     Fuel/charging
+     Cleaning or late fees unless separately approved
+     Damage, claims, deductibles and loss-related charges
+     Other pass-through or risk charges
+
+
+7. Membership Lifecycle, Good Standing and Tenure
+7.1 Membership statuses
+     Pending
+     Active
+     Past Due
+     Suspended
+     Cancelled
+     Expired / Archived (optional reporting state)
+
+7.2 Good-standing evaluation
+     Required membership payments are current or within approved grace period.
+     Identity, agreements and required program documents are complete.
+     Rental/vehicle obligations are current.
+     No unresolved fraud, chargeback, default or serious policy violation exists.
+     Required insurance/coverage and vehicle-specific obligations are satisfied when relevant.
+Evaluate good standing daily and immediately after payment, failed payment, reversal, chargeback, default,
+cure, suspension, reactivation or administrative action.
+
+7.3 Upgrade and downgrade handling
+     Plan changes must be effective-dated.
+     Do not rewrite historical DCP awards or earning rules after a plan change.
+     New earning events use the plan configuration effective at the event timestamp.
+     Wallet access after downgrade must follow approved policy: available, held, restricted or grandfathered; do not
+      silently delete balances.
+     Upgrade eligibility must be checked before allowing DCPM or other benefits to reduce an upgrade transaction.
+
+7.4 Founding member capability
+The platform should retain support for a configurable Founding Member award/level tied to permanent
+membership number or enrollment sequence. The current master specification does not hard-code a Founding
+Member award amount. Any future award must post through the DCP ledger and be effective-dated.
+
+
+8. Rental Pricing and Quote Engine
+8.1 Quote inputs
+     Member ID / membership tier / good-standing state
+     Vehicle ID and vehicle class/value band
+     Rental start/end time and duration
+
+
+    Internal Development Source of Truth | Effective September 11,                                             Page 10
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     Applicable public/base rate plan
+     Mileage plan
+     Coverage/insurance requirement
+     Market, location, season, utilization and promotion rules
+     Available DCPR / DCPE and redemption choice
+     Deposits, taxes and pass-through charges
+     Host/Partner settlement requirement where applicable
+     Minimum contribution floor
+
+8.2 Quote formula
+     eligible_base = pricing_engine(vehicle, duration, market, utilization, plan)
+     member_rate = apply_membership_pricing(eligible_base, member_tier)
+     member_rate = max(member_rate, configured_contribution_floor_if_applicable)
+     max_dcp_value = calculate_wallet_redemption(member, transaction, plan_caps)
+     base_after_dcp = max(0, member_rate - max_dcp_value)
+     final_cash_due = base_after_dcp + coverage + taxes + deposits + pass_through_charges
+
+
+8.3 Current reference daily rate plans
+Current sales materials have used three public reference options: $39.95/day with 50 miles, $49.95/day with 100
+miles, and $59.95/day unlimited-mile reference pricing. These must remain configuration records, not
+permanent constants. The current membership “as low as” discount ladder is based on the $49.95/day option.
+
+8.4 Protect economics
+     Do not allow membership discount + promotion + DCP to push realized economics below the approved floor
+      unless an authorized subsidy budget covers the difference.
+     Coverage should be calculated separately unless a specific plan rule says otherwise.
+     Member pricing and Host/Partner settlement are independent calculations.
+     Record subsidy amount when Dream Carz funds a member benefit below the vehicle settlement requirement.
+
+8.5 POSH-based subscription pricing benchmark
+    EXTERNAL MARKET BENCHMARK ONLY - NEVER A DREAM CARZ PRICE SOURCE: POSH publicly
+    lists three subscription starting points. These values may be stored as read-only competitive
+    benchmark data for analysis and test fixtures. They must never populate, override, or act as a
+    fallback for a live Dream Carz customer quote.
+
+                                                                                                           Published Included
+POSH Public Plan              Setup Fee                  Starting Monthly           Included Miles / Mo.
+                                                                                                           Features
+
+                                                                                                           Insurance, regular
+Luxury                        $2,388                     $799                       2,400                  maintenance, roadside,
+                                                                                                           24/7 support
+
+                                                                                                           Insurance, regular
+Plush                         $3,588                     $1,199                     2,200                  maintenance, roadside,
+                                                                                                           24/7 support
+
+                                                                                                           Insurance, regular
+POSH                          $5,988                     $1,699                     1,800                  maintenance, roadside,
+                                                                                                           24/7 support
+
+Benchmark source: POSH public consumer pricing page reviewed September 11, 2026. Published benchmark:
+Luxury $2,388 setup / $799 monthly / 2,400 miles; Plush $3,588 setup / $1,199 monthly / 2,200 miles; POSH $5,988
+setup / $1,699 monthly / 1,800 miles. These are POSH prices, not Dream Carz prices.
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                         Page 11
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+8.6 Dream Carz working subscription sample
+    The table below is the Dream Carz SUBSCRIPTION PRICE CONFIGURATION REQUIREMENT. No
+    invented or inferred Dream Carz setup fee, monthly rate, or mileage allowance may be used in
+    production. Until an approved Dream Carz vehicle subscription rate card is entered, the quote
+    engine must return RATE_NOT_CONFIGURED / manual review rather than borrowing a POSH or
+    historical value.
+
+Dream Carz                                                                          Included Miles /   Production
+                         Vehicle Value          Setup Fee            Monthly Rate
+Access Band                                                                         Mo.                Pricing Rule
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Freedom                  $10K-$15K              CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Plus                     Up to $20K             CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Pro                      Up to $30K             CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Elite                    Up to $50K             CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Silver                   Up to $75K             CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Gold                     Up to $100K            CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+                                                                                                       Approved
+                                                                                                       effective-dated
+Black                    $100K+                 CONFIG               CONFIG         CONFIG
+                                                                                                       Dream Carz rate
+                                                                                                       card only
+
+     POSH benchmark values may be used in non-production scenario tests only. They are not default rates for
+      Pro, Elite, Silver or any other Dream Carz access band.
+     All Dream Carz vehicle subscription prices are effective-dated administrator configuration. The required
+      vehicle-economic floor remains mandatory even after an approved rate card is loaded.
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                              Page 12
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+      The pricing engine must support coverage_mode = BUNDLED or SEPARATE. Do not advertise an all-inclusive
+       rate until insurance/coverage economics and legal structure are approved.
+      DCPP may reduce an eligible subscription/payment charge only when the member, contract and margin cap
+       allow it. Black DCPE may be routed only to approved eligible categories. DCPR does not automatically pay
+       subscription charges.
+      Vehicle availability, swaps, deposits, mileage overage, damage, taxes, delivery and early-return rules must
+       remain effective-dated configuration.
+
+8.7 Subscription pricing floor
+      required_monthly_floor =
+       vehicle_payment_or_depreciation_reserve
+      + insurance_or_coverage_cost
+      + maintenance_and_tire_reserve
+      + registration_tax_and_telematics
+      + claims_and_loss_reserve
+      + servicing_and_admin_cost
+      + target_contribution_margin
+
+
+      quoted_subscription_monthly =
+       max(configured_class_sample_rate, required_monthly_floor)
+
+      Never quote a sample class rate below the vehicle-specific required monthly floor unless an authorized
+       subsidy is recorded.
+      Store the benchmark/sample rate and the economically required floor separately so management can see
+       when market pricing is below cost.
+
+
+9. Vehicle Access and Vehicle Transactions
+9.1 Vehicle value bands
+                      Tier                                Vehicle Value Access                  Positioning
+    Freedom                                     $10K–$15K                        Everyday reliable transportation
+    Plus                                        Up to $20K                       Better everyday sedans / compact SUVs
+    Pro                                         Up to $30K                       Newer SUVs / upgraded vehicles
+    Elite                                       Up to $50K                       Premium vehicles around the $50K level
+    Silver                                      Up to $75K                       Luxury sedans / premium SUVs
+    Gold                                        Up to $100K                      Upper luxury / performance
+                                                                                 Flagship luxury / exotic / specialty subject
+    Black                                       $100K+
+                                                                                 to inventory and eligibility
+
+
+
+
+9.2 Master vehicle transaction record
+      Cash or financed sale
+      Lease
+      Rent-to-own (RTO)
+      Lease-to-own (LTO)
+      Daily/weekly/monthly rental
+      Subscribe & Save
+      Host-listed / Partner-supplied vehicle
+      Trade-in or purchase from member
+
+
+    Internal Development Source of Truth | Effective September 11,                                                  Page 13
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     DCP-supported vehicle/ownership transaction
+
+9.3 Required vehicle economics
+     Acquisition cost
+     Reconditioning cost
+     Taxes / registration / title costs
+     Current market/value band
+     Selling price or payment schedule
+     Direct vehicle-day cost
+     Insurance/coverage cost
+     Maintenance/repair reserve
+     Loss/claims reserve
+     Host/Partner settlement requirement
+     Minimum contribution floor
+     DCP redeemed and purchasing power delivered
+     Net company contribution margin
+
+
+10. Future Driver Mode
+    Future Driver is a mode inside every paid membership, not a separate membership tier.
+
+10.1 Purpose
+Future Driver supports a customer who does not need a Dream Carz vehicle today but expects a future
+transportation need. The AI should determine whether starting now creates a financially rational head start
+instead of assuming the customer should enroll.
+
+10.2 Required Future Driver fields
+     future_driver_status
+     target_vehicle_date
+     target_vehicle_type
+     target_vehicle_value
+     comfortable_monthly_budget
+     current_transportation_method
+     current_transportation_cost
+     target_program (rent / subscribe / RTO / LTO / ownership)
+     future_dcp_projection
+     mode_switch_date
+     active_driver_start_date
+
+10.3 AI behavior
+     Ask when the member expects to need a vehicle.
+     Ask target vehicle type and value range.
+     Ask current transportation method and cost.
+     Compare membership cost with realistic DCP/program value before recommending early enrollment.
+     Show projected DCP as a scenario, never a guarantee.
+     When the member begins a qualifying Active Driver relationship, switch modes through an event.
+
+10.4 Special accelerator status
+Older working documents included a separate Future Driver monthly DCP schedule. That schedule is not part of
+the current master configuration. The data model should support an optional Future Driver accelerator, but its
+
+
+    Internal Development Source of Truth | Effective September 11,                                     Page 14
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+value must default to zero/unconfigured until Dream Carz approves an effective-dated schedule. Do not
+implement the older 3,500/5,000/6,500/etc. monthly figures as current rules.
+
+
+11. AI Concierge and Recommendation Engine
+11.1 Mission
+The AI Concierge is a smart transportation advisor available to every visitor and member. It should diagnose,
+calculate, recommend and explain. It should also support Dream Carz Associates with scripts, objections, follow-
+up, qualifying questions, document checklists and next-best actions.
+
+11.2 Required customer discovery sequence
+8. What are you doing for transportation right now?
+9. What does that cost in a normal day, week or month?
+10. If renting, what is the all-in rate including coverage, fees, mileage and extensions?
+11. If financing/leasing, what are the payment, insurance, repair and maintenance costs?
+12. When do you need your next vehicle?
+13. How many days and miles do you expect to drive?
+14. What weekly/monthly budget is comfortable?
+15. What vehicle do you need versus prefer?
+16. What matters most: cost, predictability, flexibility, better vehicle access, future ownership, luxury, business/fleet
+    opportunity?
+17. Is traditional credit creating a barrier? If yes, identify realistic Dream Carz alternatives without promising
+    approval.
+
+11.3 Recommendation decision tree
+18. Normalize current transportation cost to a weekly/monthly amount.
+19. Determine immediate driver versus Future Driver.
+20. If occasional immediate use, evaluate Free first.
+21. If recurring rental need, evaluate Freedom and quantify DCP value.
+22. Map continuous vehicle need and target vehicle value to the lowest adequate membership band.
+23. Retrieve live enrollment fee, monthly fee, vehicle access, wallet streams, multiplier, rate rules, inventory,
+    eligibility and approved disclosures.
+24. Calculate current-cost comparison, Dream Carz cost, DCP earned, dollar-equivalent eligible value, and projected
+    future value.
+25. Recommend the lowest adequate tier.
+26. Explain current benefit, future benefit and specific reason an upgrade would or would not be justified.
+27. Offer human handoff for exceptions, legal/insurance disputes, payment hardship, manual approvals or high-risk
+    cases.
+
+11.4 AI output requirements
+                               Output                                                    Required Behavior
+ Current transportation cost                                      Actual normalized customer input
+                                                                  Rent / Subscribe / RTO / LTO / ownership / Future Driver / no
+ Recommended path
+                                                                  Dream Carz recommendation
+ Recommended tier                                                 Lowest adequate tier
+ Vehicle access                                                   Live configured band + inventory caveat
+ Cash cost                                                        Enrollment/recurring/transaction cash due
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                           Page 15
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+                                Output                                                     Required Behavior
+    DCP earned                                                       From approved qualifying activity only
+    DCP value                                                        DCP ÷ 100, labeled eligible Dream Carz value
+    DCP usable now                                                   Only permitted wallets/categories
+    Projected DCP                                                    Scenario clearly labeled projection
+    Upgrade trigger                                                  Concrete reason/threshold that would justify higher tier
+                                                                     Availability, eligibility, insurance, inventory, no guarantee and
+    Disclosures
+                                                                     any jurisdictional language
+
+
+
+
+11.5 AI language guardrails
+      Say: “100 DCP equals $1 of eligible Dream Carz transportation value.”
+      Do not say DCP is cash, a bank account, stock, equity or guaranteed savings.
+      Do not promise approval, financing, ownership, earnings, free driving or vehicle availability.
+      Do not promise referral earnings/DCP. Use conditional language.
+      Do not claim a future vehicle will be cheaper without comparing total costs.
+      Do not invent a price, multiplier, DCP balance, inventory item or benefit. Retrieve live data.
+      If Dream Carz is not economically justified for the customer, say so.
+
+11.6 AI operational capabilities
+      Find the right path: rent, lease, subscribe, RTO/LTO, ownership or upgrade.
+      Match budget and credit constraints to realistic alternatives.
+      Show DCP power and savings in plain dollar-equivalent terms.
+      Coach Associates: scripts, objections, qualifying questions, next actions.
+      Automate pipeline: lead capture, reminders, document checklists, reactivation and retention.
+      Preserve human handoff. AI does the heavy lifting; people build the relationship.
+
+
+12. Host, Partner, Associate and Commission Integration
+12.1 Host / Partner settlement rule
+     Member pricing and vehicle-owner settlement are separate calculations. A member discount or
+     DCP redemption must not automatically reduce the Host/Partner agreed settlement.
+
+      Member Rental Rate = what the customer is charged after membership pricing and eligible DCP.
+      Vehicle Settlement Rate (VSR) = approved minimum/contractual economics for the vehicle.
+      Membership Benefit Subsidy = Dream Carz-funded difference if member pricing is below required settlement
+       economics.
+      Host/Partner payout = calculated from the applicable agreement, independent of the member discount.
+      Host DCPR = separate rental-reward calculation for eligible Host accounts, based on qualifying rental spend
+       attributable to the Host under the contractual split; it does not reduce renter DCP or Host cash payout.
+      DCP redemption = customer benefit, recorded separately from settlement.
+      Dream Carz contribution margin = company revenue minus direct costs, payout, commissions and actual DCP
+       redemption cost.
+
+12.2 Host DCPR split rule
+     HOST DCPR IS SOURCE-BASED: the Host receives DCPR because the qualifying source
+     transaction is a rental. The earning basis is only the qualifying rental spend attributable to that
+     Host under the contractual Dream Carz/Host split.
+
+    Internal Development Source of Truth | Effective September 11,                                                            Page 16
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     host_dcp_basis = qualifying_rental_spend × host_contractual_split_pct
+     host_dcpr_earned = floor(host_dcp_basis × host_dcpr_rate)
+
+     Example: $600 qualifying rental spend × 50% Host split = $300 Host DCP basis. At the current default 10 DCP
+      per $1, the Host receives 3,000 DCPR.
+     The renter's DCP and the Host's DCPR are two independent awards tied to the same rental source
+      transaction.
+     Host DCPR is credited to the Host DCPR wallet/account and is never deducted from the renter's wallet.
+     The Host contractual split percentage and Host DCPR rate must be effective-dated configuration, not hard-
+      coded.
+     If a Host is also a Dream Carz member, the Host DCPR event still identifies the Host beneficiary separately
+      from the renter/member beneficiary.
+     Partner accounts do not receive Host DCPR unless the live agreement/configuration explicitly marks that
+      account as Host-DCPR eligible.
+
+12.3 Current Host eligibility
+Current AI rule: the Host Program uses Dream Carz vehicles only. The AI must not tell customers they can place
+an independently owned third-party vehicle into the Host Program unless the rule is formally changed in live
+configuration.
+
+12.4 Associate and commission architecture
+     Store permanent sponsor and placement genealogy.
+     Every commissionable transaction creates a production record tied to the source transaction.
+     Track personal enrollments, active members, paid membership months, vehicle transactions, rental activity, Host
+      activity, personal/team production, rank and chargebacks.
+     Calculate commissions from collected and cleared commissionable revenue unless an approved advance rule
+      applies.
+     Commissionable Revenue = Cash Collected - Taxes - Refunds - Noncommissionable Charges.
+     Cash commissions, DCP bonuses, overrides and rank awards must be separate ledger/reporting lines.
+     Compensation percentages and rank thresholds remain configuration, not code constants.
+
+12.5 CPP and Associate Compensation Engine
+    CPP IS PRODUCTION ACCOUNTING: 1 CPP = $100 of NET COMMISSIONABLE CUSTOMER
+    REVENUE. CPP drives rank qualification and compensation logic. It is separate from the
+    customer DCP wallet system.
+     net_commissionable_revenue =
+      cash_collected
+     - taxes
+     - refunds
+     - noncommissionable_charges
+
+
+     cpp_generated = net_commissionable_revenue / 100
+
+     Initial membership CPP is calculated from the commissionable enrollment payment plus the first
+      commissionable monthly payment after settlement.
+     Recurring CPP is calculated from each settled continuing commissionable customer payment.
+     Failed payments create no CPP. Refunds, reversals and chargebacks post CPP reversal events linked to the
+      original production event.
+     CPP is stored with the source transaction, member/customer, Associate genealogy, production period, level
+      and rule version. Never store only the monthly total.
+
+
+    Internal Development Source of Truth | Effective September 11,                                           Page 17
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+12.6 Current level commission schedule
+Organizational Level                  Cash %                         DCP %                              Combined Economic Allocation
+
+Level 1                               10.0%                          10.0%                              20.0%
+
+Level 2                               2.5%                           2.5%                               5.0%
+
+Level 3                               2.5%                           2.5%                               5.0%
+
+Level 4                               2.5%                           2.5%                               5.0%
+
+Level 5                               2.5%                           2.5%                               5.0%
+
+Level 6                               2.5%                           2.5%                               5.0%
+
+Level 7                               2.5%                           2.5%                               5.0%
+
+Maximum if all 7 qualified            25.0%                          25.0%                              50.0%
+
+      The direct Level 1 Associate receives 10% cash and 10% DCP on qualifying commissionable revenue when
+       eligible.
+      Qualified Levels 2-7 each receive 2.5% cash and 2.5% DCP on the same qualifying commissionable revenue.
+      Unqualified/upline compression, breakage, roll-up and forfeiture behavior are configuration items unless
+       and until Dream Carz formally approves a fixed rule.
+      Every cash commission and compensation-plan DCP award must be a separate immutable ledger entry. A
+       chargeback reverses each affected payout proportionately.
+
+12.7 Rank depth, CPP thresholds and monthly rank awards
+Rank                     Monthly CPP            Counted Depth        Cash Award            DCP Award                 Vehicle Access
+
+Manager                  250                    L1-L3                $125                  12,500 DCP / $125         Builder Bonus
+
+Senior Manager           1,000                  L1-L4                $500                  50,000 DCP / $500         Economy
+
+Director                 2,500                  L1-L5                $1,000                100,000 DCP / $1,000      Mid-Level
+
+Executive Director       15,000                 L1-L6                $5,000                500,000 DCP / $5,000      Premium
+
+Vice President           30,000                 L1-L7                $10,000               1,000,000 DCP / $10,000   Luxury
+
+Diamond                  75,000                 L1-L7                $25,000               2,500,000 DCP / $25,000   Black Luxury
+
+Crown Diamond            150,000                L1-L7                $50,000               5,000,000 DCP / $50,000   Exotic / Dream Car
+
+      Ranked depth controls how many organizational levels of qualified CPP count toward monthly rank
+       volume: Manager 3 levels, Senior Manager 4, Director 5, Executive Director 6, and VP/Diamond/Crown
+       Diamond 7.
+      Rank awards are evaluated from verified monthly CPP, good standing and any configured qualification
+       rules. The rank engine must snapshot the inputs used for each monthly decision.
+      Associate compensation-plan DCP is immediately available for eligible approved Dream Carz vehicle
+       charges under the current compensation design. It is not the same as customer wallet DCP earning/vesting.
+      Vehicle access is a qualification privilege; it does not mean every vehicle charge is automatically paid. The
+       Associate pays any required difference, taxes, coverage, deposit or other noneligible charge.
+
+12.8 Current membership pricing -> CPP examples
+                                                                                           Illustrative Initial      Recurring Monthly
+Tier                     Enrollment             Monthly              Initial Paid Total*
+                                                                                           CPP*                      CPP*
+
+Freedom                  $249                   $49                  $298                  2.98                      0.49
+
+Plus                     $499                   $99                  $598                  5.98                      0.99
+
+Pro                      $1,499                 $199                 $1,698                16.98                     1.99
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                               Page 18
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+Elite                    $2,499                 $349                 $2,848      28.48               3.49
+
+Silver                   $4,995                 $499                 $5,494      54.94               4.99
+
+Gold                     $9,995                 $899                 $10,894     108.94              8.99
+
+Black                    $24,995                $1,295               $26,290     262.90              12.95
+
+*Examples assume the listed membership charges are fully commissionable and collected. Actual CPP must use
+net commissionable revenue after taxes, refunds and any configured noncommissionable charges. These
+examples intentionally replace older CPP pricing examples that used obsolete membership prices.
+
+12.9 Compensation event flow
+     CUSTOMER_PAYMENT_SETTLED
+      -> determine commissionable revenue
+      -> post CPP_PRODUCTION
+      -> traverse permanent sponsor/placement genealogy
+      -> create qualified level commission rows
+      -> evaluate monthly rank-count depth
+      -> evaluate / snapshot rank
+      -> if rank award earned: post cash award + compensation DCP award
+      -> update Associate dashboard
+      -> record company compensation cost
+
+
+     REFUND / CHARGEBACK
+      -> post CPP reversal
+      -> reverse affected cash commission / DCP awards
+      -> re-evaluate rank period when policy requires
+
+
+
+13. Financial Guardrails and DCP Liability
+13.1 Required economic controls
+     Every DCP award must have an identified economic/funding source or approved promotional budget.
+     Track DCP face value, expected fulfillment cost, actual redemption cost and accounting liability separately.
+     Never assume DCP is costless.
+     Do not allow tier discount + promotion + DCP to violate the contribution floor unless an authorized subsidy covers
+      it.
+     Stress-test multiplier and bonus economics at high redemption levels.
+     Keep risk/pass-through charges outside broad DCP redemption until approved.
+     Maintain loss reserves for defaults, chargebacks, claims and repossession exposure where applicable.
+     All economics must be reportable by member, vehicle, program, market, tier and transaction.
+
+13.2 Core profitability formula
+     Contribution Margin = Company Revenue
+                 - Direct Transaction Costs
+                 - Commissions
+                 - Host/Partner Payouts
+                 - Actual DCP Redemption Cost
+                 - Approved Transaction-Level Risk/Reserve Costs
+
+
+13.3 Reporting distinction
+    Customer-facing DCP purchasing power and Dream Carz actual fulfillment cost are NOT
+    necessarily the same amount. Both must be recorded and reported.
+
+    Internal Development Source of Truth | Effective September 11,                                             Page 19
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+14. Data Model and Ledger Requirements
+14.1 Minimum database entities
+                             Entity                                                     Minimum Purpose / Fields
+
+                                                                  member_id, membership_number, status, current_plan_id, join_date,
+members                                                           sponsor_id, good_standing, future_driver_status, host_status,
+                                                                  associate_status
+
+                                                                  plan_id, effective dates, enrollment price, monthly price, starting
+membership_plans
+                                                                  DCPR, vehicle band, rental caps, wallet streams, bonus schedule
+
+                                                                  wallet_code, name, earn rules, redemption categories, priority, caps,
+wallet_definitions
+                                                                  activation, expiration
+
+                                                                  transaction id, beneficiary_type, beneficiary_id, member_id
+                                                                  (nullable), host_partner_account_id (nullable), wallet code, event
+dcp_ledger_entries
+                                                                  type, source id, points, status, available date, qualifying spend basis,
+                                                                  split %, rule version, liability/cost fields
+
+                                                                  payment_id, member_id, amount, type, status, settled_at, due_date,
+payments
+                                                                  on_time_flag, processor ref
+
+                                                                  rental_id, member, vehicle, plan, dates, base rate, member rate, DCP
+                                                                  reserved/settled, coverage, taxes, final cash,
+rental_contracts
+                                                                  host_partner_account_id, qualifying_rental_spend, contractual split
+                                                                  %, host_dcp_basis, host_dcpr_earned
+
+                                                                  vehicle_id, VIN, class/value band, owner type, cost data, rates, VSR,
+vehicles
+                                                                  availability, insurance, status
+
+                                                                  redemption_id, member, wallet, requested points, reserved points,
+redemptions
+                                                                  settled points, benefit type, source transaction
+
+                                                                  transaction_id, type, customer economics, vehicle economics, DCP,
+vehicle_transactions
+                                                                  ancillary products, partner economics, risk, margin
+
+                                                                  account id, linked member id if any, agreement type, Host/Partner
+                                                                  role, payout method, VSR, contractual split %, Host DCPR eligibility,
+host_partner_accounts
+                                                                  Host DCPR earn rate/multiplier, DCP account reference,
+                                                                  responsibilities, compliance
+
+                                                                  earning_id, host_partner_account_id, rental_id, vehicle_id,
+                                                                  renter_member_id, qualifying_rental_spend, contractual_split_pct,
+host_dcp_earnings
+                                                                  host_dcp_basis, host_dcpr_rate, host_dcpr_awarded,
+                                                                  dcp_ledger_transaction_id, status, rule_version
+
+associate_genealogy                                               associate id, sponsor, placement, effective dates
+
+                                                                  source transaction, personal/team volume, commissionable revenue,
+production_records
+                                                                  rank period
+
+commission_ledger                                                 commission id, source, type, amount, status, hold/chargeback fields
+
+                                                                  rule id, type, effective dates, market/tier/category scope, value/config
+program_rules
+                                                                  JSON
+
+                                                                  event id, actor, action, entity, before/after hash or payload,
+audit_events
+                                                                  timestamp, reason code
+
+                                                                  session id, customer/member id, intake answers, recommendation,
+ai_sessions
+                                                                  rule version, quote refs, disclosures, human handoff
+
+                                                                  plan id, effective dates, vehicle access band/class, setup fee, monthly
+subscription_rate_plans                                           sample/base rate, included miles, overage, coverage mode, included-
+                                                                  service flags, swap rules, deposit rules, market scope
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                                    Page 20
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                                Entity                                                     Minimum Purpose / Fields
+
+                                                                     cpp_event_id, source transaction, customer/member, originating
+                                                                     Associate, production period, net commissionable revenue, CPP
+cpp_production_ledger
+                                                                     amount, level attribution, genealogy snapshot, status, reversal link,
+                                                                     rule version
+
+                                                                     effective dates, level number, cash %, DCP %, eligibility requirement,
+commission_level_rules
+                                                                     hold period, chargeback rule, market/program scope
+
+                                                                     rank id/name, CPP threshold, counted depth, cash award, DCP
+rank_definitions                                                     award, vehicle-access privilege, good-standing requirements,
+                                                                     effective dates
+
+                                                                     associate id, period, counted CPP by depth, rank evaluated,
+rank_qualification_snapshots                                         qualification flags, award decision, source production refs, rule
+                                                                     version
+
+                                                                     award id, associate id, source type (level commission/rank
+associate_comp_dcp_ledger                                            award/promotion), source transaction/period, DCP amount,
+                                                                     availability status, eligible-use context, reversal linkage, rule version
+
+
+
+
+14.2 DCP ledger fields
+     dcp_transaction_id
+     member_id
+     wallet_code
+     transaction_type (earn/use/hold/release/expire/reverse/adjust)
+     source_type
+     source_id
+     base_dcp
+     earning_multiplier
+     dcp_earned
+     redemption_multiplier if used
+     purchasing_power_delivered
+     status
+     available_date
+     expiration_date
+     created_at
+     reason_code
+     customer_facing_value
+     expected_fulfillment_cost
+     actual_fulfillment_cost
+     remaining balance snapshot (optional convenience only)
+     accounting_liability_delta
+     beneficiary_type (MEMBER / HOST / other approved owner type)
+     beneficiary_id (member_id or host_partner_account_id as applicable)
+     host_partner_account_id when the beneficiary/source is a Host
+     rental_id and vehicle_id for rental-sourced DCP
+     qualifying_spend_basis used for the award
+     contractual_split_pct and host_dcp_basis for Host DCPR awards
+     rule_version / configuration_version used for the calculation
+For Host DCPR, set beneficiary_type = HOST and beneficiary_id = host_partner_account_id. A linked member_id
+may also be stored when the Host has a member account, but the renter and Host awards remain separate
+ledger entries.
+
+
+    Internal Development Source of Truth | Effective September 11,                                                                  Page 21
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+    Never update a historical DCP row to “fix” a balance. Corrections are new reversal or
+    adjustment ledger entries with reason codes and audit metadata.
+
+
+15. Event Architecture and State Transitions
+15.1 Required event characteristics
+     Unique event_id and idempotency_key
+     Occurred_at and received_at timestamps
+     Source system and source transaction ID
+     Actor/service identity
+     Effective program/rule version
+     Before/after state references where applicable
+     Retry-safe processing
+     Dead-letter/error state and replay capability
+     Trace ID across AI, payment, quote, rental, DCP, commission and financial events
+
+15.2 Core event catalog
+                                 Event                                                          Required Effect
+
+MEMBER_CREATED                                                       Create member and membership number
+
+ENROLLMENT_PAYMENT_SETTLED                                           Activate plan; post starting DCPR; update good standing
+
+RENEWAL_PAYMENT_SETTLED                                              Post cash-earned DCP; evaluate on-time bonus; update paid-through
+
+PAYMENT_FAILED                                                       Update status/good standing; no bonus
+
+PAYMENT_REVERSED / CHARGEBACK                                        Reverse eligible DCP/commission effects; hold account if required
+
+PLAN_UPGRADED                                                        Effective-date new plan; activate new wallet permissions
+
+PLAN_DOWNGRADED                                                      Apply downgrade policy without deleting historical balances
+
+RENTAL_QUOTED                                                        Calculate rate, DCP eligibility and contribution check
+
+DCP_RESERVED                                                         Hold wallet points for transaction
+
+RENTAL_STARTED                                                       Confirm eligibility and reserved DCP
+
+                                                                     Settle renter DCP; post revenue/cost/margin; post renter rental-
+RENTAL_CLOSED                                                        earned DCP; if Host-DCPR eligible, calculate Host-attributable
+                                                                     qualifying spend and emit HOST_DCPR_EARNED.
+
+                                                                     Post immutable DCPR to Host beneficiary using
+HOST_DCPR_EARNED                                                     qualifying_rental_spend × contractual split × Host DCPR rate; keep
+                                                                     separate from renter DCP and Host cash payout.
+
+                                                                     On qualifying refund/reversal/chargeback, post proportional
+HOST_DCPR_REVERSED                                                   reversal linked to the original Host DCPR event; never overwrite the
+                                                                     original award.
+
+DCP_RELEASED                                                         Return unused reservation
+
+VEHICLE_TRANSACTION_PAYMENT_SETTLED                                  Update balance, DCP, good standing, company/partner economics
+
+FUTURE_DRIVER_ENABLED                                                Store goal/timing/budget data
+
+ACTIVE_DRIVER_STARTED                                                Switch mode; end any approved Future Driver accelerator
+
+REFERRAL_QUALIFIED                                                   Post only approved referral DCP/production
+
+COMMISSION_APPROVED                                                  Move commission from held to payable
+
+MANUAL_ADJUSTMENT_POSTED                                             Authorized ledger adjustment with reason code
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                               Page 22
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                                 Event                                                          Required Effect
+
+MEMBER_SUSPENDED / REACTIVATED                                    Update eligibility and AI/access behavior
+
+                                                                  Calculate net commissionable revenue and emit
+COMMISSIONABLE_REVENUE_SETTLED
+                                                                  CPP_PRODUCTION_POSTED once per eligible source transaction.
+
+                                                                  Post immutable CPP production tied to source payment and
+CPP_PRODUCTION_POSTED
+                                                                  genealogy snapshot; allocate rank-count visibility by qualified depth.
+
+                                                                  Reverse original CPP after refund/chargeback without editing
+CPP_PRODUCTION_REVERSED
+                                                                  historical production.
+
+                                                                  Create cash commission and compensation-DCP entries for each
+LEVEL_COMMISSION_POSTED
+                                                                  qualified upline level using configured percentages.
+
+                                                                  Snapshot period CPP, counted depth, good standing and qualification
+RANK_EVALUATED
+                                                                  inputs; determine current rank.
+
+                                                                  Post configured monthly cash award + Associate compensation DCP
+RANK_AWARD_POSTED
+                                                                  for a qualified rank period.
+
+                                                                  Return sample/base subscription price, vehicle-specific economic
+SUBSCRIPTION_QUOTED
+                                                                  floor, included services/miles, DCP eligibility and final quote.
+
+                                                                  Post subscription revenue, DCP/CPP production as configured,
+SUBSCRIPTION_PAYMENT_SETTLED
+                                                                  servicing economics and commission effects.
+
+
+
+
+15.3 Monthly renewal event chain
+  1. Charge renewal
+  2. If settled: update paid-through + good standing
+  3. Post earned DCP from eligible cash to each active wallet stream
+  4. Determine on_time_flag
+  5. If on-time: post renewal bonus by stream
+  6. Recalculate access / wallet permissions / rate caps
+  7. Calculate Associate production and commission eligibility
+  8. Record company revenue and DCP liability change
+  9. Refresh member/admin dashboards
+  10. Emit audit event
+
+
+
+16. API and Integration Contracts
+Exact route naming may change, but the following service boundaries are recommended. All financial mutation
+endpoints must be authenticated, permissioned, idempotent and auditable.
+                            Endpoint / Service                                                      Contract
+
+GET /membership-plans                                             Return effective live tiers, pricing, wallets, vehicle bands and rate rules.
+
+GET /members/{id}                                                 Return member state, tier, good standing and mode.
+
+                                                                  Return wallet-specific available/reserved/held balances and eligible
+GET /members/{id}/dcp
+                                                                  purchasing power.
+
+                                                                  Return customer cash quote, DCP options, contribution check and
+POST /quotes/rental
+                                                                  settlement/subsidy economics.
+
+                                                                  Close/settle rental idempotently; settle renter DCP, post renter rental-
+POST /rentals/{id}/settle                                         earned DCP, calculate Host qualifying spend under contractual split, post
+                                                                  Host DCPR if eligible, and return settlement economics.
+
+                                                                  Return Host DCPR available/reserved/held/reversed balances plus source-
+GET /hosts/{id}/dcp
+                                                                  rental references and rule versions.
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                                       Page 23
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                              Endpoint / Service                                                  Contract
+
+                                                                  Return per-rental Host cash settlement, qualifying rental spend,
+GET /hosts/{id}/settlements                                       contractual split %, Host DCP basis, Host DCPR awarded/reversed and
+                                                                  related ledger/event IDs.
+
+POST /dcp/reservations                                            Reserve eligible DCP against a source transaction.
+
+POST /dcp/reservations/{id}/settle                                Settle actual DCP used.
+
+POST /dcp/reservations/{id}/release                               Release unused reserved DCP.
+
+POST /payments/webhook                                            Consume payment processor status events idempotently.
+
+POST /members/{id}/plan-change                                    Create effective-dated upgrade/downgrade event.
+
+POST /future-driver/plan                                          Store target vehicle/date/budget and projection inputs.
+
+                                                                  Return rules-backed recommendation, calculations, disclosures and next-
+POST /ai/recommendation
+                                                                  best action.
+
+GET /admin/dcp-liability                                          Report face value, expected cost, actual cost, expired/redeemed DCP.
+
+GET /admin/audit                                                  Export traceable event history and user/admin changes.
+
+                                                                  Return approved effective-dated Dream Carz
+                                                                  subscription rate cards: setup fee, monthly rate, miles,
+GET /subscription-rate-plans                                      coverage mode, included services, market scope and
+                                                                  rule version. Do not return POSH benchmark values
+                                                                  as live rates.
+
+                                                                  Return the approved Dream Carz rate card plus
+                                                                  vehicle-specific required floor, member eligibility,
+                                                                  DCP payment options, mileage and included-service
+POST /quotes/subscription
+                                                                  assumptions. If no approved live rate exists, return
+                                                                  RATE_NOT_CONFIGURED/manual review; never fall
+                                                                  back to POSH or historical examples.
+
+                                                                  Return personal/team CPP by period, counted depth, source production
+GET /associates/{id}/cpp
+                                                                  and reversals.
+
+                                                                  Idempotently calculate net commissionable revenue, post CPP and create
+POST /compensation/production/settle
+                                                                  qualified level compensation rows for a settled source transaction.
+
+                                                                  Evaluate Associate rank for a period from effective rank rules, counted
+POST /compensation/ranks/evaluate
+                                                                  depth, CPP and good-standing inputs.
+
+                                                                  Return cash commission, compensation DCP, rank awards, hold/payable
+GET /associates/{id}/compensation
+                                                                  status, chargeback exposure and source refs.
+
+
+
+
+16.1 Example rental quote response
+  {
+      "memberTier": "BLACK",
+      "vehicleId": "veh_123",
+      "referenceBaseRate": 49.95,
+      "memberCashRateBeforeDcp": 49.95,
+      "targetDailyDcpDiscount": 40.00,
+      "dcpRequiredPerDay": 4000,
+      "walletPriority": ["DCPR", "DCPE"],
+      "dcpReserved": 120000,
+      "cashBaseAfterDcp": 298.50,
+      "coverage": 0.00,
+
+
+ Internal Development Source of Truth | Effective September 11,                                                                   Page 24
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+         "taxesAndPassThrough": 0.00,
+         "finalCashDue": 298.50,
+         "contributionFloorPassed": true,
+         "ruleVersion": "2026-09-11"
+     }
+
+
+16.2 Example Host DCPR settlement response
+     {
+         "rentalId": "rnt_600",
+         "hostPartnerAccountId": "host_123",
+         "renterMemberId": "mem_456",
+         "qualifyingRentalSpend": 600.00,
+         "hostContractualSplitPct": 0.50,
+         "hostDcpBasis": 300.00,
+         "hostDcprRate": 10,
+         "hostDcprEarned": 3000,
+         "walletCode": "DCPR",
+         "renterDcpEventId": "dcp_evt_renter_001",
+         "hostDcpEventId": "dcp_evt_host_001",
+         "hostCashSettlementEventId": "host_settle_001",
+         "ruleVersion": "2026-09-11-v1.1"
+     }
+
+The API response must prove that renter DCP, Host DCPR and Host cash settlement are separate outcomes tied
+to one source rental and one trace ID.
+
+
+17. Admin Configuration and Reporting
+17.1 Admin-configurable items
+        Tier prices and effective dates
+        Starting DCPR
+        Wallet streams and earning rates
+        Renewal bonus schedule
+        Rental rate plans and mileage limits
+        Daily/member discount caps
+        Vehicle access bands
+        Wallet redemption categories and caps
+        Activation fees/requirements where approved
+        Good-standing grace periods
+        Future Driver accelerator (currently unconfigured)
+        Promotions and Founding Member awards
+        Host/Partner VSR and payout methods
+        Commission rules and rank thresholds
+        Contribution floors and subsidy budgets
+        DCP expected cost assumptions and liability model
+        Market/jurisdiction disclosures
+
+17.2 Member dashboard
+        Balance by wallet
+        Aggregate DCP display with clear wallet breakdown
+        Current as-low-as rental rate / quote access
+        DCP reservation/usage selector
+
+    Internal Development Source of Truth | Effective September 11,                                  Page 25
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+      Current vehicle access band
+      Upgrade path and benefit unlocks
+      Future Driver target and progress
+      Rental days saved / value delivered
+      Drive Free™ / Be Free™ progress visualization if enabled
+      Transaction history
+
+17.3 Admin dashboard
+      DCP outstanding face value by wallet/tier
+      Expected redemption cost and actual redemption cost
+      DCP earned/redeemed/expired/reversed
+      Renewal bonus cost
+      Rental discount/subsidy cost
+      Vehicle contribution margin
+      Host/Partner payouts
+      Commission accrual/payments/chargebacks
+      Member good-standing counts
+      AI recommendation conversion and override rate
+      Audit exceptions and manual adjustments
+      Rule-version usage and stale-config alerts
+
+
+18. Security, Permissions and Audit
+                                 Role                                                 Minimum Permission Model
+                                                                     View own account, quote, choose eligible DCP redemption;
+    Member
+                                                                     cannot alter balances.
+                                                                     View approved customer/lead data and production; no direct
+    Associate
+                                                                     ledger edits.
+                                                                     Manage rentals/vehicles within permissions; cannot silently
+    Operations
+                                                                     alter financial history.
+                                                                     View/approve financial adjustments, reconciliation and liability
+    Finance
+                                                                     reports.
+                                                                     Configure approved DCP rules and post permissioned
+    DCP Administrator
+                                                                     adjustments with reason codes.
+    Compliance/Audit                                                 Read-only access to complete event and transaction history.
+    System Service                                                   Least-privilege service account for event processing.
+                                                                     Restricted break-glass capabilities; all actions logged and
+    Super Admin
+                                                                     reviewed.
+
+
+      Use role-based access control and least privilege.
+      All manual DCP adjustments require actor, reason code, source reference and before/after reporting.
+      Sensitive customer/financial data must be encrypted in transit and at rest.
+      Payment card data should remain with compliant payment processor/tokenization services; do not store raw card
+       data unless separately certified.
+      Maintain immutable/auditable logs for financial and benefit-affecting actions.
+      Use idempotency protection for webhooks and mutation APIs.
+      Protect AI tools from direct unrestricted database mutation; AI calls approved application services.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                            Page 26
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+19. QA Test Matrix and Acceptance Criteria
+                                 Test                                                       Acceptance Criterion
+
+                                                                  Successful $249 enrollment activates Freedom and posts exactly 15,000
+Enrollment - Freedom
+                                                                  DCPR once.
+
+Enrollment idempotency                                            Duplicate payment webhook does not duplicate starting DCPR.
+
+                                                                  $99 on-time renewal posts 990 DCPR + 990 DCPM earned, then 3,000 DCPR
+Plus earning
+                                                                  + 3,000 DCPM bonus.
+
+                                                                  $199 qualifying cash event posts 1,990 to each of DCPR/DCPM/DCPO
+Pro earning
+                                                                  before any bonus.
+
+                                                                  $1,295 qualifying renewal posts 12,950 to each 1× wallet and 25,900 to
+Black earning
+                                                                  DCPE before bonus.
+
+                                                                  On-time Black renewal posts total 126,000 bonus DCP with DCPE receiving
+Black bonus
+                                                                  36,000.
+
+                                                                  Successful late payment follows cash-earn rule but no on-time bonus
+Late renewal
+                                                                  unless an active rule explicitly allows it.
+
+                                                                  $49.95 reference option can quote $19.95/day with 3,000 DCPR/day if
+Rental quote - Gold
+                                                                  eligible and economics pass.
+
+                                                                  $49.95 reference option can quote $9.95/day with 4,000 DCP/day; DCPR
+Rental quote - Black
+                                                                  first, DCPE second.
+
+                                                                  Partial redemption produces correct cash amount or declines partial use
+Insufficient DCP
+                                                                  according to configured rule.
+
+DCP reserve                                                       Reserved DCP cannot be spent in a second concurrent transaction.
+
+                                                                  Settle actual DCP; unused reservation releases; post rental-earned DCP
+Rental close
+                                                                  only after qualifying cash settles.
+
+                                                                  Original DCP is not edited; reversal entries and good-standing changes are
+Chargeback
+                                                                  created.
+
+                                                                  Historical wallet events remain; current permissions follow effective-
+Downgrade
+                                                                  dated downgrade rule.
+
+                                                                  Member discount does not reduce contractual VSR/Host payout unless
+Host economics
+                                                                  agreement explicitly says so.
+
+                                                                  $600 qualifying rental spend with a 50% Host split and 10 DCP/$ posts
+Host DCPR - 50/50 example
+                                                                  exactly 3,000 DCPR to the Host beneficiary.
+
+                                                                  Renter DCP is calculated and posted independently; Host DCPR does not
+Host DCPR separation
+                                                                  reduce renter DCP, renter purchasing power, or Host cash payout.
+
+                                                                  A Black renter does not cause the Host to earn the renter's 7× multiplier.
+Host DCPR multiplier isolation                                    Only the Host's own effective Host/member rule may change Host DCPR
+                                                                  earning.
+
+                                                                  Duplicate rental-close/settlement webhook or retry does not duplicate the
+Host DCPR idempotency
+                                                                  Host DCPR award.
+
+                                                                  If 50% of the $600 qualifying rental spend is refunded after a 3,000 DCPR
+Host DCPR reversal                                                Host award, post a linked 1,500 DCPR reversal entry rather than editing
+                                                                  the original award.
+
+                                                                  Quote is blocked or subsidized when discount + DCP would violate
+Contribution floor
+                                                                  configured floor.
+
+                                                                  AI does not recommend higher tier when lower tier adequately solves the
+AI lowest-tier rule
+                                                                  stated need.
+
+                                                                  AI cannot display unconfigured price/multiplier/inventory; it returns
+AI no-invention rule
+                                                                  unavailable/handoff.
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                                    Page 27
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                              Test                                                          Acceptance Criterion
+
+                                                                  No legacy Future Driver bonus posts unless an active approved
+Future Driver
+                                                                  accelerator rule exists.
+
+                                                                  Every material mutation is traceable to actor/service, source transaction,
+Audit
+                                                                  rule version and timestamp.
+
+                                                                  $10,000 net commissionable customer revenue creates exactly 100.00 CPP.
+CPP definition
+                                                                  Taxes/noncommissionable charges do not create CPP.
+
+                                                                  If full $249 enrollment + $49 first month are commissionable and settled,
+Latest pricing - Freedom
+                                                                  create 2.98 initial CPP; recurring full $49 month creates 0.49 CPP.
+
+                                                                  If full $24,995 enrollment + $1,295 first month are commissionable and
+Latest pricing - Black                                            settled, create 262.90 initial CPP; recurring full $1,295 month creates 12.95
+                                                                  CPP.
+
+                                                                  One $100 net commissionable event supports 10% cash + 10% DCP at
+Level payout - $100                                               Level 1 and 2.5% cash + 2.5% DCP for each qualified Levels 2-7; maximum
+                                                                  configured allocation = 25% cash + 25% DCP.
+
+                                                                  A 50% refund of a prior 100 CPP source posts a linked -50 CPP reversal
+CPP reversal                                                      and proportionate compensation reversals; original rows remain
+                                                                  unchanged.
+
+                                                                  Director rank counts qualified CPP only through Levels 1-5 for rank
+Rank depth - Director
+                                                                  volume under the current rank-depth table.
+
+                                                                  Qualified 1,000 monthly CPP with all required conditions posts $500 cash
+Rank award - Senior Manager
+                                                                  rank award + 50,000 Associate compensation DCP once for the period.
+
+                                                                  Comp-plan DCP is available immediately for eligible approved Dream
+Associate DCP availability                                        Carz vehicle charges under the current compensation rule, without
+                                                                  reclassifying it as renter DCPR/DCPM/etc.
+
+                                                                  A live Pro subscription quote uses only the current
+                                                                  approved Dream Carz rate card and vehicle economic
+Subscription pricing source                                       floor. If no approved rate is configured, return
+                                                                  RATE_NOT_CONFIGURED/manual review; do not use
+                                                                  the old $2,399 setup / $799 monthly sample.
+
+                                                                  If a vehicle-specific required monthly floor is $925, a configured $799
+Subscription floor                                                sample rate cannot produce a final $799 quote without an authorized
+                                                                  subsidy.
+
+ POSH benchmark isolation                                         POSH benchmark data may be displayed in internal
+                                                                  market analysis/test fixtures, but changing POSH
+                                                                  benchmark values must not change any live Dream
+                                                                  Carz membership or vehicle subscription quote.
+ Membership price source of truth                                 Freedom $249/$49; Plus $499/$99; Pro $1,499/$199;
+                                                                  Elite $2,499/$349; Silver $4,995/$499; Gold
+                                                                  $9,995/$899; Black $24,995/$1,295 are returned from
+                                                                  the current effective-dated membership
+                                                                  configuration and are used by CPP calculations and
+                                                                  AI recommendations.
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                                     Page 28
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+20. Recommended Build Order
+                              Build Phase                                                            Scope
+
+                                                                     Identity/member records, membership plan config, payment
+Phase 1 — Foundation                                                 integration, good-standing engine, immutable DCP ledger, audit
+                                                                     framework.
+
+                                                                     Wallet definitions, earning, starting DCPR, renewal bonuses,
+Phase 2 — DCP Core
+                                                                     reservation/redemption, liability reporting.
+
+                                                                     Vehicle inventory, rate configuration, quote engine, coverage/pass-
+Phase 3 — Rental Engine
+                                                                     throughs, contribution floor, rental lifecycle.
+
+                                                                     Subscribe, approved Dream Carz subscription rate-
+                                                                     card configuration, POSH benchmark isolation,
+Phase 4 — Vehicle / Long-Term                                        vehicle-specific monthly floor,
+                                                                     lease/RTO/LTO/ownership transaction servicing,
+                                                                     payment schedules, DCPO/DCPW/DCPP logic.
+
+                                                                     Transportation-first intake, recommendation rules, calculators, live
+Phase 5 — AI Concierge
+                                                                     data retrieval, disclosures, human handoff.
+
+                                                                     VSR/settlement engine, Host portal, permanent genealogy, CPP
+Phase 6 — Host/Partner + Commissions                                 production ledger, level compensation engine, rank/depth engine,
+                                                                     compensation DCP ledger, chargebacks and payout reporting.
+
+                                                                     DCPF workflows, DCPE routing, multi-vehicle/fleet eligibility,
+Phase 7 — Fleet / Black
+                                                                     advanced Black member experience.
+
+                                                                     Advanced dashboards, cohort economics, dynamic
+Phase 8 — Optimization                                               pricing/utilization, retention/reactivation automations and expanded
+                                                                     AI workflows.
+
+
+
+    Do not build commissions, dashboards or AI shortcuts on top of unstable source events. Build
+    identity, billing, rules and immutable ledgers first.
+
+
+21. Open Configuration Items Before Production
+     Final direct vehicle-day cost and minimum contribution floor by vehicle/class/market.
+     Final public daily/weekly/monthly rates and mileage plans by vehicle.
+     Coverage/insurance cost, eligibility, deposits and risk rules.
+     Late fees, cleaning, fuel/charging, toll and damage policies.
+     Exact wallet-specific redemption caps for DCPO, DCPW, DCPP, DCPF and DCPE.
+     Any activation fee schedule for higher-cost DCP benefits.
+     Final expected fulfillment cost / reserve model per DCP redemption category.
+     Future Driver accelerator schedule, if any. Current master defaults to no extra Future Driver bonus.
+     Expiration/vesting rules by wallet.
+     Downgrade treatment of earned wallet balances.
+     Founding Member award schedule, if reactivated.
+     Final Host/Partner settlement agreements and payout formulas.
+     Associate compensation details still requiring policy choice: inactive-upline compression/roll-up,
+      qualification maintenance rules, hold/payout timing and any noncommissionable membership components.
+     Jurisdiction-specific consumer disclosures, rental/RTO/LTO legal review and privacy/security requirements.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                                                Page 29
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+      Final subscription bundle policy: whether coverage/insurance is bundled or separate, setup-fee
+       waiver/reduction rules, mileage/overage schedule, swap frequency, delivery/return charges, deposits and
+       DCP application caps.
+
+
+Appendix A. Current Formulas and Worked Examples
+A.1 Generic earning formula
+     DCP earned in each active 1× wallet = floor(eligible_cash_amount × 10)
+     DCP earned in a 2× wallet = floor(eligible_cash_amount × 10 × 2)
+
+
+A.2 Plus renewal example
+Plus monthly dues = $99. Active wallets = DCPR + DCPM. A successful qualifying renewal creates 990 DCPR + 990
+DCPM from cash paid. If the payment is on-time, add 3,000 DCPR + 3,000 DCPM bonus. Total from that renewal
+event chain = 7,980 DCP across the two wallets.
+
+A.3 Pro renewal example
+Pro monthly dues = $199. Active wallets = DCPR + DCPM + DCPO. Earned from cash = 1,990 to each wallet (5,970
+total). On-time bonus = 6,000 to each wallet (18,000 total). Combined event-chain DCP = 23,970.
+
+A.4 Black 30-day rental example
+                                 Item                                                   Value
+    Reference rental option                                             $49.95/day
+    Black DCP discount                                                  $40.00/day
+    Cash rate after DCP                                                 $9.95/day
+    DCP used per day                                                    4,000
+    DCP used in 30 days                                                 120,000
+    Rental cash paid                                                    $298.50
+    Rental cash earning per 1× wallet                                   2,985 DCP
+    Monthly dues                                                        $1,295
+    Dues earning per 1× wallet                                          12,950 DCP
+    On-time bonus                                                       126,000 total
+    Rental-usable replenishment if counting DCPR + DCPE under
+                                                                        101,805 DCP
+    current example
+
+
+This worked example is for system validation of event sequencing and wallet math. It does not override live
+eligibility, contribution floors, inventory, taxes, coverage or other transaction charges.
+
+A.5 Black wallet math on $1 eligible cash
+     DCPR = 10
+     DCPO = 10
+     DCPW = 10
+     DCPP = 10
+     DCPF = 10
+     DCPE = 20
+     TOTAL = 70 DCP = effective 7× earning power
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                       Page 30
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+A.6 Host DCPR split example
+   qualifying_rental_spend = $600
+   host_contractual_split_pct = 50%
+   host_dcp_basis = $600 × 50% = $300
+   host_dcpr_rate = 10 DCP per eligible $1
+   host_dcpr_earned = $300 × 10 = 3,000 DCPR
+
+The renter's DCP is calculated separately from the renter's own membership rules. The Host DCPR award and
+Host cash settlement remain separate ledger effects.
+
+A.7 CPP formulas
+   net_commissionable_revenue =
+    cash_collected - taxes - refunds - noncommissionable_charges
+
+
+   cpp = net_commissionable_revenue / 100
+
+
+   level_1_cash = net_commissionable_revenue × 10%
+   level_1_dcp_value = net_commissionable_revenue × 10%
+
+
+   each_qualified_level_2_to_7_cash = net_commissionable_revenue × 2.5%
+   each_qualified_level_2_to_7_dcp_value = net_commissionable_revenue × 2.5%
+
+
+   max_7_level_cash = 25%
+   max_7_level_dcp_value = 25%
+
+
+A.8 Latest membership CPP examples
+Assuming the entire membership enrollment and monthly fee are commissionable and settled: Freedom = 2.98
+initial CPP / 0.49 recurring; Plus = 5.98 / 0.99; Pro = 16.98 / 1.99; Elite = 28.48 / 3.49; Silver = 54.94 / 4.99; Gold =
+108.94 / 8.99; Black = 262.90 / 12.95. Actual production uses net commissionable revenue.
+
+A.9 POSH benchmark pricing example
+Public POSH consumer benchmark reviewed September 11, 2026: Luxury $2,388 setup / $799 monthly / 2,400
+miles; Plush $3,588 setup / $1,199 monthly / 2,200 miles; POSH $5,988 setup / $1,699 monthly / 1,800 miles. This
+appendix is competitive reference data only and must not seed or override Dream Carz production pricing.
+
+
+Appendix B. Event Catalog
+                   Event                                          Domain                          Minimum Effect
+
+                                                                                  Activate membership; post Starting DCPR;
+ENROLLMENT_PAYMENT_SETTLED                   Payment                              update good standing; production/commission;
+                                                                                  company revenue.
+
+                                                                                  Post earned DCP; evaluate on-time; post bonus;
+RENEWAL_PAYMENT_SETTLED                      Payment
+                                                                                  extend paid-through; production/commission.
+
+                                                                                  Post eligible renter rental-earned DCP and
+                                                                                  rental financials; if Host-DCPR eligible, calculate
+RENTAL_PAYMENT_SETTLED                       Rental
+                                                                                  Host-attributable spend under contractual split
+                                                                                  and emit Host DCPR event.
+
+DCP_EARNED                                   DCP                                  Immutable wallet credit.
+
+DCP_BONUS_POSTED                             DCP                                  Immutable bonus wallet credit.
+
+DCP_RESERVED                                 DCP                                  Move available to reserved state.
+
+
+
+
+ Internal Development Source of Truth | Effective September 11,                                                            Page 31
+ 2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+
+                     Event                                           Domain                      Minimum Effect
+
+                                                                                Mark used; record purchasing power and actual
+DCP_SETTLED                                     DCP
+                                                                                cost.
+
+DCP_RELEASED                                    DCP                             Return unused reservation.
+
+DCP_REVERSED                                    DCP                             Reverse prior event with linked source/reason.
+
+PLAN_CHANGED                                    Membership                      Effective-date new membership configuration.
+
+GOOD_STANDING_CHANGED                           Membership                      Update access/benefit/AI eligibility.
+
+VEHICLE_ACCESS_CHANGED                          Vehicle                         Update allowed classes/bands.
+
+HOST_SETTLEMENT_POSTED                          Host/Partner                    Record payout and platform economics.
+
+                                                                                Post Host DCPR from qualifying rental spend
+                                                                                attributable to Host under contractual split;
+HOST_DCPR_EARNED                                Host / DCP
+                                                                                separate from renter DCP and Host cash
+                                                                                settlement.
+
+                                                                                Post proportional reversal for
+                                                                                refunded/reversed qualifying spend; link to
+HOST_DCPR_REVERSED                              Host / DCP
+                                                                                original Host DCPR transaction and source
+                                                                                rental.
+
+PRODUCTION_POSTED                               Associate                       Create genealogy-linked production.
+
+COMMISSION_POSTED                               Commission                      Create held/payable commission record.
+
+                                                                                Persist intake, live rule version, calculations,
+AI_RECOMMENDATION_CREATED                       AI
+                                                                                recommendation, disclosures.
+
+MANUAL_ADJUSTMENT_POSTED                        Admin                           Permissioned correction; never destructive edit.
+
+                                                                                Create immutable CPP event from net
+CPP_PRODUCTION_POSTED                           Associate / CPP
+                                                                                commissionable revenue and source genealogy.
+
+CPP_PRODUCTION_REVERSED                         Associate / CPP                 Post linked reversal after refund/chargeback.
+
+                                                                                Post cash + compensation DCP by qualified level
+LEVEL_COMMISSION_POSTED                         Commission
+                                                                                and source transaction.
+
+                                                                                Snapshot CPP by counted depth, qualification
+RANK_EVALUATED                                  Associate / Rank
+                                                                                and rule version.
+
+                                                                                Post monthly cash award + compensation DCP
+RANK_AWARD_POSTED                               Commission / Rank
+                                                                                when qualified.
+
+                                                                                Calculate class sample, vehicle economic floor,
+SUBSCRIPTION_QUOTED                             Subscription                    setup, mileage, included services and DCP
+                                                                                options.
+
+                                                                                Post revenue, DCP/CPP and transaction
+SUBSCRIPTION_PAYMENT_SETTLED                    Subscription
+                                                                                economics from settled subscription payment.
+
+
+
+
+Appendix C. Deprecated / Do-Not-Implement Rules
+The following items appeared in earlier working documents or previous program iterations. They are
+intentionally excluded from the current master rules unless reintroduced through a formally approved
+configuration change.
+     Older tier architecture using Diamond instead of the current Silver + Gold progression.
+     Older activation/monthly prices such as Freedom $499/$39.95, Plus $999/$69, Elite $2,499/$149, Diamond
+      $3,495/$199 and Black $5,495/$299.
+     Older multiplier schedule such as 1.15×, 1.30×, 1.50×, 1.75× and 2.00×.
+     Older Future Driver monthly DCP schedule (3,500 / 5,000 / 6,500 / 8,000 / 10,500 / 13,000).
+     Older rent-down percentage discount matrix as the primary pricing model.
+
+    Internal Development Source of Truth | Effective September 11,                                                       Page 32
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     DCPU wallet code. DCPU has been eliminated.
+     Any design that stores DCP as one generic balance without wallet-level accounting.
+     Any logic that lets front-end or AI code invent/modify DCP balances directly.
+     Any hard-coded assumption that DCP is cash, guaranteed savings, equity or guaranteed ownership.
+     Any Host rule allowing personally owned third-party customer vehicles unless Dream Carz formally changes the
+      current Host eligibility rule.
+    Migration requirement: if older test databases or prototypes contain deprecated plan IDs,
+    wallet codes or multiplier logic, map them through a controlled migration and preserve the
+    historical source data for audit. Do not silently overwrite history.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                         Page 33
+    2026
+DREAM CARZ | AI + DCP MASTER PROGRAMMER SPECIFICATION
+     Older CPP examples using obsolete membership prices (for example, Freedom $238 initial paid total or
+      Black $26,200 initial paid total). Use the latest current membership pricing in Section 12.8.
+     Retired subscription samples: Freedom $1,799 setup/$599 monthly; Plus $2,099/$699; Pro $2,399/$799; Elite
+      $3,599/$1,199; Silver $5,999/$1,699; Gold $7,499/$2,199; Black $9,999+/$2,999+. These were illustrative
+      extrapolations, are NOT approved Dream Carz prices, and must not be used by production code, AI, sales or
+      customer quotes.
+
+
+Final Implementation Standard
+    BUILD THE SYSTEM SO EVERY NUMBER CAN BE EXPLAINED.
+
+At any point, Dream Carz must be able to answer: Why does this member or Host have this DCP balance? Which
+wallet is it in? Which payment or rental created it? Why did this Associate receive this CPP, cash commission,
+compensation DCP or rank award? Which genealogy level and rule version applied? What subscription/rental
+pricing rule produced the quote? How much customer purchasing power was delivered? What did it actually
+cost Dream Carz? What Host/Partner payout was preserved? What was the final contribution margin? Every
+answer must trace back to immutable source events.
+The system is complete only when those answers are available from source transactions and immutable events
+without relying on manual spreadsheets or reconstructed estimates.
+    Host DCPR is a mandatory implementation rule in Version 1.3: qualifying Host rentals must
+    create a separate DCPR earning event based on the Host-attributable qualifying rental spend
+    under the contractual split, independent of the renter's DCP.
+
+Consolidated Source Register
+Version 1.3 retains the approved Host DCPR rule and current CPP / Associate compensation logic, locks the
+current membership price table as the Dream Carz pricing source of truth, and removes invented Dream Carz
+subscription price examples. POSH remains a read-only external benchmark only. Live Dream Carz vehicle
+subscription pricing must come from an approved effective-dated Dream Carz rate card.
+     Dream_Carz_AI_Membership_Training_Guide_v3_DCP_Future_Driver.pdf
+     Dream_Carz_Drive_Programmer_Spec_v1.pdf (working economics retained only where consistent with current
+      rules)
+     Dream_Carz_Membership_Economics_Engine_Programmer_Spec.pdf
+     Dream_Carz_DCP_Programmer_Breakdown.pptx
+     Dream_Carz_AI_Concierge_Slide.pptx
+     Dream_Carz_Associate_Compensation_CPP_Updated_Pricing.pptx
+     POSH public pricing benchmark at poshcars.io/pricing, reviewed September 11, 2026.
+     Current approved Dream Carz membership/DCP/rental configuration as of September 11, 2026.
+
+
+
+
+    Internal Development Source of Truth | Effective September 11,                                      Page 34
+    2026
+

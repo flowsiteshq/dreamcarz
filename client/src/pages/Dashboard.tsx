@@ -54,23 +54,19 @@ function humanize(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ").replace(/\b\w/g, letter => letter.toUpperCase()) : "Not started";
 }
 
-function formatCurrency(cents: number | null | undefined) {
-  if (typeof cents !== "number") return "No recorded value";
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(cents / 100);
-}
-
 export default function Dashboard() {
   const { user } = useAuth();
   const overview = trpc.dreamcarzId.overview.useQuery(undefined, { staleTime: 30_000 });
+  const masterProgram = trpc.masterProgram.publicConfiguration.useQuery(undefined, { staleTime: 5 * 60_000 });
   const firstName = user?.name?.split(" ")[0] || "Member";
   const openTransaction = overview.data?.transactions.find(transaction => !["settled", "cancelled", "closed", "completed", "canceled", "declined"].includes(transaction.status)) ?? null;
   const transactionVehicle = findVehicle(openTransaction?.vehicleId);
   const savedVehicle = findVehicle(overview.data?.conciergeJourney?.selectedVehicleId);
   const focusVehicle = transactionVehicle ?? savedVehicle;
   const membership = overview.data?.membership ?? null;
-  const wallet = overview.data?.wallet ?? null;
   const journeyIntent = overview.data?.conciergeJourney?.intent;
   const memberStatus = overview.data?.accountStanding ? humanize(overview.data.accountStanding) : "Loading";
+  const configuredPlan = membership ? masterProgram.data?.membershipPlans.find(plan => plan.code === membership.plan.code.toUpperCase()) ?? null : null;
 
   return (
     <DashboardShell title="My Dashboard">
@@ -134,9 +130,8 @@ export default function Dashboard() {
 
             <section className="grid gap-5 lg:grid-cols-2">
               <article className="overflow-hidden border border-[#e5e1d9] bg-white p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">DreamCarz Value</p><h3 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em]">Recorded account value.</h3></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#fbf5e6] text-[#a8832d]"><WalletCards size={19} /></span></div>
-                <p className="mt-5 text-3xl font-bold tracking-[-0.05em] text-black">{wallet ? formatCurrency(wallet.availableCreditCents) : "Not available"}</p>
-                <p className="mt-2 text-xs leading-5 text-gray-500">Ledger records only. Eligibility, approvals, and permitted use remain subject to current program rules.</p>
+                <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#a8832d]">DCP wallet structure</p><h3 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em]">Recorded by wallet.</h3></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#fbf5e6] text-[#a8832d]"><WalletCards size={19} /></span></div>
+                {configuredPlan ? <><p className="mt-5 text-3xl font-bold tracking-[-0.05em] text-black">{configuredPlan.walletCodes.length} stream{configuredPlan.walletCodes.length === 1 ? "" : "s"}</p><p className="mt-2 text-xs font-semibold text-[#4e4538]">{configuredPlan.walletCodes.join(" · ")}</p><p className="mt-3 text-xs leading-5 text-gray-500">A DCP balance appears only after a qualifying activity posts an immutable ledger entry. DCP is eligible DreamCarz transportation value, not cash.</p></> : <><p className="mt-5 text-xl font-bold tracking-[-0.04em] text-black">No active DCP stream</p><p className="mt-3 text-xs leading-5 text-gray-500">Your wallet structure is shown when an active membership is linked to the current approved configuration. No DCP balance is inferred here.</p></>}
                 <Link href="/dashboard/rewards" className="mt-5 inline-flex items-center gap-2 text-xs font-bold underline decoration-[#b28d3b] decoration-2 underline-offset-4">Review activity <ArrowRight size={14} /></Link>
               </article>
               <article className="overflow-hidden bg-[#151515] p-5 text-white sm:p-6">

@@ -14,13 +14,10 @@ describe("DreamCarz pricing experience", () => {
     expect(pricing).toContain("Terms are confirmed during selection.");
     expect(pricing).toContain("Vehicle access comes next");
     expect(pricing).toContain("membership does not include a vehicle");
-    expect(pricing).toContain("Freedom");
-    expect(pricing).toContain("Plus");
-    expect(pricing).toContain("Pro");
-    expect(pricing).toContain("Elite");
-    expect(pricing).toContain("Silver");
-    expect(pricing).toContain("Gold");
-    expect(pricing).toContain("Black");
+    expect(pricing).toContain("planNarratives");
+    expect(pricing).toContain("trpc.masterProgram.publicConfiguration.useQuery");
+    expect(pricing).toContain("plan.name");
+    expect(pricing).toContain("Starting DCPR");
     expect(pricing).not.toContain("$24,950");
     expect(pricing).not.toContain("$1,250 monthly");
   });

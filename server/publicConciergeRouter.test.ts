@@ -7,10 +7,12 @@ vi.mock("./rateLimit", () => ({ consumeRateLimit: vi.fn(() => ({ allowed: true }
 vi.mock("./_core/llm", () => ({ listLLMModels: vi.fn(), invokeLLM: vi.fn() }));
 vi.mock("./elevenLabsTranscription", () => ({ transcribeConciergeVoice: vi.fn() }));
 vi.mock("./elevenLabsVoiceAgent", () => ({ createDreamCarzVoiceSession: vi.fn() }));
+vi.mock("./masterProgramConfig", () => ({ getActiveMasterProgramConfiguration: vi.fn() }));
 
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { transcribeConciergeVoice } from "./elevenLabsTranscription";
 import { createDreamCarzVoiceSession } from "./elevenLabsVoiceAgent";
+import { getActiveMasterProgramConfiguration } from "./masterProgramConfig";
 import { consumeRateLimit } from "./rateLimit";
 import { appRouter } from "./routers";
 import { readFileSync } from "node:fs";
@@ -27,6 +29,7 @@ describe("public DreamCarz concierge", () => {
     vi.mocked(listLLMModels).mockReset();
     vi.mocked(transcribeConciergeVoice).mockReset();
     vi.mocked(createDreamCarzVoiceSession).mockReset();
+    vi.mocked(getActiveMasterProgramConfiguration).mockReset();
     vi.mocked(consumeRateLimit).mockReset();
     vi.mocked(consumeRateLimit).mockReturnValue({ allowed: true, remaining: 11, retryAfterMs: 0 });
   });
@@ -100,6 +103,27 @@ describe("public DreamCarz concierge", () => {
     expect(conciergePageSource).toContain("Join waiting list");
     expect(fleetPageSource).toContain("requestedReserveVehicleId");
     expect(vehicleDialogSource).toContain("Join Tesla Model 3 waiting list");
+  });
+
+  it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {
+    vi.mocked(getActiveMasterProgramConfiguration).mockResolvedValue({
+      code: "DREAMCARZ_MASTER_2026_09_11",
+      version: "1.3",
+      effectiveStart: new Date("2026-09-11T00:00:00.000Z"),
+      effectiveEnd: null,
+      faceValueDcpPerDollar: 100,
+      standardWalletEarnRatePerEligibleDollar: 10,
+      membershipPlans: [{ code: "FREEDOM", name: "Freedom", enrollmentFeeCents: 24_900, monthlyFeeCents: 4_900, startingDcpr: 15_000, multiplier: 1, vehicleAccess: "$10K–$15K", asLowDailyRateCents: 4495, dcpPerDay: 500, walletCodes: ["DCPR"] }],
+      walletDefinitions: [],
+    });
+
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "What does Freedom membership cost?" });
+
+    expect(result).toMatchObject({ source: "master_program_membership_configuration", intent: "membership", recommendedVehicleIds: [] });
+    expect(result.answer).toContain("$249.00 enrollment");
+    expect(result.answer).toContain("$49.00 monthly");
+    expect(result.answer).toContain("not a final vehicle quote");
+    expect(invokeLLM).not.toHaveBeenCalled();
   });
 
   it("renders the market estimate card with transparent included and pending charge labels", () => {

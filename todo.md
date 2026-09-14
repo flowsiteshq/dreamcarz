@@ -1,5 +1,13 @@
 # Project TODO
 
+- [ ] Complete the remaining applicable DreamCarz AI/DCP Master Programmer Specification work without disrupting protected workflows.
+- [x] Add versioned effective-dated membership and DCP wallet definitions from the supplied master specification without automatically creating customer balances or financial effects.
+- [x] Expose the approved membership configuration and DCP wallet taxonomy in Pricing, member, and Concierge views while retaining manual review for unconfigured vehicle-specific rates and financial actions.
+- [x] Add regression coverage for the master specification configuration source, Concierge guardrails, and public membership pricing presentation.
+- [ ] Add approved effective-dated vehicle subscription rate cards and return `RATE_NOT_CONFIGURED` / manual review when vehicle-specific subscription economics are not configured.
+- [ ] Add wallet-specific member DCP balances, immutable event views, and permitted-use visibility without converting DCP to cash or inferring balances.
+- [ ] Add Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule.
+- [ ] Add Host DCPR, CPP, commission, and rank event models only after their required source-transaction, eligibility, approval, and chargeback controls are configured.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
