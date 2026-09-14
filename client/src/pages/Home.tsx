@@ -72,7 +72,7 @@ export default function Home() {
     <main>
       <section className="border-b border-[#ebe7df] bg-[#f7f1e9]">
         <div className="relative isolate min-h-[650px] overflow-hidden sm:min-h-[690px] lg:min-h-[735px]">
-          <img src="/manus-storage/dreamcarz-cinematic-hero-architecture_c73786ec.png" alt="Editorial DreamCarz automotive scene at a modern city overlook" className="absolute inset-0 h-full w-full object-cover object-[69%_center]" />
+          <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/GcmlolOGiXZGYYDf.png" alt="Editorial DreamCarz automotive scene at a modern city overlook" className="absolute inset-0 h-full w-full object-cover object-[69%_center]" />
           <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,252,247,0.98)_0%,rgba(255,252,247,0.93)_50%,rgba(255,252,247,0.72)_74%,rgba(255,252,247,0.28)_100%)] lg:bg-[linear-gradient(90deg,rgba(255,252,247,0.98)_0%,rgba(255,252,247,0.92)_32%,rgba(255,252,247,0.36)_57%,rgba(255,252,247,0.02)_78%)]" />
           <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(0deg,rgba(252,247,239,0.72),transparent)]" />
           <div role="status" aria-live="polite" className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-[#111111]/78 px-5 text-center text-white backdrop-blur-md transition-opacity duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${isPromptTransitioning ? "opacity-100" : "opacity-0"}`}>

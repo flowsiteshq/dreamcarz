@@ -14,6 +14,8 @@
 - [x] Provision the DreamCarz Google Cloud OAuth consent screen and Web application client with the authorized production callback before implementing Google account sign-in.
 - [x] Correct the DreamCarz Google OAuth web-client origin and callback to https://www.dreamcarz.io and its live callback path.
 - [ ] Complete one end-to-end Google account authorization on the published www.dreamcarz.io deployment and verify protected-account continuity.
+- [ ] Synchronize the validated Google OAuth server routes to the separate Railway production source serving www.dreamcarz.io, then verify the live authorization endpoint no longer returns 404.
+- [x] Restore the approved cinematic homepage hero image on the live www.dreamcarz.io deployment without changing its accepted layout or copy.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.

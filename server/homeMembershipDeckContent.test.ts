@@ -10,7 +10,7 @@ describe("homepage and membership deck content", () => {
     const membership = readClientFile("pages/Membership.tsx");
 
     expect(home).toContain("What do you need today?");
-    expect(home).toContain("/manus-storage/dreamcarz-cinematic-hero-architecture_c73786ec.png");
+    expect(home).toContain("https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/GcmlolOGiXZGYYDf.png");
     expect(home).toContain("Luxury · Freedom · On your terms.");
     expect(home).toContain("Ask DreamCarz anything...");
     expect(home).toContain('href="/concierge"');
