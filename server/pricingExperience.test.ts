@@ -16,6 +16,10 @@ describe("DreamCarz pricing experience", () => {
     expect(pricing).toContain("membership does not include a vehicle");
     expect(pricing).toContain("planNarratives");
     expect(pricing).toContain("trpc.masterProgram.publicConfiguration.useQuery");
+    expect(pricing).toContain("Priceline daily market comparison");
+    expect(pricing).toContain("PRICELINE_DAILY_MARKET_BENCHMARKS");
+    expect(pricing).toContain("not DreamCarz rates");
+    expect(pricing).toContain("View BWI Priceline snapshot");
     expect(pricing).toContain("plan.name");
     expect(pricing).toContain("Starting DCPR");
     expect(pricing).not.toContain("$24,950");

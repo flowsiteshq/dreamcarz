@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatUsdFromCents, getBwiMarketRentalEstimate } from "./marketRateReference";
+import { formatPricelineDailyBenchmark, formatUsdFromCents, getBwiMarketRentalEstimate, PRICELINE_DAILY_MARKET_BENCHMARKS } from "./marketRateReference";
 
 describe("BWI market rental reference", () => {
   it("calculates the recorded seven-day Ford Fusion comparison without presenting it as a final DreamCarz quote", () => {
@@ -22,5 +22,14 @@ describe("BWI market rental reference", () => {
       totalHighCents: 63931,
       isRange: true,
     });
+  });
+});
+
+describe("Priceline daily market benchmarks", () => {
+  it("keeps BWI and DCA comparisons transparent without collapsing the unmatched Traverse range", () => {
+    expect(formatPricelineDailyBenchmark(PRICELINE_DAILY_MARKET_BENCHMARKS["2024-ford-fusion-gray"], "BWI")).toBe("$62.33/day");
+    expect(formatPricelineDailyBenchmark(PRICELINE_DAILY_MARKET_BENCHMARKS["2020-chevrolet-equinox-gray"], "DCA")).toBe("$64.66/day");
+    expect(formatPricelineDailyBenchmark(PRICELINE_DAILY_MARKET_BENCHMARKS["2022-chevrolet-traverse-white"], "BWI")).toBe("$65.66–$91.33/day");
+    expect(formatPricelineDailyBenchmark(PRICELINE_DAILY_MARKET_BENCHMARKS["2022-chevrolet-traverse-white"], "DCA")).toBe("Not recorded");
   });
 });

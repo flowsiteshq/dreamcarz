@@ -18,5 +18,7 @@ describe("subscription rate-card administration", () => {
     expect(managerSource).toContain("Save subscription rate-card draft");
     expect(managerSource).toContain("never create a customer quote");
     expect(managerSource).toContain("Concierge must keep subscription requests in manual review");
+    expect(managerSource).toContain("Priceline market benchmark · not a DreamCarz charge");
+    expect(managerSource).toContain("never auto-fills, approves, or replaces");
   });
 });
