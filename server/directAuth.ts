@@ -2,7 +2,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { and, eq, gt, lte } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { authSessions, userCredentials, users, type User } from "../drizzle/schema";
+import { authSessions, googleOAuthIdentities, userCredentials, users, type User } from "../drizzle/schema";
 import { DIRECT_SESSION_MAX_AGE_MS } from "../shared/const";
 import { getDb } from "./db";
 
@@ -13,6 +13,12 @@ export type DirectAccountInput = {
   name: string;
   email: string;
   password: string;
+};
+
+export type GoogleIdentityInput = {
+  subject: string;
+  email: string;
+  name: string | null;
 };
 
 function normalizeEmail(email: string) {
@@ -101,6 +107,53 @@ export async function hasDirectAccountForEmail(emailInput: string): Promise<bool
     .where(eq(users.email, email))
     .limit(1);
   return Boolean(account[0]);
+}
+
+/**
+ * Links a verified Google subject to exactly one DreamCarz account. Google
+ * access and refresh tokens are never stored by DreamCarz.
+ */
+export async function findOrCreateGoogleAccount(input: GoogleIdentityInput): Promise<User> {
+  const db = await getDb();
+  if (!db) throw new Error("DreamCarz accounts are temporarily unavailable");
+
+  const now = new Date();
+  const linked = await db
+    .select({ user: users })
+    .from(googleOAuthIdentities)
+    .innerJoin(users, eq(googleOAuthIdentities.userId, users.id))
+    .where(eq(googleOAuthIdentities.googleSubject, input.subject))
+    .limit(1);
+
+  if (linked[0]) {
+    const emailAtLink = normalizeEmail(input.email);
+    await db.update(googleOAuthIdentities).set({ lastSignedIn: now, emailAtLink }).where(eq(googleOAuthIdentities.googleSubject, input.subject));
+    await db.update(users).set({ lastSignedIn: now }).where(eq(users.id, linked[0].user.id));
+    return { ...linked[0].user, lastSignedIn: now };
+  }
+
+  const email = normalizeEmail(input.email);
+  const matchingAccount = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  let user = matchingAccount[0];
+
+  if (!user) {
+    const created = await db.insert(users).values({
+      openId: `google_${nanoid(24)}`,
+      name: input.name?.trim() || null,
+      email,
+      loginMethod: "google",
+      role: "user",
+      lastSignedIn: now,
+    });
+    user = (await db.select().from(users).where(eq(users.id, Number(created[0].insertId))).limit(1))[0];
+  } else {
+    await db.update(users).set({ lastSignedIn: now }).where(eq(users.id, user.id));
+    user = { ...user, lastSignedIn: now };
+  }
+
+  if (!user) throw new Error("DreamCarz could not create the Google account link");
+  await db.insert(googleOAuthIdentities).values({ userId: user.id, googleSubject: input.subject, emailAtLink: email, lastSignedIn: now });
+  return user;
 }
 
 export async function createDirectSession(userId: number) {

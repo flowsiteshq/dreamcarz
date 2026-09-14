@@ -1,6 +1,7 @@
 # Project TODO
 
 - [ ] Complete the remaining applicable DreamCarz AI/DCP Master Programmer Specification work without disrupting protected workflows.
+- [x] Add secure Google OAuth sign-in and account linking to DreamCarz without duplicating or exposing protected member records.
 - [x] Add versioned effective-dated membership and DCP wallet definitions from the supplied master specification without automatically creating customer balances or financial effects.
 - [x] Expose the approved membership configuration and DCP wallet taxonomy in Pricing, member, and Concierge views while retaining manual review for unconfigured vehicle-specific rates and financial actions.
 - [x] Add regression coverage for the master specification configuration source, Concierge guardrails, and public membership pricing presentation.
@@ -10,6 +11,9 @@
 - [x] Add wallet-specific member DCP balances, immutable event views, and permitted-use visibility without converting DCP to cash or inferring balances.
 - [x] Complete Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule, including loaded-state synchronization and behavioral coverage.
 - [ ] Add Host DCPR, CPP, commission, and rank event models only after their required source-transaction, eligibility, approval, and chargeback controls are configured.
+- [x] Provision the DreamCarz Google Cloud OAuth consent screen and Web application client with the authorized production callback before implementing Google account sign-in.
+- [x] Correct the DreamCarz Google OAuth web-client origin and callback to https://www.dreamcarz.io and its live callback path.
+- [ ] Complete one end-to-end Google account authorization on the published www.dreamcarz.io deployment and verify protected-account continuity.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
@@ -445,3 +449,6 @@
 - [x] Add a concise, reduced-motion-safe checkmark animation and clear success message after the Tesla Model 3 waitlist form is submitted, without promising timing, availability, or pricing.
 - [x] Repair the Concierge microphone flow so supported browsers start voice reliably and unsupported audio capture receives a clear, usable fallback rather than a dead-end error.
 - [x] Restore the authenticated DreamCarz member dashboard to a refined automotive command-center layout with an editorial hero, working Concierge input, concise action row, verified journey cards, and a responsive utility rail.
+- [ ] Provision the DreamCarz Google Cloud OAuth consent screen and Web application client with the authorized production callback before implementing Google account sign-in.
+- [ ] Correct the DreamCarz Google OAuth web-client origin and callback to https://www.dreamcarz.io and its live callback path.
+- [ ] Add secure Google OAuth sign-in and existing-account linking while preserving DreamCarz direct-session security and account ownership.

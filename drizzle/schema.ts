@@ -43,6 +43,16 @@ export const authSessions = mysqlTable("auth_sessions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Provider identity references only; Google access and refresh tokens are never stored. */
+export const googleOAuthIdentities = mysqlTable("google_oauth_identities", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  googleSubject: varchar("googleSubject", { length: 255 }).notNull().unique(),
+  emailAtLink: varchar("emailAtLink", { length: 320 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+}, (table) => [uniqueIndex("google_oauth_identity_user_unique").on(table.userId)]);
+
 // ── DreamCarz OS access, membership, eligibility, and wallet foundations ───
 
 /**

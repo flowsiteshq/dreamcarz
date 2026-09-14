@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, Chrome, Eye, EyeOff, Loader2, LockKeyhole, Mail, UserRound } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -22,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const googleState = queryParams.get("google");
 
   const login = trpc.auth.login.useMutation();
   const register = trpc.auth.register.useMutation();
@@ -34,6 +35,10 @@ export default function Login() {
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
     setFormError(null);
+  };
+
+  const startGoogleSignIn = () => {
+    window.location.assign(`/api/auth/google?next=${encodeURIComponent(safeNext)}`);
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -104,6 +109,13 @@ export default function Login() {
               <button type="button" onClick={() => switchMode("signin")} className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${!isCreate ? "bg-white text-black shadow-sm" : "text-gray-500"}`} aria-selected={!isCreate}>Sign in</button>
               <button type="button" onClick={() => switchMode("create")} className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${isCreate ? "bg-white text-black shadow-sm" : "text-gray-500"}`} aria-selected={isCreate}>Create account</button>
             </div>
+
+            {googleState && <div role="alert" className="mb-4 rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 text-sm">Google sign-in could not be completed. Please try again or use your DreamCarz password.</div>}
+
+            <button type="button" onClick={startGoogleSignIn} className="w-full h-12 flex items-center justify-center gap-2 rounded-xl border border-gray-200 text-sm font-semibold text-black hover:bg-gray-50 active:scale-[0.98] transition-all">
+              <Chrome size={18} /> Continue with Google
+            </button>
+            <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.14em] text-gray-400"><span className="h-px flex-1 bg-gray-200" />or continue with email<span className="h-px flex-1 bg-gray-200" /></div>
 
             <form onSubmit={submit} className="space-y-4" noValidate>
               {isCreate && (
