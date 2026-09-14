@@ -47,6 +47,7 @@ import {
   pricingRules,
   pricingRuleEvents,
   masterProgramConfigurations,
+  dcpLedgerEntries,
   vehicleSubscriptionRateCards,
   subscriptionRateCardEvents,
   transactionLinks,
@@ -668,6 +669,46 @@ export const appRouter = router({
       const configuration = await getActiveMasterProgramConfiguration();
       if (!configuration) return null;
       return configuration;
+    }),
+
+    myWallets: protectedProcedure.query(async ({ ctx }) => {
+      const dcpWalletReadLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "dcp_wallet_projection_read", String(ctx.user.id)), limit: 90, windowMs: 60 * 60_000 });
+      if (!dcpWalletReadLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many DCP wallet requests. Please try again later." });
+      const configuration = await getActiveMasterProgramConfiguration();
+      if (!configuration) return { configuration: null, wallets: [] as const };
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DCP wallet records are temporarily unavailable." });
+      const entries = await db.select({
+        reference: dcpLedgerEntries.reference,
+        walletCode: dcpLedgerEntries.walletCode,
+        transactionType: dcpLedgerEntries.transactionType,
+        status: dcpLedgerEntries.status,
+        points: dcpLedgerEntries.points,
+        sourceType: dcpLedgerEntries.sourceType,
+        createdAt: dcpLedgerEntries.createdAt,
+        postedAt: dcpLedgerEntries.postedAt,
+      }).from(dcpLedgerEntries).where(eq(dcpLedgerEntries.userId, ctx.user.id)).orderBy(desc(dcpLedgerEntries.createdAt)).limit(120);
+
+      const balanceFor = (walletCode: string) => {
+        const walletEntries = entries.filter(entry => entry.walletCode === walletCode);
+        const posted = walletEntries.filter(entry => entry.status === "posted");
+        const pointsFor = (types: string[]) => posted.filter(entry => types.includes(entry.transactionType)).reduce((total, entry) => total + entry.points, 0);
+        const pendingPoints = walletEntries.filter(entry => entry.status === "pending").reduce((total, entry) => total + entry.points, 0);
+        const earnedPoints = pointsFor(["earn", "release", "adjust"]);
+        const usedPoints = pointsFor(["use", "expire", "reverse"]);
+        const heldPoints = pointsFor(["hold"]);
+        return {
+          recordedPostedPoints: Math.max(0, earnedPoints - usedPoints - heldPoints),
+          pendingPoints,
+          heldPoints,
+          entries: walletEntries.slice(0, 12),
+        };
+      };
+
+      return {
+        configuration: { code: configuration.code, version: configuration.version, effectiveStart: configuration.effectiveStart },
+        wallets: configuration.walletDefinitions.map(definition => ({ ...definition, balance: balanceFor(definition.walletCode) })),
+      };
     }),
   }),
 
