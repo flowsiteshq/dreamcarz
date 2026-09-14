@@ -8,6 +8,8 @@
 - [x] Add effective-dated vehicle subscription rate-card controls and return `RATE_NOT_CONFIGURED` / manual review when vehicle-specific subscription economics are not configured.
 - [ ] Create approved vehicle-specific subscription rate-card records only after DreamCarz supplies and authorizes the actual term, mileage, coverage, deposit, and DCP-cap economics.
 - [x] Use the documented Priceline BWI and DCA comparable daily rates as a source-dated market benchmark in DreamCarz subscription and pricing comparisons without presenting them as final DreamCarz charges.
+- [x] Add at least 50 clearly labeled Coming Soon vehicle options across sedan, SUV, truck, EV, luxury, performance, family, and utility categories while keeping them separate from confirmed DreamCarz inventory.
+- [x] Route every Coming Soon vehicle’s interest action into consented waiting-list capture without creating a reservation, availability promise, rental quote, or purchase claim.
 - [x] Add wallet-specific member DCP balances, immutable event views, and permitted-use visibility without converting DCP to cash or inferring balances.
 - [x] Complete Future Driver profile fields, neutral goal tracking, and event-controlled mode changes without activating an unapproved accelerator schedule, including loaded-state synchronization and behavioral coverage.
 - [ ] Add Host DCPR, CPP, commission, and rank event models only after their required source-transaction, eligibility, approval, and chargeback controls are configured.
@@ -16,6 +18,10 @@
 - [ ] Complete one end-to-end Google account authorization on the published www.dreamcarz.io deployment and verify protected-account continuity.
 - [ ] Synchronize the validated Google OAuth server routes to the separate Railway production source serving www.dreamcarz.io, then verify the live authorization endpoint no longer returns 404.
 - [x] Restore the approved cinematic homepage hero image on the live www.dreamcarz.io deployment without changing its accepted layout or copy.
+- [x] Configure the existing server-side ElevenLabs transcription credential in Railway production and verify that live DreamCarz Concierge no longer reports voice transcription as unconfigured.
+- [x] Redeploy the current DreamCarz Concierge source after the Railway ElevenLabs credential update so the live transcription procedure is present alongside its configuration.
+- [ ] Verify live DreamCarz Concierge speech-to-text end to end with a real browser recording and confirm the user interface no longer shows “Voice transcription is not configured.”
+- [ ] If live transcription fails, inspect the Railway runtime and ElevenLabs response, then repair the remaining provider issue until a real clip returns transcribed text.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.

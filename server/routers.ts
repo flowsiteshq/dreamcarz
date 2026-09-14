@@ -108,6 +108,7 @@ import {
   TRANSACTION_REFERENCE_PREFIX,
 } from "../shared/transactionLifecycle";
 import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
+import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -411,6 +412,20 @@ export const appRouter = router({
             source: "tesla_model_3_waitlist" as const,
             marketEstimate: null,
             waitlistVehicleId: "coming-soon-2024-tesla-model-3",
+          };
+        }
+        const plannedVehicle = findComingSoonVehicle(input.question);
+        if (plannedVehicle) {
+          const plannedVehicleName = `${plannedVehicle.year} ${plannedVehicle.make} ${plannedVehicle.model}`;
+          return {
+            answer: `${plannedVehicleName} is listed as Coming Soon and is not current DreamCarz inventory. You can join the waiting list for future review.`,
+            intent: "rental" as const,
+            vehicleClass: null,
+            nextPrompt: `Would you like to join the ${plannedVehicleName} waiting list?`,
+            recommendedVehicleIds: [],
+            source: "coming_soon_waitlist" as const,
+            marketEstimate: null,
+            waitlistVehicleId: plannedVehicle.id,
           };
         }
         const asksAboutSubscription = /\b(subscription|subscribe|long[-\s]?term|monthly vehicle|monthly car)\b/i.test(input.question);

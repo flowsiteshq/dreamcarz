@@ -6,6 +6,7 @@ import { takeHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 import { trpc } from "@/lib/trpc";
 import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
+import { getComingSoonVehicle } from "@shared/comingSoonVehicles";
 import { ArrowRight, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -413,7 +414,9 @@ export default function Concierge() {
     <ConciergeWorkspace dashboard={dashboardMode} intent={intent === "rental" || intent === "purchase" ? intent : null} userName={user?.name} isAuthenticated={isAuthenticated} hasSavedPath={hasSavedPath} savedPath={{ vehicleName: savedPathVehicle?.vehicleName ?? selectedVehicle?.vehicleName ?? null, vehicleImage: savedPathVehicle?.image ?? selectedVehicle?.image ?? null, intent: workspacePathIntent, timeline: savedPathTimeline ?? timeline, nextStep: savedPathStep ?? (enrollmentReference ? "Continue enrollment" : null) }} canResume={Boolean(activeTransaction)} onResume={() => activeTransaction ? openEnrollment(activeTransaction.reference) : restore()} onNewConversation={reset} onChoosePath={choosePath} onChangeVehicle={changeVehicle} onAccount={openAccount}>
         <div className={`mx-auto flex min-h-[calc(100vh-69px)] w-full flex-1 flex-col px-5 pb-40 pt-8 transition-opacity duration-200 motion-reduce:transition-none sm:px-8 sm:pb-44 sm:pt-10 ${dashboardMode ? "max-w-5xl" : "max-w-3xl"} ${hasEntered ? "opacity-100" : "opacity-0"}`}>
           <div className="space-y-6">
-            {conversationHistory.map(entry => (
+            {conversationHistory.map(entry => {
+              const waitlistVehicle = entry.role === "concierge" ? getComingSoonVehicle(entry.waitlistVehicleId) : null;
+              return (
               <div key={entry.id} className={`flex min-w-0 gap-3 ${entry.role === "member" ? "flex-row-reverse" : ""}`}>
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${entry.role === "member" ? "bg-[#efefef] text-[#373737]" : "bg-black text-[#d5b35b]"}`}>
                   {entry.role === "member" ? <Compass size={15} /> : <Sparkles size={14} />}
@@ -433,15 +436,16 @@ export default function Concierge() {
                     </dl>
                     <p className="border-t border-[#eadfbf] px-4 py-2.5 text-[11px] leading-4 text-[#69645a]">*The recorded BWI marketplace comparison included its displayed taxes and fees. DreamCarz charges, deposit, and live availability are not set by this estimate.</p>
                   </section> : null}
-                  {entry.role === "concierge" && entry.waitlistVehicleId === "coming-soon-2024-tesla-model-3" ? <section aria-label="Tesla Model 3 waitlist" className="mt-3 rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4 shadow-[0_8px_24px_rgba(168,131,45,0.08)]">
+                  {waitlistVehicle ? <section aria-label={`${waitlistVehicle.year} ${waitlistVehicle.make} ${waitlistVehicle.model} waitlist`} className="mt-3 rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4 shadow-[0_8px_24px_rgba(168,131,45,0.08)]">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Coming soon</p>
-                    <p className="mt-1 text-sm font-semibold text-[#252525]">Tesla Model 3 waiting list</p>
+                    <p className="mt-1 text-sm font-semibold text-[#252525]">{waitlistVehicle.year} {waitlistVehicle.make} {waitlistVehicle.model} waiting list</p>
                     <p className="mt-1 text-xs leading-5 text-[#69645a]">Join the interest list. Timing, availability, and final terms are confirmed separately.</p>
-                    <button type="button" onClick={() => navigate(`/fleet?reserve=${encodeURIComponent(entry.waitlistVehicleId!)}`)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-black px-4 text-xs font-semibold text-white active:scale-[0.97]">Join waiting list <ArrowRight size={14} /></button>
+                    <button type="button" onClick={() => navigate(`/fleet?reserve=${encodeURIComponent(waitlistVehicle.id)}`)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-black px-4 text-xs font-semibold text-white active:scale-[0.97]">Join waiting list <ArrowRight size={14} /></button>
                   </section> : null}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {publicGuide.isPending ? <div className="flex gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={14} /></span><span className="pt-2 text-sm text-gray-400">Thinking…</span></div> : null}
             {!dashboardMode && hasSavedPath ? <section aria-label="Saved Concierge choices" className="border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Your saved path</p><p className="mt-1 text-sm font-semibold">Pick up where you left off.</p></div>{activeTransaction ? <button type="button" onClick={() => openEnrollment(activeTransaction.reference)} className="shrink-0 rounded-full bg-black px-3 py-2 text-xs font-semibold text-white">Resume</button> : null}</div><div className="mt-4 grid gap-2 text-xs text-gray-600">{savedPathVehicle ? <div className="flex items-center gap-3 border-t border-[#eee4c9] pt-3"><img src={savedPathVehicle.image} alt="" className="h-10 w-16 object-contain" /><span><strong className="text-gray-900">Vehicle</strong> · {savedPathVehicle.vehicleName}</span></div> : null}{savedPathIntent === "rental" || savedPathIntent === "purchase" ? <p><strong className="text-gray-900">Path</strong> · {savedPathIntent === "rental" ? "Renting" : "Buying"}</p> : null}{savedPathTimeline ? <p><strong className="text-gray-900">Timing</strong> · {savedPathTimeline === "this_week" ? "This week" : savedPathTimeline === "soon" ? "Soon" : "Exploring"}</p> : null}{savedPathStep ? <p><strong className="text-gray-900">Next</strong> · {savedPathStep}</p> : null}</div></section> : null}
             <section aria-label="Current Concierge question" className="flex gap-3 pt-2">

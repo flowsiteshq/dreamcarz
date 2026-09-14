@@ -102,10 +102,27 @@ describe("public DreamCarz concierge", () => {
     expect(result.answer).toContain("Tesla Model 3s are coming soon");
     expect(result.answer).toContain("not part of current confirmed DreamCarz inventory");
     expect(invokeLLM).not.toHaveBeenCalled();
-    expect(conciergePageSource).toContain('aria-label="Tesla Model 3 waitlist"');
+    expect(conciergePageSource).toContain("getComingSoonVehicle(entry.waitlistVehicleId)");
     expect(conciergePageSource).toContain("Join waiting list");
     expect(fleetPageSource).toContain("requestedReserveVehicleId");
-    expect(vehicleDialogSource).toContain("Join Tesla Model 3 waiting list");
+    expect(vehicleDialogSource).toContain("Join ${fullName} waiting list");
+  });
+
+  it("routes a non-Tesla planned vehicle to the catalog-backed waiting list without a current-inventory or pricing claim", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "Can I get on the waitlist for a Cadillac Escalade?" });
+
+    expect(result).toMatchObject({
+      source: "coming_soon_waitlist",
+      intent: "rental",
+      vehicleClass: null,
+      waitlistVehicleId: "coming-soon-2025-cadillac-escalade",
+      recommendedVehicleIds: [],
+      marketEstimate: null,
+    });
+    expect(result.answer).toContain("Coming Soon");
+    expect(result.answer).toContain("not current DreamCarz inventory");
+    expect(result.answer).not.toMatch(/\$|available now|confirmed inventory/i);
+    expect(invokeLLM).not.toHaveBeenCalled();
   });
 
   it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {

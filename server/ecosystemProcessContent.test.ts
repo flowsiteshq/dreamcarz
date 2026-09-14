@@ -50,6 +50,7 @@ describe("DreamCarz ecosystem process content", () => {
   });
 
   it("keeps public, detail, FAQ, and concierge inventory content limited to the confirmed vehicles", () => {
+    const comingSoonCatalog = source("shared/comingSoonVehicles.ts");
     const inventoryContent = [
       source("client/src/pages/Fleet.tsx"),
       source("client/src/pages/VehicleDetail.tsx"),
@@ -73,9 +74,10 @@ describe("DreamCarz ecosystem process content", () => {
     for (const unsupportedVehicle of ["Porsche", "Lamborghini", "Ferrari", "Range Rover", "Audi", "Honda Civic", "Hyundai Tucson", "Kia Sportage", "Ford Escape", "Rivian", "Cadillac Escalade", "McLaren"]) {
       expect(inventoryContent).not.toContain(unsupportedVehicle);
     }
-    expect(inventoryContent).toContain('availability: "coming-soon"');
-    expect(inventoryContent).toContain("Coming Soon · reserve your vehicle");
-    expect(inventoryContent).toContain("Reserve your vehicle");
+    expect(comingSoonCatalog).toContain('availability: "coming-soon"');
+    expect(comingSoonCatalog).toContain("Planned-interest catalog only");
+    expect(source("client/src/pages/Fleet.tsx")).toContain("Coming Soon · join the waiting list");
+    expect(source("client/src/pages/Fleet.tsx")).toContain("Join waiting list");
     const reservations = source("client/src/pages/dashboard/Reservations.tsx");
     expect(reservations).toContain("confirmedVehicleNames.has(reservation.vehicleName)");
     expect(reservations).not.toContain("estimatedWeeklyFee}/week");
@@ -114,7 +116,7 @@ describe("DreamCarz ecosystem process content", () => {
   it("confirms Tesla Model 3 waitlist enrollment with an animated, non-promissory success state", () => {
     const vehicleDialog = source("client/src/components/VehicleExperienceDialog.tsx");
 
-    expect(vehicleDialog).toContain("You’re on the Tesla Model 3 waiting list.");
+    expect(vehicleDialog).toContain("You’re on the ${fullName} waiting list.");
     expect(vehicleDialog).toContain("Waiting-list confirmation");
     expect(vehicleDialog).toContain("Timing, availability, and final terms remain subject to confirmation.");
     expect(vehicleDialog).toContain("successRevealed");
