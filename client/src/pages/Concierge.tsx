@@ -3,6 +3,7 @@ import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel"
 import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
 import { takeHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
+import { takeAdvertisingLeadHandoff } from "@/lib/advertisingLeadHandoff";
 import { trpc } from "@/lib/trpc";
 import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
@@ -110,6 +111,15 @@ export default function Concierge() {
       if (saved.timeline === "exploring" || saved.timeline === "soon" || saved.timeline === "this_week") setTimeline(saved.timeline);
       if (saved.selectedVehicleId) setSelectedVehicleId(saved.selectedVehicleId);
     } catch { sessionStorage.removeItem(STORAGE_KEY); }
+  }, []);
+  useEffect(() => {
+    const leadHandoff = takeAdvertisingLeadHandoff();
+    if (!leadHandoff) return;
+    setHistory([{
+      id: `advertising-lead-${leadHandoff.reference}`,
+      role: "concierge",
+      text: `Hi ${leadHandoff.firstName}. Thanks for connecting with DreamCarz. What would you like to explore today: renting, buying, or membership?`,
+    }]);
   }, []);
   const inventory = vehicles.data?.length ? vehicles.data : CONFIRMED_CONCIERGE_VEHICLES;
   const visibleVehicles = useMemo(() => {

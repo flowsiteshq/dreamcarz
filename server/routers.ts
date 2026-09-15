@@ -10,6 +10,7 @@ import {
   commissions,
   associateLeads,
   associateLeadActivityEvents,
+  advertisingLeads,
   rentalApplications,
   rentalApplicationDocuments,
   customerProfiles,
@@ -2868,6 +2869,27 @@ export const appRouter = router({
         await db.update(vehicleTransactions).set({ currentStep: input.currentStep }).where(eq(vehicleTransactions.id, transaction.id));
         await db.insert(transactionEvents).values({ transactionId: transaction.id, actorUserId: ctx.user.id, actorType: "customer", eventType: recoverLegacyRentalTradeIn ? "rental.invalid_trade_in_step_recovered" : "transaction.step_advanced", metadata: JSON.stringify({ fromStep: transaction.currentStep, toStep: input.currentStep }) });
         return { success: true, currentStep: input.currentStep };
+      }),
+  }),
+
+  advertisingLeads: router({
+    capture: publicProcedure
+      .input(z.object({
+        contactName: z.string().trim().min(2).max(160),
+        contactEmail: z.string().trim().email().max(320),
+        contactPhone: z.string().trim().min(7).max(48),
+        consentToContact: z.literal(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const leadCaptureLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "advertising_lead_capture", "public"), limit: 5, windowMs: 60 * 60_000 });
+        if (!leadCaptureLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many requests. Please try again shortly." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+
+        const referenceCode = nanoid(7).toUpperCase().replace(/[^A-Z0-9]/g, "X");
+        const reference = `ADL-${new Date().getFullYear()}-${referenceCode}`;
+        await db.insert(advertisingLeads).values({ ...input, reference, source: "facebook" });
+        return { success: true, reference } as const;
       }),
   }),
 

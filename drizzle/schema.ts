@@ -656,6 +656,18 @@ export const associateLeadActivityEvents = mysqlTable("associate_lead_activity_e
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("associate_lead_activity_owner_idx").on(table.associateUserId, table.createdAt), index("associate_lead_activity_lead_idx").on(table.leadId, table.createdAt)]);
 
+/** Public advertising leads collect only the contact details and consent needed for an initial DreamCarz follow-up. */
+export const advertisingLeads = mysqlTable("advertising_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  reference: varchar("reference", { length: 24 }).notNull().unique(),
+  contactName: varchar("contactName", { length: 160 }).notNull(),
+  contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 48 }).notNull(),
+  source: mysqlEnum("source", ["facebook"]).default("facebook").notNull(),
+  consentToContact: boolean("consentToContact").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("advertising_lead_created_idx").on(table.createdAt)]);
+
 // ── Rental Onboarding & Identity Verification ───────────────────────────────
 
 export const rentalApplications = mysqlTable("rental_applications", {

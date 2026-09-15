@@ -25,6 +25,10 @@
 - [x] Create a DreamCarz Zoom opportunity-call flyer for 7:00 PM ET on September 15, 2026 with a scannable meeting QR code.
 - [x] Add and locally verify the DreamCarz `/zoom` redirect to the supplied Zoom meeting without exposing credentials.
 - [x] Deploy the validated `/zoom` redirect to Railway production and verify `https://www.dreamcarz.io/zoom` redirects to the supplied Zoom meeting.
+- [x] Build a focused public DreamCarz Facebook-ad landing page that collects consented name, phone, and email before engaging the AI Concierge.
+- [x] Persist advertising landing-page leads through a validated minimal-data backend flow and transfer their session into Concierge without exposing contact details in the URL.
+- [x] Test the DreamCarz ad landing-page intake flow across desktop and mobile campaign layouts.
+- [ ] Deploy the validated `/get-started` landing page and advertising-lead backend flow to Railway production, then verify the live campaign URL and consented Concierge handoff.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
