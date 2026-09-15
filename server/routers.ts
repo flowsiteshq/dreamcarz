@@ -10,6 +10,8 @@ import {
   commissions,
   associateLeads,
   associateLeadActivityEvents,
+  associateEnrollments,
+  associateEnrollmentEvents,
   advertisingLeads,
   rentalApplications,
   rentalApplicationDocuments,
@@ -110,6 +112,7 @@ import {
 } from "../shared/transactionLifecycle";
 import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
+import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -131,6 +134,45 @@ function hasFutureRecordedInsuranceCoverage(insuranceDetails: string | null | un
   } catch {
     return false;
   }
+}
+
+function verifiedDreamCarzOrigin(req: { headers?: Record<string, unknown> }) {
+  const host = typeof req.headers?.host === "string" ? req.headers.host.toLowerCase() : "";
+  if (host === "dreamcarz.io" || host === "www.dreamcarz.io") return `https://${host}`;
+  if (host === "localhost:3000" || host === "127.0.0.1:3000") return `http://${host}`;
+  if (host.endsWith(".manus.space") || host.endsWith(".manus.computer")) return `https://${host}`;
+  return "https://www.dreamcarz.io";
+}
+
+async function activateAssociateRole(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId: number,
+) {
+  const existing = (await db.select().from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, userId), eq(userRoleAssignments.role, "associate"))).limit(1))[0];
+  if (!existing) {
+    const created = await db.insert(userRoleAssignments).values({ userId, role: "associate", assignedByUserId: userId });
+    await db.insert(roleAssignmentEvents).values({ roleAssignmentId: Number(created[0].insertId), targetUserId: userId, actorUserId: userId, role: "associate", eventType: "role_granted" });
+    return;
+  }
+  if (existing.revokedAt) {
+    await db.update(userRoleAssignments).set({ revokedAt: null, assignedByUserId: userId, assignedAt: new Date() }).where(eq(userRoleAssignments.id, existing.id));
+    await db.insert(roleAssignmentEvents).values({ roleAssignmentId: existing.id, targetUserId: userId, actorUserId: userId, role: "associate", eventType: "role_restored" });
+  }
+}
+
+async function requireActiveAssociateAccess(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  user: { id: number; role: "user" | "admin" },
+) {
+  const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, user.id), isNull(userRoleAssignments.revokedAt)));
+  const roles = effectiveDreamCarzRoles(user.role, assignments.map(item => item.role));
+  if (roles.includes("administrator")) return roles;
+  if (!roles.includes("associate")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+  const enrollment = (await db.select({ status: associateEnrollments.status }).from(associateEnrollments).where(eq(associateEnrollments.userId, user.id)).limit(1))[0];
+  // Existing Associate roles created before paid enrollment remain intact. Any
+  // enrollment record created by this checkout flow must remain active.
+  if (enrollment && enrollment.status !== "active") throw new TRPCError({ code: "FORBIDDEN", message: "Associate subscription access is not active." });
+  return roles;
 }
 
 function parseStoredEvidenceKeys(raw: string | null | undefined) {
@@ -3362,15 +3404,103 @@ export const appRouter = router({
     }),
   }),
 
+  associateEnrollment: router({
+    status: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate enrollment is temporarily unavailable." });
+      const enrollment = (await db.select().from(associateEnrollments).where(eq(associateEnrollments.userId, ctx.user.id)).limit(1))[0] ?? null;
+      return {
+        enrollment: enrollment ? {
+          reference: enrollment.reference,
+          status: enrollment.status,
+          enrollmentFeeCents: enrollment.enrollmentFeeCents,
+          monthlyFeeCents: enrollment.monthlyFeeCents,
+          activatedAt: enrollment.activatedAt,
+          nextBillingAt: enrollment.nextBillingAt,
+          manualReviewReason: enrollment.manualReviewReason,
+        } : null,
+        providerReady: getPaymentProviderStatus().configured,
+      };
+    }),
+    startCheckout: protectedProcedure.input(z.object({ authorizeRecurring: z.literal(true) })).mutation(async ({ ctx }) => {
+      const startLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_enrollment_checkout", String(ctx.user.id)), limit: 4, windowMs: 60 * 60_000 });
+      if (!startLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before starting another Associate checkout." });
+      const provider = getPaymentProviderStatus();
+      if (!provider.configured || !provider.checkoutKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: cocardPaymentSetupBlocker() ?? "Hosted checkout is temporarily unavailable." });
+      const product = await ensureAssociateEnrollmentProduct();
+      if (!product.ready) throw new TRPCError({ code: "PRECONDITION_FAILED", message: product.reason });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate enrollment is temporarily unavailable." });
+      const existing = (await db.select().from(associateEnrollments).where(eq(associateEnrollments.userId, ctx.user.id)).limit(1))[0];
+      if (existing?.status === "active") return { alreadyActive: true as const, reference: existing.reference };
+      const reference = existing?.reference ?? `DCA-${new Date().getUTCFullYear()}-${nanoid(10).toUpperCase()}`;
+      const acceptedAt = new Date();
+      if (existing) {
+        await db.update(associateEnrollments).set({ status: "checkout_pending", recurringConsentAt: acceptedAt, manualReviewReason: null }).where(eq(associateEnrollments.id, existing.id));
+      } else {
+        const inserted = await db.insert(associateEnrollments).values({ userId: ctx.user.id, reference, recurringConsentAt: acceptedAt, enrollmentFeeCents: ASSOCIATE_ENROLLMENT_FEE_CENTS, monthlyFeeCents: ASSOCIATE_MONTHLY_FEE_CENTS });
+        await db.insert(associateEnrollmentEvents).values({ enrollmentId: Number(inserted[0].insertId), userId: ctx.user.id, eventType: "checkout_started", detail: "Hosted $149 enrollment checkout opened with $49 monthly authorization." });
+      }
+      const origin = verifiedDreamCarzOrigin(ctx.req);
+      return {
+        alreadyActive: false as const,
+        checkout: {
+          checkoutKey: provider.checkoutKey,
+          checkoutScriptUrl: provider.checkoutScriptUrl,
+          lineItems: [{ lineItemType: "purchase", sku: ASSOCIATE_ENROLLMENT_SKU, quantity: 1 }],
+          type: "sale" as const,
+          customerVault: { addCustomer: true },
+          receipt: { showReceipt: true, redirectToSuccessUrl: true, sendToCustomer: true },
+          successUrl: `${origin}/associate-enroll?reference=${encodeURIComponent(reference)}&transactionId=(TRANSACTION_ID)&vaultId=(CUSTOMER_VAULT_ID)`,
+          cancelUrl: `${origin}/associate-enroll?canceled=1`,
+        },
+      };
+    }),
+    completeCheckout: protectedProcedure.input(z.object({ reference: z.string().regex(/^DCA-\d{4}-[A-Z0-9]{10}$/), transactionId: z.string().trim().min(4).max(128) })).mutation(async ({ ctx, input }) => {
+      const completionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_enrollment_complete", String(ctx.user.id)), limit: 8, windowMs: 60 * 60_000 });
+      if (!completionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before verifying Associate enrollment again." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate enrollment is temporarily unavailable." });
+      const enrollment = (await db.select().from(associateEnrollments).where(and(eq(associateEnrollments.userId, ctx.user.id), eq(associateEnrollments.reference, input.reference))).limit(1))[0];
+      if (!enrollment) throw new TRPCError({ code: "NOT_FOUND", message: "Associate checkout session was not found." });
+      if (enrollment.status === "active") return { status: "active" as const };
+      const verification = await verifyCoCardCheckoutReturn(input.transactionId);
+      if (!verification.verified || verification.paymentStatus === "pending") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The enrollment payment is still being verified. Please wait a moment and try again." });
+      if (verification.paymentStatus !== "paid" || verification.gatewayTransactionId !== input.transactionId) {
+        await db.update(associateEnrollments).set({ status: "manual_review", manualReviewReason: "Hosted enrollment payment was not approved.", providerVerifiedAt: new Date() }).where(eq(associateEnrollments.id, enrollment.id));
+        await db.insert(associateEnrollmentEvents).values({ enrollmentId: enrollment.id, userId: ctx.user.id, eventType: "payment_failed", providerReference: input.transactionId, detail: "Hosted enrollment payment was not approved." });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The enrollment payment was not approved. No Associate access was activated." });
+      }
+      const subscription = await createAssociateMonthlySubscription({ enrollmentReference: enrollment.reference, gatewayTransactionId: input.transactionId, customerVaultId: verification.customerVaultId });
+      if (!subscription.created) {
+        await db.update(associateEnrollments).set({ status: "manual_review", initialGatewayTransactionId: input.transactionId, customerVaultId: verification.customerVaultId ?? null, providerVerifiedAt: new Date(), manualReviewReason: subscription.reason }).where(eq(associateEnrollments.id, enrollment.id));
+        await db.insert(associateEnrollmentEvents).values({ enrollmentId: enrollment.id, userId: ctx.user.id, eventType: "manual_review", providerReference: input.transactionId, detail: subscription.reason });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The enrollment payment was verified, but monthly billing needs DreamCarz review before access can be activated." });
+      }
+      const activatedAt = new Date();
+      await db.update(associateEnrollments).set({ status: "active", initialGatewayTransactionId: input.transactionId, customerVaultId: verification.customerVaultId ?? null, gatewaySubscriptionId: subscription.subscriptionId, activatedAt, nextBillingAt: subscription.firstRenewal, providerVerifiedAt: activatedAt, manualReviewReason: null }).where(eq(associateEnrollments.id, enrollment.id));
+      await db.insert(associateEnrollmentEvents).values([
+        { enrollmentId: enrollment.id, userId: ctx.user.id, eventType: "initial_payment_verified", providerReference: input.transactionId, detail: "Hosted $149 enrollment payment verified." },
+        { enrollmentId: enrollment.id, userId: ctx.user.id, eventType: "subscription_created", providerReference: subscription.subscriptionId, detail: "Monthly $49 recurring subscription created." },
+        { enrollmentId: enrollment.id, userId: ctx.user.id, eventType: "access_activated", detail: "Associate access activated after provider verification." },
+      ]);
+      await activateAssociateRole(db, ctx.user.id);
+      const profile = (await db.select({ id: referralProfiles.id }).from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0];
+      if (!profile) await db.insert(referralProfiles).values({ userId: ctx.user.id, referralCode: `DC-${nanoid(8).toUpperCase()}` });
+      return { status: "active" as const };
+    }),
+  }),
+
   associate: router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       const overviewLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_overview", String(ctx.user.id)), limit: 60, windowMs: 60 * 60_000 });
       if (!overviewLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate overview requests. Please try again later." });
       const db = await getDb();
-      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
-      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
-      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate data is temporarily unavailable." });
+      if (!db) {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate data is temporarily unavailable." });
+      }
+      const roles = await requireActiveAssociateAccess(db, ctx.user);
       const profile = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0] ?? null;
       const leads = await db.select().from(associateLeads).where(eq(associateLeads.associateUserId, ctx.user.id)).orderBy(desc(associateLeads.updatedAt));
       const referralsForAssociate = await db.select().from(referrals).where(eq(referrals.referrerId, ctx.user.id)).orderBy(desc(referrals.createdAt));
@@ -3383,10 +3513,11 @@ export const appRouter = router({
     }),
     ensureProfile: protectedProcedure.mutation(async ({ ctx }) => {
       const db = await getDb();
-      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
-      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
-      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate profile setup is temporarily unavailable." });
+      if (!db) {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Associate profile setup is temporarily unavailable." });
+      }
+      await requireActiveAssociateAccess(db, ctx.user);
       const existing = (await db.select().from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0];
       if (existing) return existing;
       const referralCode = `DC-${nanoid(8).toUpperCase()}`;
@@ -3405,10 +3536,11 @@ export const appRouter = router({
       if (!leadActionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate lead actions. Please try again later." });
       const db = await getDb();
       if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
-      const assignments = db ? await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt))) : [];
-      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
-      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      if (!db) {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      }
+      await requireActiveAssociateAccess(db, ctx.user);
       const result = await db.insert(associateLeads).values({ associateUserId: ctx.user.id, ...input });
       const leadId = Number(result[0].insertId);
       await db.insert(associateLeadActivityEvents).values({ associateUserId: ctx.user.id, leadId, eventType: "lead_created", status: "new" });
@@ -3418,11 +3550,12 @@ export const appRouter = router({
       const leadActionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "associate_lead_mutation", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
       if (!leadActionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Associate lead actions. Please try again later." });
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      if (!db) {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead capture is temporarily unavailable." });
+      }
       if (input.notes) assertSafeRestrictedContent(input.notes, "private lead note");
-      const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
-      const roles = effectiveDreamCarzRoles(ctx.user.role, assignments.map(item => item.role));
-      if (!roles.includes("associate") && !roles.includes("administrator")) throw new TRPCError({ code: "FORBIDDEN", message: "Associate access is required." });
+      await requireActiveAssociateAccess(db, ctx.user);
       const lead = (await db.select().from(associateLeads).where(eq(associateLeads.id, input.id)).limit(1))[0];
       if (!lead || (lead.associateUserId !== ctx.user.id && ctx.user.role !== "admin")) throw new TRPCError({ code: "FORBIDDEN", message: "This lead is not available to this account." });
       await db.update(associateLeads).set({ status: input.status, notes: input.notes ?? lead.notes }).where(eq(associateLeads.id, input.id));

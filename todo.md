@@ -30,6 +30,22 @@
 - [x] Test the DreamCarz ad landing-page intake flow across desktop and mobile campaign layouts.
 - [x] Deploy the validated `/get-started` landing page and advertising-lead backend flow to Railway production, then verify the live campaign URL loads on `www.dreamcarz.io`.
 - [ ] Complete a consented production submission with a real campaign lead and verify the resulting Concierge handoff without placing contact details in the URL.
+- [x] Create a polished DreamCarz Facebook car-rental ad centered on the approved no-credit-check message and the `/get-started` lead-intake destination.
+- [x] Validate the Facebook ad graphic, campaign destination, and campaign copy before delivery.
+- [x] Revise the DreamCarz no-credit-check Facebook car-rental ad and campaign copy to include a Rent to Own option.
+- [x] Research current car-rental and Rent to Own Facebook campaign practices and relevant Meta advertising constraints.
+- [x] Create and validate a research-led DreamCarz Facebook ad optimized for the `/get-started` lead-intake destination.
+- [x] Superseded the initial 10-mile Lanham campaign scope with the user-approved 30-mile local service-area test using the validated lead-intake destination and policy-aware configuration.
+- [x] Update the unlaunched DreamCarz campaign draft to use a 30-mile radius around Lanham, Maryland for the approved service-area test.
+- [ ] Obtain explicit budget and launch approval before activating any paid Meta advertising spend.
+- [x] Open the Meta billing workflow and guide the user through securely adding a new payment card without collecting card details in chat.
+- [ ] Keep the unpublished DreamCarz Meta campaign paused until the user explicitly resumes the remaining schedule, creative, and publish steps.
+- [ ] Complete an end-to-end public Associate registration-to-enrollment check and record any remaining gateway-return gap.
+- [ ] Verify the $149 Associate enrollment payment and $49 monthly subscription handoff against the hosted provider before activating Associate access in production.
+- [ ] Verify and publish the $149 enrollment plus $49 monthly Associate subscription path without charging cards outside the approved payment provider.
+- [ ] Configure provider-signed recurring status callbacks so verified Associate payment failures, cancellations, and successful renewals update access state automatically.
+- [ ] Expedite publication of the public Associate enrollment path with $149 initial payment and $49 monthly authorization after focused validation.
+- [ ] Publish the verified Associate enrollment page immediately with provider-hosted checkout and retain real payment-return plus signed callback validation as post-release safeguards.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.

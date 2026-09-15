@@ -656,6 +656,41 @@ export const associateLeadActivityEvents = mysqlTable("associate_lead_activity_e
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("associate_lead_activity_owner_idx").on(table.associateUserId, table.createdAt), index("associate_lead_activity_lead_idx").on(table.leadId, table.createdAt)]);
 
+/**
+ * Associate billing records contain only provider references and access state.
+ * DreamCarz never stores payment-card numbers, CVV values, or card expiration data.
+ */
+export const associateEnrollments = mysqlTable("associate_enrollments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  reference: varchar("reference", { length: 40 }).notNull().unique(),
+  status: mysqlEnum("status", ["checkout_pending", "active", "past_due", "cancelled", "manual_review"]).default("checkout_pending").notNull(),
+  enrollmentFeeCents: int("enrollmentFeeCents").default(14_900).notNull(),
+  monthlyFeeCents: int("monthlyFeeCents").default(4_900).notNull(),
+  recurringConsentAt: timestamp("recurringConsentAt").notNull(),
+  initialGatewayTransactionId: varchar("initialGatewayTransactionId", { length: 128 }),
+  customerVaultId: varchar("customerVaultId", { length: 160 }),
+  gatewaySubscriptionId: varchar("gatewaySubscriptionId", { length: 160 }),
+  activatedAt: timestamp("activatedAt"),
+  nextBillingAt: timestamp("nextBillingAt"),
+  providerVerifiedAt: timestamp("providerVerifiedAt"),
+  cancelledAt: timestamp("cancelledAt"),
+  manualReviewReason: varchar("manualReviewReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("associate_enrollment_status_idx").on(table.status), index("associate_enrollment_gateway_subscription_idx").on(table.gatewaySubscriptionId)]);
+
+/** Immutable lifecycle trail for Associate payment verification and access decisions. */
+export const associateEnrollmentEvents = mysqlTable("associate_enrollment_events", {
+  id: int("id").autoincrement().primaryKey(),
+  enrollmentId: int("enrollmentId").notNull(),
+  userId: int("userId").notNull(),
+  eventType: mysqlEnum("eventType", ["checkout_started", "initial_payment_verified", "subscription_created", "access_activated", "payment_failed", "past_due", "cancelled", "manual_review"]).notNull(),
+  providerReference: varchar("providerReference", { length: 160 }),
+  detail: varchar("detail", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("associate_enrollment_event_owner_idx").on(table.userId, table.createdAt), index("associate_enrollment_event_enrollment_idx").on(table.enrollmentId, table.createdAt)]);
+
 /** Public advertising leads collect only the contact details and consent needed for an initial DreamCarz follow-up. */
 export const advertisingLeads = mysqlTable("advertising_leads", {
   id: int("id").autoincrement().primaryKey(),

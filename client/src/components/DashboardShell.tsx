@@ -19,13 +19,14 @@ declare global {
   interface Window {
     CollectCheckout?: {
       redirectToCheckout: (options: {
-        lineItems: Array<{ sku: string; quantity: number }>;
-        type: "auth";
-        collectShippingInfo: boolean;
+        lineItems: Array<{ sku: string; quantity: number; lineItemType?: string }>;
+        type: "auth" | "sale";
+        collectShippingInfo?: boolean;
         customerVault: { addCustomer: boolean };
         successUrl: string;
         cancelUrl: string;
-        receipt: { showReceipt: boolean; redirectToSuccessUrl: boolean };
+        receipt: { showReceipt: boolean; redirectToSuccessUrl: boolean; sendToCustomer?: boolean };
+        checkoutKey?: string;
       }) => Promise<unknown>;
     };
   }

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { verifyCoCardWebhookSignature } from "./cocardWebhook";
+import { associateSubscriptionOutcome, verifyCoCardWebhookSignature } from "./cocardWebhook";
 
 describe("CoCard webhook signature verification", () => {
   const signingKey = "test-cocard-signing-key";
@@ -16,5 +16,12 @@ describe("CoCard webhook signature verification", () => {
     expect(verifyCoCardWebhookSignature(Buffer.from("{}"), `${nonce},${signature}`, signingKey)).toBe(false);
     expect(verifyCoCardWebhookSignature(body, signature, signingKey)).toBe(false);
     expect(verifyCoCardWebhookSignature(body, `${nonce},${signature}`, undefined)).toBe(false);
+  });
+
+  it("classifies only subscription or recurring events for automated Associate access updates", () => {
+    expect(associateSubscriptionOutcome("subscription.payment.success")).toBe("active");
+    expect(associateSubscriptionOutcome("recurring.payment.failed")).toBe("past_due");
+    expect(associateSubscriptionOutcome("subscription.cancelled")).toBe("cancelled");
+    expect(associateSubscriptionOutcome("transaction.sale.success")).toBeNull();
   });
 });

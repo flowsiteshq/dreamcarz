@@ -4,7 +4,7 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { DIRECT_SESSION_COOKIE, DIRECT_SESSION_MAX_AGE_MS } from "../shared/const";
-import { createDirectSession, findOrCreateGoogleAccount } from "./directAuth";
+import { createDirectSession, findOrCreateGoogleAccount } from "./directAuth.ts";
 import { getSessionCookieOptions } from "./_core/cookies";
 
 const GOOGLE_STATE_COOKIE = "dreamcarz_google_oauth_state";

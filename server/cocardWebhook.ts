@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import express, { type Express } from "express";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { transactionEvents, vehicleTransactions } from "../drizzle/schema";
+import { associateEnrollmentEvents, associateEnrollments, transactionEvents, vehicleTransactions } from "../drizzle/schema";
 
 type CoCardWebhookPayload = {
   event_id?: unknown;
@@ -14,6 +14,7 @@ type CoCardWebhookPayload = {
     order_id?: unknown;
     customer_vault_id?: unknown;
     authorization_code?: unknown;
+    subscription_id?: unknown;
   };
 };
 
@@ -41,6 +42,19 @@ function paymentOutcome(eventType: string) {
   return null;
 }
 
+export function associateSubscriptionOutcome(eventType: string) {
+  const normalized = eventType.toLowerCase();
+  if (!normalized.includes("subscription") && !normalized.includes("recurring")) return null;
+  if (normalized.includes("cancel") || normalized.includes("delete")) return "cancelled" as const;
+  if (normalized.includes("fail") || normalized.includes("declin") || normalized.includes("past_due")) return "past_due" as const;
+  if (normalized.includes("success") || normalized.includes("paid") || normalized.includes("renew")) return "active" as const;
+  return null;
+}
+
+function isAssociateEnrollmentReference(value: string | null) {
+  return Boolean(value && /^DCA-\d{4}-[A-Z0-9]{10}$/.test(value));
+}
+
 export function registerCoCardWebhook(app: Express) {
   app.post("/api/cocard/webhook", express.raw({ type: "application/json" }), async (req, res) => {
     const signingKey = process.env.COCARD_WEBHOOK_SIGNING_KEY;
@@ -60,7 +74,8 @@ export function registerCoCardWebhook(app: Express) {
     const eventType = stringField(payload.event_type, 96);
     const reference = stringField(payload.event_body?.order_id, 32);
     const outcome = eventType ? paymentOutcome(eventType) : null;
-    if (!eventId || !eventType || !reference || !outcome) return res.status(200).json({ received: true, ignored: true });
+    const associateOutcome = eventType ? associateSubscriptionOutcome(eventType) : null;
+    if (!eventId || !eventType || !reference || (!outcome && !associateOutcome)) return res.status(200).json({ received: true, ignored: true });
 
     try {
       const db = await getDb();
@@ -68,6 +83,31 @@ export function registerCoCardWebhook(app: Express) {
       const providerEventId = `cocard:${eventId}`;
       const duplicate = await db.select({ id: transactionEvents.id }).from(transactionEvents).where(eq(transactionEvents.providerEventId, providerEventId)).limit(1);
       if (duplicate[0]) return res.status(200).json({ received: true, duplicate: true });
+      if (associateOutcome && isAssociateEnrollmentReference(reference)) {
+        const enrollment = (await db.select().from(associateEnrollments).where(eq(associateEnrollments.reference, reference)).limit(1))[0];
+        if (!enrollment) return res.status(200).json({ received: true, unmatched: true });
+        const existingEvent = (await db.select({ id: associateEnrollmentEvents.id }).from(associateEnrollmentEvents).where(eq(associateEnrollmentEvents.providerReference, providerEventId)).limit(1))[0];
+        if (existingEvent) return res.status(200).json({ received: true, duplicate: true });
+        const subscriptionId = stringField(payload.event_body?.subscription_id);
+        const nextBillingAt = associateOutcome === "active" ? new Date(Date.now() + 30 * 24 * 60 * 60_000) : enrollment.nextBillingAt;
+        await db.update(associateEnrollments).set({
+          status: associateOutcome,
+          gatewaySubscriptionId: subscriptionId ?? enrollment.gatewaySubscriptionId,
+          nextBillingAt,
+          cancelledAt: associateOutcome === "cancelled" ? new Date() : enrollment.cancelledAt,
+          providerVerifiedAt: new Date(),
+          manualReviewReason: associateOutcome === "past_due" ? "Provider reported a recurring payment issue." : null,
+        }).where(eq(associateEnrollments.id, enrollment.id));
+        await db.insert(associateEnrollmentEvents).values({
+          enrollmentId: enrollment.id,
+          userId: enrollment.userId,
+          eventType: associateOutcome === "active" ? "subscription_created" : associateOutcome === "past_due" ? "past_due" : "cancelled",
+          providerReference: providerEventId,
+          detail: `Provider subscription event: ${eventType}.`,
+        });
+        return res.status(200).json({ received: true, associateStatus: associateOutcome });
+      }
+      if (!outcome) return res.status(200).json({ received: true, ignored: true });
       const transactions = await db.select().from(vehicleTransactions).where(eq(vehicleTransactions.reference, reference)).limit(1);
       const transaction = transactions[0];
       if (!transaction) return res.status(200).json({ received: true, unmatched: true });

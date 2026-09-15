@@ -46,6 +46,7 @@ import CommandCenter from "./pages/dashboard/CommandCenter";
 import NotificationsCenter from "./pages/dashboard/NotificationsCenter";
 import OpportunityZoomFlyer from "./pages/OpportunityZoomFlyer";
 import GetStarted from "./pages/GetStarted";
+import AssociateEnroll from "./pages/AssociateEnroll";
 
 const Concierge = lazy(() => import("./pages/Concierge"));
 
@@ -99,6 +100,7 @@ function Router() {
       <Route path="/dashboard/fleet-partner" component={FleetPartnerPortal} />
       <Route path="/dashboard/associate" component={AssociatePortal} />
       <Route path="/associates" component={Associates} />
+      <Route path="/associate-enroll" component={AssociateEnroll} />
       <Route path="/opportunity" component={Opportunity} />
       <Route path="/opportunity-zoom" component={OpportunityZoomFlyer} />
       <Route path="/get-started" component={GetStarted} />

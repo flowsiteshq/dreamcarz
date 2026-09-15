@@ -15,7 +15,10 @@ describe("associate.updateLead", () => {
   it("updates the status only for a lead owned by an active Associate", async () => {
     const updateWhere = vi.fn().mockResolvedValue(undefined);
     const activityValues = vi.fn().mockResolvedValue(undefined);
-    const select = vi.fn().mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([{ role: "associate" }]) })) }).mockReturnValueOnce(terminal([{ id: 7, associateUserId: 44, status: "new", notes: null }]));
+    const select = vi.fn()
+      .mockReturnValueOnce({ from: vi.fn(() => ({ where: vi.fn().mockResolvedValue([{ role: "associate" }]) })) })
+      .mockReturnValueOnce(terminal([]))
+      .mockReturnValueOnce(terminal([{ id: 7, associateUserId: 44, status: "new", notes: null }]));
     mockedGetDb.mockResolvedValue({ select, update: vi.fn(() => ({ set: vi.fn(() => ({ where: updateWhere })) })), insert: vi.fn(() => ({ values: activityValues })) } as never);
 
     await expect(appRouter.createCaller(associateContext as never).associate.updateLead({ id: 7, status: "contacted" })).resolves.toEqual({ success: true });

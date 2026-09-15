@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 describe("Google OAuth safeguards", () => {
+  it("imports the direct-account helper required for verified Google identity linking", async () => {
+    const directAuth = await import("./directAuth.ts");
+    expect(typeof directAuth.findOrCreateGoogleAccount).toBe("function");
+  });
+
   it("keeps return paths internal and only enables OAuth when all server secrets are present", async () => {
     vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "client-id");
     vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "client-secret");
