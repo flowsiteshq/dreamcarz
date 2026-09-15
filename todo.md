@@ -44,8 +44,10 @@
 - [ ] Verify the $149 Associate enrollment payment and $49 monthly subscription handoff against the hosted provider before activating Associate access in production.
 - [ ] Verify and publish the $149 enrollment plus $49 monthly Associate subscription path without charging cards outside the approved payment provider.
 - [ ] Configure provider-signed recurring status callbacks so verified Associate payment failures, cancellations, and successful renewals update access state automatically.
-- [ ] Expedite publication of the public Associate enrollment path with $149 initial payment and $49 monthly authorization after focused validation.
-- [ ] Publish the verified Associate enrollment page immediately with provider-hosted checkout and retain real payment-return plus signed callback validation as post-release safeguards.
+- [ ] Complete a real or safely verified provider-hosted Associate checkout return and confirm access is activated only after payment and subscription verification.
+- [ ] Configure the CoCard webhook signing key and verify signed recurring callbacks update Associate enrollment states automatically in production.
+- [ ] Deliver the live Associate sign-up URL to the user after the verified production page release.
+- [ ] Repair and verify the live Associate enrollment secure-checkout button after the user reported that the provider handoff did not launch.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
