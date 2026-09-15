@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerCoCardWebhook } from "../cocardWebhook";
 import { registerGoogleOAuthRoutes } from "../googleOAuth";
+import { registerDreamCarzZoomRoute } from "../zoomOpportunity";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerOAuthRoutes(app);
   registerGoogleOAuthRoutes(app);
+  registerDreamCarzZoomRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

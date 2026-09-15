@@ -22,6 +22,9 @@
 - [x] Redeploy the current DreamCarz Concierge source after the Railway ElevenLabs credential update so the live transcription procedure is present alongside its configuration.
 - [ ] Verify live DreamCarz Concierge speech-to-text end to end with a real browser recording and confirm the user interface no longer shows “Voice transcription is not configured.”
 - [ ] If live transcription fails, inspect the Railway runtime and ElevenLabs response, then repair the remaining provider issue until a real clip returns transcribed text.
+- [x] Create a DreamCarz Zoom opportunity-call flyer for 7:00 PM ET on September 15, 2026 with a scannable meeting QR code.
+- [x] Add and locally verify the DreamCarz `/zoom` redirect to the supplied Zoom meeting without exposing credentials.
+- [ ] Deploy the validated `/zoom` redirect to Railway production and verify `https://www.dreamcarz.io/zoom` redirects to the supplied Zoom meeting.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
