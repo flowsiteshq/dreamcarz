@@ -48,6 +48,7 @@
 - [ ] Configure the CoCard webhook signing key and verify signed recurring callbacks update Associate enrollment states automatically in production.
 - [ ] Deliver the live Associate sign-up URL to the user after the verified production page release.
 - [ ] Repair and verify the live Associate enrollment secure-checkout button after the user reported that the provider handoff did not launch.
+- [ ] Repair the disabled Associate enrollment button so it becomes available after explicit recurring-payment authorization.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
