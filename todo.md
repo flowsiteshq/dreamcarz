@@ -49,6 +49,12 @@
 - [ ] Deliver the live Associate sign-up URL to the user after the verified production page release.
 - [ ] Repair and verify the live Associate enrollment secure-checkout button after the user reported that the provider handoff did not launch.
 - [ ] Repair the disabled Associate enrollment button so it becomes available after explicit recurring-payment authorization.
+- [ ] Resume the approved DreamCarz Meta lead campaign and complete publication using Lanham, Maryland plus a 30-mile radius, $25 per day, and a seven-day schedule.
+- [ ] Complete the new DreamCarz Meta ad account’s required Account Overview onboarding before submitting the approved campaign for Meta review.
+- [ ] Resolve the Meta Page or Instagram identity validation requirement and verify the saved DreamCarz campaign is submitted for review; do not claim it is live without Meta confirmation.
+- [ ] Create or complete the DreamCarz AdRoll advertiser profile and verify the website audience source is ready for privacy-aware retargeting.
+- [ ] Configure a DreamCarz AdRoll retargeting campaign draft that uses the validated `/get-started` landing page and approved Rent to Own creative, without activating paid delivery before approval.
+- [ ] Deploy the approved AdRoll consent banner for the DreamCarz advertiser profile and verify its website-audience prerequisite before retargeting setup.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
