@@ -19,14 +19,23 @@
       window.adroll_adv_id = "PRESWOSMZRACVEOTTZVKK3";
       window.adroll_pix_id = "VPYTI7B2RJDGZMI4IQZ2V4";
       window.adroll_version = "2.0";
-      (function (w, d, e, o) {
+      (function (w, d, e, o, a) {
         w.__adroll_loaded = true;
-        var script = d.createElement(e);
-        var firstScript = d.getElementsByTagName(e)[0];
-        script.async = true;
-        script.src = o;
-        firstScript.parentNode.insertBefore(script, firstScript);
-      })(window, document, "script", "https://s.adroll.com/j/roundtrip.js");
+        w.adroll = w.adroll || [];
+        w.adroll.f = ["setProperties", "identify", "track"];
+        var roundtripUrl = "https://s.adroll.com/j/" + w.adroll_adv_id + "/roundtrip.js";
+        for (a = 0; a < w.adroll.f.length; a++) {
+          w.adroll[w.adroll.f[a]] = w.adroll[w.adroll.f[a]] || (function (name) {
+            return function () { w.adroll.push([name, arguments]); };
+          })(w.adroll.f[a]);
+        }
+        e = d.createElement("script");
+        o = d.getElementsByTagName("script")[0];
+        e.async = true;
+        e.src = roundtripUrl;
+        o.parentNode.insertBefore(e, o);
+      })(window, document);
+      window.adroll.track("pageView");
     </script>
   </head>
 
