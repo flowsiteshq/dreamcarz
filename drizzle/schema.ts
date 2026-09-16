@@ -700,8 +700,174 @@ export const advertisingLeads = mysqlTable("advertising_leads", {
   contactPhone: varchar("contactPhone", { length: 48 }).notNull(),
   source: mysqlEnum("source", ["facebook"]).default("facebook").notNull(),
   consentToContact: boolean("consentToContact").default(false).notNull(),
+  /** Additive bridge to the global marketing-lead record; existing public lead capture remains intact. */
+  marketingLeadId: int("marketingLeadId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => [index("advertising_lead_created_idx").on(table.createdAt)]);
+}, (table) => [index("advertising_lead_created_idx").on(table.createdAt), index("advertising_lead_marketing_lead_idx").on(table.marketingLeadId)]);
+
+// ── Global Marketing Leads & Meta Lead Ads Integration ──────────────────────
+
+/**
+ * Company-owned prospect record for public marketing sources. It deliberately
+ * remains separate from account-bound customer profiles and Associate-owned
+ * private lead records. A marketing lead does not create a customer account,
+ * transaction, membership, reservation, payment obligation, or eligibility.
+ */
+export const marketingLeads = mysqlTable("marketing_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  stage: mysqlEnum("stage", ["new_meta_lead", "new", "contacted", "qualified", "converted", "closed"]).default("new").notNull(),
+  primarySource: mysqlEnum("primarySource", ["meta_lead_ads", "facebook_landing_page", "manual"]).default("manual").notNull(),
+  contactName: varchar("contactName", { length: 160 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactPhone: varchar("contactPhone", { length: 48 }),
+  /** Admin-only, normalized lookup values used to prevent accidental duplicate prospects. */
+  normalizedEmail: varchar("normalizedEmail", { length: 320 }),
+  normalizedPhone: varchar("normalizedPhone", { length: 48 }),
+  contactConsentStatus: mysqlEnum("contactConsentStatus", ["not_confirmed", "website_granted", "meta_form_submitted", "revoked"]).default("not_confirmed").notNull(),
+  interest: varchar("interest", { length: 160 }),
+  /** Optional, explicit link when the prospect already has a DreamCarz account. */
+  linkedUserId: int("linkedUserId"),
+  firstSeenAt: timestamp("firstSeenAt").defaultNow().notNull(),
+  lastActivityAt: timestamp("lastActivityAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("marketing_lead_stage_activity_idx").on(table.stage, table.lastActivityAt),
+  index("marketing_lead_email_lookup_idx").on(table.normalizedEmail),
+  index("marketing_lead_phone_lookup_idx").on(table.normalizedPhone),
+  index("marketing_lead_user_idx").on(table.linkedUserId),
+]);
+
+/** Immutable, company-owned timeline for a marketing prospect. */
+export const marketingLeadActivities = mysqlTable("marketing_lead_activities", {
+  id: int("id").autoincrement().primaryKey(),
+  marketingLeadId: int("marketingLeadId").notNull(),
+  eventType: mysqlEnum("eventType", ["lead_created", "website_lead_received", "meta_lead_received", "stage_updated", "deduplication_review"]).notNull(),
+  actorType: mysqlEnum("actorType", ["system", "administrator", "provider"]).default("system").notNull(),
+  sourceRecordType: varchar("sourceRecordType", { length: 64 }),
+  sourceRecordId: varchar("sourceRecordId", { length: 160 }),
+  /** Safe summary only; do not put full form answers, tokens, or secrets in activity text. */
+  summary: varchar("summary", { length: 255 }).notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("marketing_lead_activity_lead_created_idx").on(table.marketingLeadId, table.createdAt),
+  index("marketing_lead_activity_source_idx").on(table.sourceRecordType, table.sourceRecordId),
+]);
+
+/**
+ * Page-level operational metadata only. Meta application secrets and Page
+ * access tokens remain server-only environment variables and are never stored.
+ */
+export const metaLeadIntegrations = mysqlTable("meta_lead_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  pageId: varchar("pageId", { length: 128 }).notNull().unique(),
+  pageName: varchar("pageName", { length: 255 }),
+  status: mysqlEnum("status", ["not_configured", "awaiting_subscription", "connected", "attention", "disabled"]).default("not_configured").notNull(),
+  graphApiVersion: varchar("graphApiVersion", { length: 24 }),
+  lastWebhookReceivedAt: timestamp("lastWebhookReceivedAt"),
+  lastSuccessfulLeadAt: timestamp("lastSuccessfulLeadAt"),
+  lastErrorAt: timestamp("lastErrorAt"),
+  lastErrorCode: varchar("lastErrorCode", { length: 96 }),
+  /** Manus Heartbeat task identity; callbacks authorize against this stored value, never request data. */
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  updatedByUserId: int("updatedByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("meta_lead_integration_cron_task_idx").on(table.scheduleCronTaskUid)]);
+
+/** Instant Forms seen through the connected Page's page-level leadgen subscription. */
+export const metaLeadForms = mysqlTable("meta_lead_forms", {
+  id: int("id").autoincrement().primaryKey(),
+  integrationId: int("integrationId").notNull(),
+  metaFormId: varchar("metaFormId", { length: 128 }).notNull(),
+  formName: varchar("formName", { length: 255 }),
+  formStatus: varchar("formStatus", { length: 64 }),
+  lastReceivedAt: timestamp("lastReceivedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("meta_lead_form_integration_form_unique").on(table.integrationId, table.metaFormId),
+  index("meta_lead_form_integration_idx").on(table.integrationId, table.lastReceivedAt),
+]);
+
+/**
+ * Durable signed-webhook inbox and processing ledger. The unique Meta lead ID
+ * makes repeated provider deliveries harmless without retaining raw contacts.
+ */
+export const metaLeadEvents = mysqlTable("meta_lead_events", {
+  id: int("id").autoincrement().primaryKey(),
+  metaLeadId: varchar("metaLeadId", { length: 128 }).notNull(),
+  pageId: varchar("pageId", { length: 128 }).notNull(),
+  metaFormId: varchar("metaFormId", { length: 128 }),
+  metaAdSetId: varchar("metaAdSetId", { length: 128 }),
+  metaAdId: varchar("metaAdId", { length: 128 }),
+  providerCreatedAt: timestamp("providerCreatedAt"),
+  receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+  payloadDigest: varchar("payloadDigest", { length: 64 }).notNull(),
+  structuralMetadata: text("structuralMetadata"),
+  processingStatus: mysqlEnum("processingStatus", ["received", "processing", "retry_scheduled", "processed", "manual_review", "ignored"]).default("received").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  lastErrorCode: varchar("lastErrorCode", { length: 96 }),
+  lastErrorAt: timestamp("lastErrorAt"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("meta_lead_event_lead_unique").on(table.metaLeadId),
+  index("meta_lead_event_status_due_idx").on(table.processingStatus, table.nextAttemptAt),
+  index("meta_lead_event_page_received_idx").on(table.pageId, table.receivedAt),
+]);
+
+/**
+ * Protected source-detail record. `fieldDataJson` preserves the complete Meta
+ * answer structure; disclaimer responses are separate per Meta's API.
+ */
+export const metaLeadRecords = mysqlTable("meta_lead_records", {
+  id: int("id").autoincrement().primaryKey(),
+  metaLeadId: varchar("metaLeadId", { length: 128 }).notNull().unique(),
+  marketingLeadId: int("marketingLeadId").notNull(),
+  metaLeadEventId: int("metaLeadEventId").notNull().unique(),
+  pageId: varchar("pageId", { length: 128 }).notNull(),
+  formId: varchar("formId", { length: 128 }).notNull(),
+  formName: varchar("formName", { length: 255 }),
+  campaignId: varchar("campaignId", { length: 128 }),
+  campaignName: varchar("campaignName", { length: 255 }),
+  adSetId: varchar("adSetId", { length: 128 }),
+  adSetName: varchar("adSetName", { length: 255 }),
+  adId: varchar("adId", { length: 128 }),
+  adName: varchar("adName", { length: 255 }),
+  sourcePlacement: varchar("sourcePlacement", { length: 96 }),
+  submittedAt: timestamp("submittedAt"),
+  fieldDataJson: text("fieldDataJson").notNull(),
+  customDisclaimerResponsesJson: text("customDisclaimerResponsesJson"),
+  mappedInterest: varchar("mappedInterest", { length: 160 }),
+  isTestLead: boolean("isTestLead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("meta_lead_record_marketing_lead_idx").on(table.marketingLeadId, table.submittedAt),
+  index("meta_lead_record_form_submitted_idx").on(table.formId, table.submittedAt),
+]);
+
+/** Controlled administrator test-lead audit; it never creates or changes paid advertising. */
+export const metaLeadTestRuns = mysqlTable("meta_lead_test_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  integrationId: int("integrationId").notNull(),
+  formId: varchar("formId", { length: 128 }).notNull(),
+  metaLeadId: varchar("metaLeadId", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("status", ["requested", "webhook_received", "processed", "manual_review", "failed"]).default("requested").notNull(),
+  requestedByUserId: int("requestedByUserId").notNull(),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  webhookReceivedAt: timestamp("webhookReceivedAt"),
+  processedAt: timestamp("processedAt"),
+  errorCode: varchar("errorCode", { length: 96 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("meta_lead_test_run_integration_created_idx").on(table.integrationId, table.createdAt),
+  index("meta_lead_test_run_status_idx").on(table.status, table.requestedAt),
+]);
 
 // ── Rental Onboarding & Identity Verification ───────────────────────────────
 

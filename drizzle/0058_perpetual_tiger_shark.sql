@@ -1,0 +1,2 @@
+ALTER TABLE `meta_lead_integrations` ADD `scheduleCronTaskUid` varchar(65);--> statement-breakpoint
+CREATE INDEX `meta_lead_integration_cron_task_idx` ON `meta_lead_integrations` (`scheduleCronTaskUid`);

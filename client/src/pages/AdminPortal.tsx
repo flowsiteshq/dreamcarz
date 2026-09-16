@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AdminOperationsContent } from "@/pages/dashboard/AdminOperations";
-import { AlertTriangle, Bell, Car, ChevronRight, ClipboardCheck, FileText, KeyRound, Loader2, LogOut, Menu, ShieldCheck, Users, Wrench } from "lucide-react";
+import { AlertTriangle, Bell, Car, ChevronRight, ClipboardCheck, FileText, KeyRound, Loader2, LogOut, Menu, PlugZap, ShieldCheck, Users, Wrench } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 const adminLinks = [
@@ -15,6 +15,7 @@ const adminLinks = [
   { label: "Compliance", id: "admin-reviews", icon: ShieldCheck },
   { label: "Documents", id: "admin-customers", icon: FileText },
   { label: "Operations", id: "admin-operations", icon: ClipboardCheck },
+  { label: "Integrations", id: "admin-integrations", icon: PlugZap },
 ];
 
 function AdministratorLogin() {

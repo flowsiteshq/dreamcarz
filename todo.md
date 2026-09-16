@@ -55,6 +55,9 @@
 - [ ] Create or complete the DreamCarz AdRoll advertiser profile and verify the website audience source is ready for privacy-aware retargeting.
 - [ ] Configure a DreamCarz AdRoll retargeting campaign draft that uses the validated `/get-started` landing page and approved Rent to Own creative, without activating paid delivery before approval.
 - [ ] Deploy the approved AdRoll consent banner for the DreamCarz advertiser profile and verify its website-audience prerequisite before retargeting setup.
+- [x] Inspect the existing DreamCarz CRM, lead pipeline, attribution records, and admin integration surfaces before designing Meta Lead Ads ingestion.
+- [x] Present a Meta Lead Ads integration architecture, required database fields, Graph API permissions, environment variables, webhook security, retry design, test-lead procedure, and impacted DreamCarz files for approval before implementation.
+- [x] Defer all Meta Lead Ads implementation, secret configuration, webhook activation, and test-lead execution until the user approves the proposed design.
 - [x] Define the advanced rental onboarding stages, approval states, and required member data.
 - [x] Create database tables and backend procedures for a member rental onboarding application.
 - [x] Build a mobile-first multi-step rental onboarding experience inside My Account.
@@ -493,3 +496,13 @@
 - [ ] Provision the DreamCarz Google Cloud OAuth consent screen and Web application client with the authorized production callback before implementing Google account sign-in.
 - [ ] Correct the DreamCarz Google OAuth web-client origin and callback to https://www.dreamcarz.io and its live callback path.
 - [ ] Add secure Google OAuth sign-in and existing-account linking while preserving DreamCarz direct-session security and account ownership.
+- [x] Add the approved non-destructive global marketing-lead, Meta attribution, activity, connection, form, and durable inbound-event data model without removing or renaming existing DreamCarz data.
+- [x] Implement the raw signed Meta Lead Ads webhook, verified GET handshake, Page allow-list, Graph lead retrieval, structured custom-answer capture, and idempotent phone/email/Meta-ID deduplication.
+- [x] Add durable database-backed Meta lead retry processing, bounded error states, and safe operational diagnostics without in-memory timers or sensitive logs.
+- [x] Add an administrator-only Integrations → Meta Lead Ads status, forms, retry, test, attribution, and New Meta Lead pipeline interface.
+- [x] Add regression coverage for Meta webhook security, event deduplication, retry behavior, marketing-lead matching, protected administrator access, and safe error handling.
+- [ ] Apply the reviewed additive Meta Lead Ads migration, configure only approved server-side connection variables, and verify the deployed callback without modifying any paid Meta campaign.
+- [ ] Demonstrate one controlled Meta test lead end to end, including duplicate-event confirmation, then stop without publishing or activating Facebook or Instagram advertising.
+- [x] Audit the DreamCarz Meta app configuration and current official Lead Ads/Page permission availability, then identify one exact required Meta-side action without modifying the draft campaign.
+- [ ] Deploy the approved signed Meta Lead Ads callback at https://www.dreamcarz.io/api/meta/lead-ads/webhook after production-safe verification, while leaving the paid Meta campaign in draft.
+- [ ] Complete the controlled Meta test only after the user rotates the previously exposed App Secret and enters all approved Meta server variables through secure production configuration.

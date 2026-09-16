@@ -1,7 +1,7 @@
 import { COOKIE_NAME, DIRECT_SESSION_COOKIE, DIRECT_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { createDirectSession, hasDirectAccountForEmail, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
 import {
@@ -82,6 +82,7 @@ import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
+import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
 import { DREAMCARZ_ROLES, effectiveDreamCarzRoles, type DreamCarzRole } from "../shared/dreamcarzRoles";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
@@ -113,6 +114,7 @@ import {
 import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
+import { META_LEAD_RETRY_PATH, MetaLeadProcessingError, attachMetaLeadRetrySchedule, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent } from "./metaLeadAds";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -142,6 +144,24 @@ function verifiedDreamCarzOrigin(req: { headers?: Record<string, unknown> }) {
   if (host === "localhost:3000" || host === "127.0.0.1:3000") return `http://${host}`;
   if (host.endsWith(".manus.space") || host.endsWith(".manus.computer")) return `https://${host}`;
   return "https://www.dreamcarz.io";
+}
+
+function metaLeadTrpcError(error: unknown): never {
+  if (error instanceof MetaLeadProcessingError) {
+    const messages: Record<string, string> = {
+      meta_graph_not_configured: "Meta Lead Ads connection details are not configured yet.",
+      meta_test_requires_complete_configuration: "Complete the protected Meta connection and webhook verification before requesting a test lead.",
+      invalid_meta_form_identifier: "Enter a valid Meta Instant Form ID.",
+      meta_event_not_found: "The Meta lead event was not found.",
+      marketing_lead_not_found: "The marketing lead was not found.",
+      database_unavailable: "Meta Lead Ads data is temporarily unavailable.",
+    };
+    throw new TRPCError({
+      code: error.retryable ? "INTERNAL_SERVER_ERROR" : "PRECONDITION_FAILED",
+      message: messages[error.code] ?? "The Meta Lead Ads operation could not be completed safely.",
+    });
+  }
+  throw error;
 }
 
 async function activateAssociateRole(
@@ -2932,6 +2952,96 @@ export const appRouter = router({
         const reference = `ADL-${new Date().getFullYear()}-${referenceCode}`;
         await db.insert(advertisingLeads).values({ ...input, reference, source: "facebook" });
         return { success: true, reference } as const;
+      }),
+  }),
+
+  metaLeadAds: router({
+    status: adminProcedure.query(async () => {
+      try {
+        return await getMetaLeadAdminStatus();
+      } catch (error) {
+        return metaLeadTrpcError(error);
+      }
+    }),
+
+    refreshConnection: adminProcedure.mutation(async ({ ctx }) => {
+      const connectionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_connection_refresh", String(ctx.user.id)), limit: 12, windowMs: 60 * 60_000 });
+      if (!connectionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta connection checks. Please try again later." });
+      try {
+        return await refreshMetaLeadConnectionStatus(ctx.user.id);
+      } catch (error) {
+        return metaLeadTrpcError(error);
+      }
+    }),
+
+    enableRetrySchedule: adminProcedure.mutation(async ({ ctx }) => {
+      const scheduleLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_retry_schedule", String(ctx.user.id)), limit: 5, windowMs: 60 * 60_000 });
+      if (!scheduleLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta retry schedule changes. Please try again later." });
+      try {
+        const status = await getMetaLeadAdminStatus();
+        const integration = status.integration;
+        if (!status.configuration.configured || !integration) throw new MetaLeadProcessingError("meta_retry_schedule_requires_connected_page", false);
+        const sessionToken = parse(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+        if (integration.scheduleCronTaskUid) {
+          const result = await updateHeartbeatJob(integration.scheduleCronTaskUid, { enable: true }, sessionToken);
+          return { enabled: true, existing: true, nextExecutionAt: result.nextExecutionAt ?? null };
+        }
+        const created = await createHeartbeatJob({
+          name: `dreamcarz-meta-lead-ads-retry-${integration.id}`,
+          cron: "0 */5 * * * *",
+          path: META_LEAD_RETRY_PATH,
+          method: "POST",
+          description: "Processes the durable DreamCarz Meta Lead Ads inbox and bounded retries for the connected Page.",
+        }, sessionToken);
+        await attachMetaLeadRetrySchedule(integration.id, created.taskUid, ctx.user.id);
+        return { enabled: true, existing: false, nextExecutionAt: created.nextExecutionAt ?? null };
+      } catch (error) {
+        return metaLeadTrpcError(error);
+      }
+    }),
+
+    requestTestLead: adminProcedure
+      .input(z.object({ formId: z.string().trim().min(1).max(128) }))
+      .mutation(async ({ ctx, input }) => {
+        const testLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_test", String(ctx.user.id)), limit: 5, windowMs: 60 * 60_000 });
+        if (!testLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta test-lead requests. Please try again later." });
+        try {
+          return await requestMetaLeadTest(input.formId, ctx.user.id);
+        } catch (error) {
+          return metaLeadTrpcError(error);
+        }
+      }),
+
+    retryEvent: adminProcedure
+      .input(z.object({ eventId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const retryLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_retry", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+        if (!retryLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta retry requests. Please try again later." });
+        try {
+          return await retryMetaLeadEvent(input.eventId);
+        } catch (error) {
+          return metaLeadTrpcError(error);
+        }
+      }),
+
+    listMarketingLeads: adminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).default(25) }).optional())
+      .query(async ({ input }) => {
+        try {
+          return await listMarketingLeads(input?.limit ?? 25);
+        } catch (error) {
+          return metaLeadTrpcError(error);
+        }
+      }),
+
+    marketingLeadDetail: adminProcedure
+      .input(z.object({ marketingLeadId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        try {
+          return await getMarketingLeadDetail(input.marketingLeadId);
+        } catch (error) {
+          return metaLeadTrpcError(error);
+        }
       }),
   }),
 

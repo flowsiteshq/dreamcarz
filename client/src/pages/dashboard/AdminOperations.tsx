@@ -27,6 +27,7 @@ import { AdministratorUserRoleManager } from "@/components/AdministratorUserRole
 import { AdministratorCommunicationHistory } from "@/components/AdministratorCommunicationHistory";
 import { AdministratorServiceNotice } from "@/components/AdministratorServiceNotice";
 import { AdministratorAdditionalDriverReview } from "@/components/AdministratorAdditionalDriverReview";
+import { MetaLeadAdsManager } from "@/components/MetaLeadAdsManager";
 
 function formatDate(value?: Date | string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not submitted";
@@ -188,6 +189,8 @@ export function AdminOperationsContent() {
         </section>
 
         <section id="admin-operations" className="scroll-mt-6 space-y-6"><FleetOperationsCalendar /><HandoffManager /></section>
+
+        <section id="admin-integrations" className="scroll-mt-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6"><MetaLeadAdsManager /></section>
 
         <RentalExtensionQueue />
 

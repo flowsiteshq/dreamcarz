@@ -12,6 +12,8 @@ import { registerStripeWebhook } from "../stripeWebhook";
 import { registerCoCardWebhook } from "../cocardWebhook";
 import { registerGoogleOAuthRoutes } from "../googleOAuth";
 import { registerDreamCarzZoomRoute } from "../zoomOpportunity";
+import { registerMetaLeadAdsWebhook } from "../metaLeadAdsWebhook";
+import { registerMetaLeadAdsRetryRoute } from "../metaLeadAdsRetry";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,12 +39,14 @@ async function startServer() {
   const server = createServer(app);
   registerStripeWebhook(app);
   registerCoCardWebhook(app);
+  registerMetaLeadAdsWebhook(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerOAuthRoutes(app);
   registerGoogleOAuthRoutes(app);
   registerDreamCarzZoomRoute(app);
+  registerMetaLeadAdsRetryRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",
