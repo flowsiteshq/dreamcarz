@@ -19,3 +19,7 @@ The previously exposed `META_APP_SECRET` was removed from Railway production and
 ## 2026-09-17 retry worker preparation
 
 A one-shot `metaLeadAdsCron` worker was added locally and validated for a Railway Cron service. It processes a bounded batch of due events and exits, with no in-process scheduler. The worker is not yet published to GitHub or provisioned as a Railway service because the GitHub credential is invalid and a separate Railway scheduled service can incur infrastructure charges. It therefore has not been treated as a production retry mechanism. The currently deployed web process continues to offer only administrator-triggered processing and the bearer-protected retry route, both disabled without configuration.
+
+## 2026-09-17 system-user Page assignment validation
+
+The system-user **Assign assets** flow was inspected for only the Dreamcarz Page. Meta offered individual partial-access switches for Content, Community activity, Messages and calls, Ads, Insights, Revenue, Creator content, and Creator management; it did **not** offer an individual Leads switch. The only broader option listed Leads also included Ads and other Page rights. No Page asset permission was assigned, no Ads capability was selected, and the incomplete assignment was closed. This preserves the least-privilege requirement and leaves the system user assigned only to the Dreamcarz app.
