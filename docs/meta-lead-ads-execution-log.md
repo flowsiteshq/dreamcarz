@@ -107,3 +107,29 @@ After the user restored shared browser control, the connected session is confirm
 GitHub confirmed direct-main commit `07b8941`, “Add Meta retry worker package commands.” This publishes the build and one-shot-start scripts required for the separate Railway retry-worker service. No ad, Page, form, campaign, or customer-data operation was part of this release.
 
 GitHub confirmed direct-main commit `0db45ec`, “Add direct Meta Lead Ads workspace link.” This makes `/admin?section=integrations` open the dedicated Meta Lead Ads workspace after deployment. The worker and its package commands are now published in GitHub; Railway deployment activation remains to be verified.
+
+GitHub’s deployment record now confirms the three supporting releases are deployed to `Dreamcarz / production`, with commit `0db45ec` (“Add direct Meta Lead Ads workspace link”) marked Active and Deployed (completed). A prior bundle-string monitor did not recognize the minified asset, but GitHub’s authoritative Railway deployment record confirms production activation.
+
+The deployed, authenticated Meta Lead Ads workspace was opened successfully. Its protected “Check connection and forms” action returned the customer-safe failure state “The Meta Lead Ads operation could not be completed safely.” It did not change any Page, form, campaign, ad set, ad, budget, audience, or publication setting. The server-recorded safe error code will be inspected next to determine whether the remaining cause is a Page token, access grant, or Meta permission condition.
+
+With the user’s explicit approval, Meta Business Suite assigned exactly one Page asset to the `DreamCarz Lead Sync` employee system user: the Dreamcarz Page, partial access **Ads** only. The resulting assigned-assets view confirms `Facebook Pages → Dreamcarz → Partial access (Ads)`. No ad account asset was assigned, and no campaign, ad set, ad, budget, targeting, audience, form, or publication setting was opened or changed.
+
+Immediately after the Page-only Ads assignment, the protected connection check was rerun and still returned the safe failure state. The administrator workspace remains in `attention`; it records no forms or leads. The next safe diagnostic is the dedicated Page `leadgen` subscription action, which configures only the approved webhook endpoint and then performs the same Page read-back verification. No advertising object has been accessed or changed.
+
+The Meta Page `leadgen` subscription operation was attempted through the protected DreamCarz administrator control after the Page-only access assignment. It completed only with the safe failure state. The protected status query records the specific code `meta_graph_access_denied`, with all required server variables still present and no lead events created. This establishes an access-token/Meta authorization blocker rather than an absent environment configuration. No paid-ad resource was accessed or changed.
+
+During preparation of the Railway Page-token replacement, an incorrect control exposed the previously stored Meta Page token in browser automation output. The value is not recorded here. It is treated as compromised and will be removed from Railway before the user’s newly generated token is entered privately. The replacement will not be revealed, copied, or logged through automation.
+
+Railway’s production variable inventory confirms that all Meta configuration keys remain present and masked. The Page-token action controls are being used only to remove the exposed old value and prepare a private replacement; the new user-generated value has not been entered or displayed.
+
+The Railway variable interface confirms the prior Page token is still present but masked after the mistaken display. The replacement workflow is being limited to its correct Page-token row; its editing field will be handed to the user because browser automation records typed secret values.
+
+Railway displayed the explicit deletion confirmation for `META_PAGE_ACCESS_TOKEN`. This removes the previously exposed old value only; it does not change source code, database data, or any Meta advertising resource. It will be immediately recreated under the same name with the user’s fresh token through a private browser handoff.
+
+The old `META_PAGE_ACCESS_TOKEN` removal is now staged in Railway as one pending configuration change; it has not yet been deployed. Railway confirms 16 remaining service variables and does not display the removed value. The fresh replacement will be added under the same variable name before the pending changes are deployed together.
+
+The user privately entered a newly generated Meta token under `META_PAGE_ACCESS_TOKEN`. Railway subsequently displayed the variable as masked, with all 17 service variables present and no staged changes remaining after deployment. The prior exposed token was removed and replaced under the same server-only variable name. No token value was retained in this record, source code, or administrator UI.
+
+After Railway accepted the masked fresh Page-token replacement and the service returned online, the protected Meta connection check was run again. It still returned the customer-safe failure state and produced no forms, test leads, or inbox events. The exact persisted safe diagnostic code will be read next; no Meta advertising resource was accessed or changed.
+
+The refreshed protected status query records `meta_graph_request_rejected` after the fresh token was deployed. This differs from the preceding access-denied result and keeps the issue confined to Meta’s Page/token/Leads Access configuration. DreamCarz configuration remains complete, and no forms, webhook events, or lead records were created.

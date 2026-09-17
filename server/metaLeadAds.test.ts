@@ -119,6 +119,8 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(serviceSource).toContain("fields: \"leadgen\"");
     expect(serviceSource).toContain("include_values: \"false\"");
     expect(serviceSource).toContain("subscribed_fields: \"leadgen\"");
+    expect(serviceSource).toContain('fields: "id,name"');
+    expect(serviceSource).not.toContain("leadgen_forms{id,name,status}");
     expect(serviceSource).toContain("affectedRows !== 1");
   });
 });
