@@ -347,6 +347,13 @@ function metaGraphUrl(config: MetaLeadAdsConfig, path: string, params: Record<st
   return url;
 }
 
+function metaAppGraphUrl(config: MetaLeadAdsConfig, path: string, params: Record<string, string> = {}) {
+  const url = new URL(`https://graph.facebook.com/${config.graphApiVersion}/${path.replace(/^\/+/, "")}`);
+  url.searchParams.set("access_token", `${config.appId}|${config.appSecret}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url;
+}
+
 async function metaGraphRequest(config: MetaLeadAdsConfig, path: string, options: { method?: "GET" | "POST"; params?: Record<string, string> } = {}) {
   if (!config.graphReady) throw new MetaLeadProcessingError("meta_graph_not_configured", false);
   const response = await fetch(metaGraphUrl(config, path, options.params), { method: options.method ?? "GET" });
@@ -357,7 +364,27 @@ async function metaGraphRequest(config: MetaLeadAdsConfig, path: string, options
     // The status code remains enough to classify the error without logging provider content.
   }
   if (!response.ok) {
-    const code = response.status === 429 || response.status >= 500 ? "meta_graph_temporary_failure" : response.status === 401 || response.status === 403 ? "meta_graph_access_denied" : "meta_graph_request_rejected";
+    const providerCode = Number((body as { error?: { code?: unknown } } | null)?.error?.code);
+    const accessDenied = response.status === 401 || response.status === 403 || [10, 102, 190, 200].includes(providerCode);
+    const code = response.status === 429 || response.status >= 500 ? "meta_graph_temporary_failure" : accessDenied ? "meta_graph_access_denied" : "meta_graph_request_rejected";
+    throw new MetaLeadProcessingError(code, response.status === 429 || response.status >= 500);
+  }
+  return body as Record<string, unknown>;
+}
+
+async function metaAppGraphRequest(config: MetaLeadAdsConfig, path: string, options: { method?: "GET" | "POST"; params?: Record<string, string> } = {}) {
+  if (!config.enabled || !config.appId || !config.appSecret || !config.webhookVerifyToken) throw new MetaLeadProcessingError("meta_webhook_not_configured", false);
+  const response = await fetch(metaAppGraphUrl(config, path, options.params), { method: options.method ?? "GET" });
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    // Provider bodies are never logged because they can include operational detail.
+  }
+  if (!response.ok) {
+    const providerCode = Number((body as { error?: { code?: unknown } } | null)?.error?.code);
+    const accessDenied = response.status === 401 || response.status === 403 || [10, 102, 190, 200].includes(providerCode);
+    const code = response.status === 429 || response.status >= 500 ? "meta_graph_temporary_failure" : accessDenied ? "meta_graph_access_denied" : "meta_app_webhook_subscription_failed";
     throw new MetaLeadProcessingError(code, response.status === 429 || response.status >= 500);
   }
   return body as Record<string, unknown>;
@@ -365,8 +392,8 @@ async function metaGraphRequest(config: MetaLeadAdsConfig, path: string, options
 
 async function resolveAttribution(config: MetaLeadAdsConfig, lead: MetaGraphLead, event: typeof metaLeadEvents.$inferSelect): Promise<MetaAttribution> {
   const attribution: MetaAttribution = {
-    formName: null,
-    formStatus: null,
+   formName: null,
+   formStatus: null,
     campaignId: null,
     campaignName: null,
     adSetId: event.metaAdSetId ?? null,
@@ -511,9 +538,33 @@ async function markMetaLeadProcessingFailure(db: Database, event: typeof metaLea
 export async function processMetaLeadEvent(eventId: number) {
   const db = await getDb();
   if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
-  const event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
+  let event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
   if (!event) throw new MetaLeadProcessingError("meta_event_not_found", false);
   if (["processed", "ignored"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
+  if (event.processingStatus === "processing") {
+    const leaseExpiredAt = new Date(Date.now() - 10 * 60_000);
+    if (event.updatedAt > leaseExpiredAt) return { status: event.processingStatus, eventId: event.id };
+    // A process may terminate after it claims an event but before it persists an
+    // outcome. Requeue only an expired lease; the conditional update prevents a
+    // still-running webhook or worker from being stolen.
+    const reset = await db.update(metaLeadEvents).set({
+      processingStatus: "retry_scheduled",
+      nextAttemptAt: new Date(),
+      lastErrorCode: "processing_lease_expired",
+      lastErrorAt: new Date(),
+    }).where(and(
+      eq(metaLeadEvents.id, event.id),
+      eq(metaLeadEvents.processingStatus, "processing"),
+      lte(metaLeadEvents.updatedAt, leaseExpiredAt),
+    ));
+    const affectedRows = Number((reset as Array<{ affectedRows?: number | bigint }>)[0]?.affectedRows ?? 0);
+    if (affectedRows !== 1) {
+      const current = (await db.select({ processingStatus: metaLeadEvents.processingStatus }).from(metaLeadEvents).where(eq(metaLeadEvents.id, event.id)).limit(1))[0];
+      return { status: current?.processingStatus ?? "ignored", eventId: event.id };
+    }
+    event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
+    if (!event) throw new MetaLeadProcessingError("meta_event_not_found", false);
+  }
   if (!["received", "retry_scheduled"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
 
   try {
@@ -718,6 +769,7 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
   if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
   const config = getMetaLeadAdsConfig();
   if (!config.pageId || !config.graphReady) throw new MetaLeadProcessingError("meta_graph_not_configured", false);
+  const integration = await findOrCreateIntegration(db, config.pageId, config, { status: "awaiting_subscription" });
   try {
     const page = await metaGraphRequest(config, config.pageId, { params: { fields: "id,name,leadgen_forms{id,name,status}" } });
     const subscriptions = await metaGraphRequest(config, `${config.pageId}/subscribed_apps`);
@@ -725,7 +777,6 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
     const appSubscription = subscriptionData.find(item => safeIdentifier(item.id) === config.appId);
     const fields = Array.isArray(appSubscription?.subscribed_fields) ? appSubscription?.subscribed_fields : [];
     const hasLeadgenSubscription = fields.includes("leadgen");
-    const integration = await findOrCreateIntegration(db, config.pageId, config, { pageName: safeText(page.name, 255), status: hasLeadgenSubscription ? "connected" : "awaiting_subscription" });
     await db.update(metaLeadIntegrations).set({
       pageName: safeText(page.name, 255),
       status: hasLeadgenSubscription ? "connected" : "awaiting_subscription",
@@ -741,8 +792,12 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
     }
   } catch (error) {
     const classified = error instanceof MetaLeadProcessingError ? error : new MetaLeadProcessingError("meta_connection_check_failed", true);
-    const existing = (await db.select().from(metaLeadIntegrations).where(eq(metaLeadIntegrations.pageId, config.pageId)).limit(1))[0];
-    if (existing) await db.update(metaLeadIntegrations).set({ status: "attention", lastErrorAt: new Date(), lastErrorCode: classified.code, updatedByUserId: administratorId }).where(eq(metaLeadIntegrations.id, existing.id));
+    await db.update(metaLeadIntegrations).set({
+      status: "attention",
+      lastErrorAt: new Date(),
+      lastErrorCode: classified.code,
+      updatedByUserId: administratorId,
+    }).where(eq(metaLeadIntegrations.id, integration.id));
     throw classified;
   }
   return getMetaLeadAdminStatus();
@@ -753,12 +808,26 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
  * This is intentionally administrator-gated through the tRPC caller; it does
  * not inspect or alter campaigns, ad sets, ads, budgets, audiences, or forms.
  */
+async function configureMetaLeadAppWebhook(config: MetaLeadAdsConfig) {
+  await metaAppGraphRequest(config, `${config.appId}/subscriptions`, {
+    method: "POST",
+    params: {
+      object: "page",
+      callback_url: `https://www.dreamcarz.io${META_LEAD_WEBHOOK_PATH}`,
+      fields: "leadgen",
+      include_values: "false",
+      verify_token: config.webhookVerifyToken,
+    },
+  });
+}
+
 export async function subscribeMetaLeadPageLeadgen(administratorId: number) {
   const db = await getDb();
   if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
   const config = getMetaLeadAdsConfig();
   if (!config.enabled || !config.pageId || !config.graphReady) throw new MetaLeadProcessingError("meta_graph_not_configured", false);
   try {
+    await configureMetaLeadAppWebhook(config);
     await metaGraphRequest(config, `${config.pageId}/subscribed_apps`, {
       method: "POST",
       params: { subscribed_fields: "leadgen" },
