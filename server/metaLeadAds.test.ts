@@ -100,6 +100,9 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(retrySource).toContain("hasValidRetryBearer(req.headers.authorization, retrySecret)");
     expect(retrySource).toContain("processConfiguredDueMetaLeadEvents(20)");
     expect(readFileSync(new URL("./metaLeadAds.ts", import.meta.url), "utf8")).toContain("processing_lease_expired");
+    const cronWorkerSource = readFileSync(new URL("./metaLeadAdsCron.ts", import.meta.url), "utf8");
+    expect(cronWorkerSource).toContain("processConfiguredDueMetaLeadEvents(20)");
+    expect(cronWorkerSource).not.toContain("setInterval");
 
     const nonAdmin = appRouter.createCaller({ user: { id: 9, role: "user" }, req: { headers: {} }, res: {} } as never);
     await expect(nonAdmin.metaLeadAds.status()).rejects.toMatchObject({ code: "FORBIDDEN" });
