@@ -771,7 +771,13 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
   if (!config.pageId || !config.graphReady) throw new MetaLeadProcessingError("meta_graph_not_configured", false);
   const integration = await findOrCreateIntegration(db, config.pageId, config, { status: "awaiting_subscription" });
   try {
-    const page = await metaGraphRequest(config, config.pageId, { params: { fields: "id,name,leadgen_forms{id,name,status}" } });
+    // The Page node's documented stable read supports id and name. Form records
+    // are instead discovered from signed leadgen notifications (or the
+    // administrator-provided test-form ID). Requesting leadgen_forms as a nested
+    // Page field causes Meta to reject otherwise valid Page tokens for some app
+    // configurations, which must not make a connection check look like a token
+    // failure.
+    const page = await metaGraphRequest(config, config.pageId, { params: { fields: "id,name" } });
     const subscriptions = await metaGraphRequest(config, `${config.pageId}/subscribed_apps`);
     const subscriptionData = Array.isArray(subscriptions.data) ? subscriptions.data as Array<Record<string, unknown>> : [];
     const appSubscription = subscriptionData.find(item => safeIdentifier(item.id) === config.appId);
@@ -785,11 +791,6 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
       lastErrorCode: null,
       updatedByUserId: administratorId,
     }).where(eq(metaLeadIntegrations.id, Number(integration.id)));
-    const formEntries = Array.isArray(page.leadgen_forms) ? page.leadgen_forms as Array<Record<string, unknown>> : [];
-    for (const form of formEntries) {
-      const id = safeIdentifier(form.id);
-      if (id) await upsertObservedMetaForm(db, Number(integration.id), id, { formName: safeText(form.name, 255), formStatus: safeText(form.status, 64) });
-    }
   } catch (error) {
     const classified = error instanceof MetaLeadProcessingError ? error : new MetaLeadProcessingError("meta_connection_check_failed", true);
     await db.update(metaLeadIntegrations).set({
