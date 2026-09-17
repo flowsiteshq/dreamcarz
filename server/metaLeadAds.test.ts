@@ -95,10 +95,10 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(serverSource.indexOf("registerMetaLeadAdsWebhook(app)")).toBeLessThan(serverSource.indexOf("express.json"));
     expect(routerSource).toContain("metaLeadAds: router({");
     expect(routerSource).toContain("status: adminProcedure.query");
-    expect(routerSource).toContain("enableRetrySchedule: adminProcedure.mutation");
-    expect(retrySource).toContain("caller.isCron || !caller.taskUid");
-    expect(retrySource).toContain("getMetaLeadIntegrationByRetryTask(caller.taskUid)");
-    expect(retrySource).toContain("processDueMetaLeadEvents(20, integration.pageId)");
+    expect(routerSource).toContain("subscribePageLeadgen: adminProcedure.mutation");
+    expect(routerSource).toContain("processDueEventsNow: adminProcedure.mutation");
+    expect(retrySource).toContain("hasValidRetryBearer(req.headers.authorization, retrySecret)");
+    expect(retrySource).toContain("processConfiguredDueMetaLeadEvents(20)");
 
     const nonAdmin = appRouter.createCaller({ user: { id: 9, role: "user" }, req: { headers: {} }, res: {} } as never);
     await expect(nonAdmin.metaLeadAds.status()).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -108,5 +108,7 @@ describe("Meta Lead Ads application boundaries", () => {
     const serviceSource = readFileSync(new URL("./metaLeadAds.ts", import.meta.url), "utf8");
     expect(serviceSource).not.toMatch(/\/campaigns[^\n]*(POST|PATCH|DELETE)/i);
     expect(serviceSource).not.toContain("adsets");
+    expect(serviceSource).toContain("subscribed_fields: \"leadgen\"");
+    expect(serviceSource).toContain("affectedRows !== 1");
   });
 });

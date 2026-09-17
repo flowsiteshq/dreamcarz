@@ -514,6 +514,7 @@ export async function processMetaLeadEvent(eventId: number) {
   const event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
   if (!event) throw new MetaLeadProcessingError("meta_event_not_found", false);
   if (["processed", "ignored"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
+  if (!["received", "retry_scheduled"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
 
   try {
     const existingSource = (await db.select({ id: metaLeadRecords.id }).from(metaLeadRecords).where(eq(metaLeadRecords.metaLeadId, event.metaLeadId)).limit(1))[0];
@@ -524,7 +525,23 @@ export async function processMetaLeadEvent(eventId: number) {
 
     const config = getMetaLeadAdsConfig();
     if (!config.enabled || !config.pageId || event.pageId !== config.pageId) throw new MetaLeadProcessingError("meta_page_not_allowed", false);
-    await db.update(metaLeadEvents).set({ processingStatus: "processing", attempts: (event.attempts ?? 0) + 1, lastErrorCode: null, lastErrorAt: null }).where(eq(metaLeadEvents.id, event.id));
+    // Claim the row before retrieving the lead. This conditional update prevents
+    // concurrent webhook, administrator, and worker paths from creating two
+    // global marketing leads before the provider-ID unique source record exists.
+    const claim = await db.update(metaLeadEvents).set({
+      processingStatus: "processing",
+      attempts: (event.attempts ?? 0) + 1,
+      lastErrorCode: null,
+      lastErrorAt: null,
+    }).where(and(
+      eq(metaLeadEvents.id, event.id),
+      inArray(metaLeadEvents.processingStatus, ["received", "retry_scheduled"]),
+    ));
+    const affectedRows = Number((claim as Array<{ affectedRows?: number | bigint }>)[0]?.affectedRows ?? 0);
+    if (affectedRows !== 1) {
+      const current = (await db.select({ processingStatus: metaLeadEvents.processingStatus }).from(metaLeadEvents).where(eq(metaLeadEvents.id, event.id)).limit(1))[0];
+      return { status: current?.processingStatus ?? "ignored", eventId: event.id };
+    }
     const sourceLead = await metaGraphRequest(config, event.metaLeadId, { params: { fields: "id,created_time,ad_id,form_id,platform,field_data,custom_disclaimer_responses" } }) as MetaGraphLead;
     const returnedLeadId = safeIdentifier(sourceLead.id);
     if (returnedLeadId !== event.metaLeadId) throw new MetaLeadProcessingError("meta_lead_identifier_mismatch", false);
@@ -608,6 +625,13 @@ export async function processDueMetaLeadEvents(limit = 20, pageId?: string) {
     manualReview: outcomes.filter(outcome => outcome.status === "manual_review").length,
     ignored: outcomes.filter(outcome => outcome.status === "ignored").length,
   };
+}
+
+/** Runs only for the currently allow-listed, server-configured Page. */
+export async function processConfiguredDueMetaLeadEvents(limit = 20) {
+  const config = getMetaLeadAdsConfig();
+  if (!config.enabled || !config.pageId) throw new MetaLeadProcessingError("meta_page_not_allowed", false);
+  return processDueMetaLeadEvents(limit, config.pageId);
 }
 
 export async function attachMetaLeadRetrySchedule(integrationId: number, taskUid: string, administratorId: number) {
@@ -722,6 +746,39 @@ export async function refreshMetaLeadConnectionStatus(administratorId: number) {
     throw classified;
   }
   return getMetaLeadAdminStatus();
+}
+
+/**
+ * Subscribes only the configured Page and only the documented leadgen field.
+ * This is intentionally administrator-gated through the tRPC caller; it does
+ * not inspect or alter campaigns, ad sets, ads, budgets, audiences, or forms.
+ */
+export async function subscribeMetaLeadPageLeadgen(administratorId: number) {
+  const db = await getDb();
+  if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
+  const config = getMetaLeadAdsConfig();
+  if (!config.enabled || !config.pageId || !config.graphReady) throw new MetaLeadProcessingError("meta_graph_not_configured", false);
+  try {
+    await metaGraphRequest(config, `${config.pageId}/subscribed_apps`, {
+      method: "POST",
+      params: { subscribed_fields: "leadgen" },
+    });
+    const status = await refreshMetaLeadConnectionStatus(administratorId);
+    if (status.integration?.status !== "connected") throw new MetaLeadProcessingError("meta_page_subscription_not_confirmed", true);
+    return status;
+  } catch (error) {
+    const classified = error instanceof MetaLeadProcessingError ? error : new MetaLeadProcessingError("meta_page_subscription_failed", true);
+    const integration = (await db.select().from(metaLeadIntegrations).where(eq(metaLeadIntegrations.pageId, config.pageId)).limit(1))[0];
+    if (integration) {
+      await db.update(metaLeadIntegrations).set({
+        status: "attention",
+        lastErrorAt: new Date(),
+        lastErrorCode: classified.code,
+        updatedByUserId: administratorId,
+      }).where(eq(metaLeadIntegrations.id, integration.id));
+    }
+    throw classified;
+  }
 }
 
 export async function retryMetaLeadEvent(eventId: number) {

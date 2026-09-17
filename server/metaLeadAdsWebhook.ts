@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import {
   META_LEAD_WEBHOOK_PATH,
   getMetaLeadAdsConfig,
+  processDueMetaLeadEvents,
   persistMetaLeadWebhookEvents,
   verifyMetaLeadWebhookSignature,
   verifyMetaLeadWebhookToken,
@@ -33,7 +34,14 @@ export function registerMetaLeadAdsWebhook(app: Express) {
     }
     try {
       const result = await persistMetaLeadWebhookEvents(req.body, payload);
-      return res.status(200).json({ received: true, accepted: result.accepted, duplicate: result.duplicates, ignored: result.ignored });
+      // The durable inbox is written before Graph retrieval. Process the small
+      // due batch immediately so a healthy delivery appears in the CRM without
+      // waiting for the Railway worker, while every recoverable failure remains
+      // available for bounded scheduled retry.
+      const immediate = result.accepted > 0 && config.pageId
+        ? await processDueMetaLeadEvents(Math.min(result.accepted, 10), config.pageId)
+        : { examined: 0, processed: 0, retryScheduled: 0, manualReview: 0, ignored: 0 };
+      return res.status(200).json({ received: true, accepted: result.accepted, duplicate: result.duplicates, ignored: result.ignored, immediate });
     } catch {
       return res.status(503).json({ received: false, code: "meta_event_inbox_unavailable" });
     }

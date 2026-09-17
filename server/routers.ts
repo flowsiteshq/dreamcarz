@@ -82,7 +82,6 @@ import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
-import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
 import { DREAMCARZ_ROLES, effectiveDreamCarzRoles, type DreamCarzRole } from "../shared/dreamcarzRoles";
 import { canMemberCancelReservation, hasValidReservationDateRange } from "../shared/reservationRequest";
@@ -114,7 +113,7 @@ import {
 import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
-import { META_LEAD_RETRY_PATH, MetaLeadProcessingError, attachMetaLeadRetrySchedule, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent } from "./metaLeadAds";
+import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -2974,27 +2973,21 @@ export const appRouter = router({
       }
     }),
 
-    enableRetrySchedule: adminProcedure.mutation(async ({ ctx }) => {
-      const scheduleLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_retry_schedule", String(ctx.user.id)), limit: 5, windowMs: 60 * 60_000 });
-      if (!scheduleLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta retry schedule changes. Please try again later." });
+    subscribePageLeadgen: adminProcedure.mutation(async ({ ctx }) => {
+      const subscriptionLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_page_subscription", String(ctx.user.id)), limit: 5, windowMs: 60 * 60_000 });
+      if (!subscriptionLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta Page subscription requests. Please try again later." });
       try {
-        const status = await getMetaLeadAdminStatus();
-        const integration = status.integration;
-        if (!status.configuration.configured || !integration) throw new MetaLeadProcessingError("meta_retry_schedule_requires_connected_page", false);
-        const sessionToken = parse(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
-        if (integration.scheduleCronTaskUid) {
-          const result = await updateHeartbeatJob(integration.scheduleCronTaskUid, { enable: true }, sessionToken);
-          return { enabled: true, existing: true, nextExecutionAt: result.nextExecutionAt ?? null };
-        }
-        const created = await createHeartbeatJob({
-          name: `dreamcarz-meta-lead-ads-retry-${integration.id}`,
-          cron: "0 */5 * * * *",
-          path: META_LEAD_RETRY_PATH,
-          method: "POST",
-          description: "Processes the durable DreamCarz Meta Lead Ads inbox and bounded retries for the connected Page.",
-        }, sessionToken);
-        await attachMetaLeadRetrySchedule(integration.id, created.taskUid, ctx.user.id);
-        return { enabled: true, existing: false, nextExecutionAt: created.nextExecutionAt ?? null };
+        return await subscribeMetaLeadPageLeadgen(ctx.user.id);
+      } catch (error) {
+        return metaLeadTrpcError(error);
+      }
+    }),
+
+    processDueEventsNow: adminProcedure.mutation(async ({ ctx }) => {
+      const processLimit = consumeRateLimit({ key: rateLimitKey(ctx.req, "admin_meta_lead_process_due", String(ctx.user.id)), limit: 30, windowMs: 60 * 60_000 });
+      if (!processLimit.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many Meta event processing requests. Please try again later." });
+      try {
+        return await processConfiguredDueMetaLeadEvents(20);
       } catch (error) {
         return metaLeadTrpcError(error);
       }
