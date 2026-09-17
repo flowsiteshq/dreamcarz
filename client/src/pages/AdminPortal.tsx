@@ -79,11 +79,15 @@ export default function AdminPortal() {
   const { user, loading, isAuthenticated } = useAuth();
   const logout = trpc.auth.logout.useMutation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("admin-dashboard");
+  const [activeSection, setActiveSection] = useState(() => new URLSearchParams(window.location.search).get("section") === "integrations" ? "admin-integrations" : "admin-dashboard");
 
   const navigateTo = (id: string) => {
     setActiveSection(id);
     setSidebarOpen(false);
+    const url = new URL(window.location.href);
+    if (id === "admin-integrations") url.searchParams.set("section", "integrations");
+    else url.searchParams.delete("section");
+    window.history.replaceState({}, "", url);
     if (id === "admin-dashboard") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
