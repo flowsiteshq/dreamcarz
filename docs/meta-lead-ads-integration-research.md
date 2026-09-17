@@ -18,6 +18,12 @@ The existing Dreamcarz Meta app initially exposed only the **Create & manage ads
 
 The newly configured use case exposes `leads_retrieval`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`, `ads_management`, and `business_management` as **Ready for testing**. `pages_manage_metadata` is offered as an additional permission and is required for the planned Page webhook subscription. The next configuration step is to enable that permission and configure the secure callback only after the production endpoint and rotated server-only credentials are ready.
 
+## Production access audit — September 17, 2026
+
+The Dreamcarz Page (ID `1262843356918302`) was identified in the connected Vincent Holmes's Business portfolio. A new employee-level system user named **DreamCarz Lead Sync** was created for this integration only. No ad account or advertising asset was assigned. The remaining Page access assignment must enable only the **Leads** toggle under **Partial access (business tools only)**, as documented by Meta; the broader **Ads** or **Full access** choices are not needed for this integration.
+
+Meta's current guidance also confirms that a production token retrieving full lead and ad-level attribution requires `ads_management`, `leads_retrieval`, `pages_show_list`, `pages_read_engagement`, and `pages_manage_ads`; use `pages_manage_metadata` for the Page webhook subscription. If Leads Access has been customized, the identity backing the Page token must be granted Leads Access. [2] [5]
+
 ## Sources
 
 [1] Meta, “Webhooks for Leads.” https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-leadgen/
@@ -27,3 +33,5 @@ The newly configured use case exposes `leads_retrieval`, `pages_manage_ads`, `pa
 [3] Meta, “Get started with webhooks.” https://developers.facebook.com/docs/graph-api/webhooks/getting-started/
 
 [4] Meta, “Testing and Troubleshooting,” updated September 10, 2025. https://developers.facebook.com/documentation/ads-commerce/marketing-api/guides/lead-ads/testing-troubleshooting
+
+[5] Meta Business Help Center, “Assign or remove permissions in leads access from Meta Business Suite.” https://www.facebook.com/business/help/540596413257598
