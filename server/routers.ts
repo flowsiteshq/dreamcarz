@@ -149,6 +149,9 @@ function metaLeadTrpcError(error: unknown): never {
   if (error instanceof MetaLeadProcessingError) {
     const messages: Record<string, string> = {
       meta_graph_not_configured: "Meta Lead Ads connection details are not configured yet.",
+      meta_graph_access_denied: "Meta denied the configured token access to this Page. Use the Dreamcarz long-lived Page token obtained by a person with Page and advertising access; values remain private.",
+      meta_graph_request_rejected: "Meta rejected the protected Page request. Confirm the token belongs to Dreamcarz and is current, then check the Page connection again.",
+      meta_graph_temporary_failure: "Meta is temporarily unavailable. The connection check can be retried safely.",
       meta_test_requires_complete_configuration: "Complete the protected Meta connection and webhook verification before requesting a test lead.",
       invalid_meta_form_identifier: "Enter a valid Meta Instant Form ID.",
       meta_event_not_found: "The Meta lead event was not found.",

@@ -99,7 +99,10 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(routerSource).toContain("processDueEventsNow: adminProcedure.mutation");
     expect(retrySource).toContain("hasValidRetryBearer(req.headers.authorization, retrySecret)");
     expect(retrySource).toContain("processConfiguredDueMetaLeadEvents(20)");
-    expect(readFileSync(new URL("./metaLeadAds.ts", import.meta.url), "utf8")).toContain("processing_lease_expired");
+    const serviceSource = readFileSync(new URL("./metaLeadAds.ts", import.meta.url), "utf8");
+    expect(serviceSource).toContain("processing_lease_expired");
+    expect(serviceSource).toContain("const integration = await findOrCreateIntegration(db, config.pageId, config, { status: \"awaiting_subscription\" })");
+    expect(serviceSource).toContain("lastErrorCode: classified.code");
     const cronWorkerSource = readFileSync(new URL("./metaLeadAdsCron.ts", import.meta.url), "utf8");
     expect(cronWorkerSource).toContain("processConfiguredDueMetaLeadEvents(20)");
     expect(cronWorkerSource).not.toContain("setInterval");
@@ -112,6 +115,9 @@ describe("Meta Lead Ads application boundaries", () => {
     const serviceSource = readFileSync(new URL("./metaLeadAds.ts", import.meta.url), "utf8");
     expect(serviceSource).not.toMatch(/\/campaigns[^\n]*(POST|PATCH|DELETE)/i);
     expect(serviceSource).not.toContain("adsets");
+    expect(serviceSource).toContain("object: \"page\"");
+    expect(serviceSource).toContain("fields: \"leadgen\"");
+    expect(serviceSource).toContain("include_values: \"false\"");
     expect(serviceSource).toContain("subscribed_fields: \"leadgen\"");
     expect(serviceSource).toContain("affectedRows !== 1");
   });

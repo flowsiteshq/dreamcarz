@@ -23,3 +23,21 @@ A one-shot `metaLeadAdsCron` worker was added locally and validated for a Railwa
 ## 2026-09-17 system-user Page assignment validation
 
 The system-user **Assign assets** flow was inspected for only the Dreamcarz Page. Meta offered individual partial-access switches for Content, Community activity, Messages and calls, Ads, Insights, Revenue, Creator content, and Creator management; it did **not** offer an individual Leads switch. The only broader option listed Leads also included Ads and other Page rights. No Page asset permission was assigned, no Ads capability was selected, and the incomplete assignment was closed. This preserves the least-privilege requirement and leaves the system user assigned only to the Dreamcarz app.
+
+## 2026-09-17 production configuration verification
+
+Railway production accepted and deployed the five Meta integration variables with all values masked in the UI. The service reported Online and Deployment successful. Public negative probes confirmed the production webhook rejects a wrong verification token and an invalid signature with HTTP 403. The authenticated DreamCarz administrator portal is reachable; the Integrations navigation targets the Meta Lead Ads workspace within the administrator operations page.
+
+## 2026-09-17 live verification caveats
+
+The public production webhook was verified from the sandbox with negative probes: an incorrect Meta verification token returned HTTP 403, and an invalid `X-Hub-Signature-256` POST returned HTTP 403. The authenticated DreamCarz admin portal loads the Integrations → Meta Lead Ads controls, including connection check, Page leadgen subscription, durable inbox processing, and controlled test-lead form controls. A direct sandbox database inspection returned no Meta integration rows, which is not treated as production evidence because the sandbox `DATABASE_URL` is not confirmed to be Railway production. Railway’s browser terminal is visible but browser-driven keystrokes have not reliably executed commands, so no secret values have been read or printed.
+
+## 2026-09-17 live admin validation
+
+Railway’s production variable inventory visibly lists all seven required Meta variables plus the retry secret, with their values masked. The authenticated administrator portal’s Integrations navigation reaches the combined administrative operations surface; the dedicated Meta Lead Ads section remains further down that surface. Local validation at this stage reconfirmed TypeScript, the seven focused Meta tests, and the production build all pass. No ad, ad set, campaign, budget, targeting, or publishing setting has been opened or modified.
+
+The administrator page’s Integrations navigation is confirmed to use a delayed in-page scroll across the unified operations surface. It passed maintenance completion and scheduling controls while progressing toward the dedicated Meta panel; no operational form was submitted or altered during navigation.
+
+The integrated administrator surface has a single long-body operations layout. Its Integrations control re-renders the operations content and issues a smooth scroll to the Meta section after a short delay. Browser-native keyboard focus interacted unpredictably with that animation; no management action, Page setting, or lead test was submitted while navigating.
+
+The administrator page confirms that the Meta integration component is placed after the Fleet Operations section and before extension, settlement, DCP, and other operational sections. Browser focus movement remains inconsistent on this unusually long page. No lead, marketing action, campaign, Page, billing, vehicle, customer, or transaction control was activated.
