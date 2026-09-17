@@ -15,3 +15,7 @@ The Meta Business Suite **Leads Access** screen for the Dreamcarz Page showed th
 ## 2026-09-17 credential containment
 
 The previously exposed `META_APP_SECRET` was removed from Railway production and the deployed Railway variable inventory no longer contained that name. A subsequently rotated secret was accidentally exposed by the automation when entered into Railway and was not saved or deployed; its entry form was cleared. It must be rotated again through a user-private browser action before reconfiguration. The production Meta integration remains disabled because no Page token, verify token, feature flag, retry secret, or active app secret is currently configured.
+
+## 2026-09-17 retry worker preparation
+
+A one-shot `metaLeadAdsCron` worker was added locally and validated for a Railway Cron service. It processes a bounded batch of due events and exits, with no in-process scheduler. The worker is not yet published to GitHub or provisioned as a Railway service because the GitHub credential is invalid and a separate Railway scheduled service can incur infrastructure charges. It therefore has not been treated as a production retry mechanism. The currently deployed web process continues to offer only administrator-triggered processing and the bearer-protected retry route, both disabled without configuration.
