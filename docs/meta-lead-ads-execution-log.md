@@ -63,3 +63,33 @@ Railway’s service overview again exposed only its cookie-notice extraction and
 The browser session became unresponsive after the Railway pages. Re-selecting the authenticated My Browser routing restored navigation to the DreamCarz administrator URL, where the initial content now shows the existing NextRoll consent banner. This is a browser-session state only; no consent choice or Meta operation was made.
 
 After browser recovery, the DreamCarz administrative command center is again visible. Its Meta Integrations click is timing out during the long rendered page transition; no button result is asserted from it. A post-transition inspection follows.
+
+The GitHub browser upload page now reports that uploads are disabled for its current session because it lacks push access. A noninteractive local push also confirms no GitHub credential is available. The repository connector configuration reports enabled, but does not expose a GitHub MCP publishing tool in this session. The dedicated Meta admin workspace remains saved locally and checkpointed, pending a valid repository publishing session.
+
+The authenticated GitHub session shown by the user is available to the connected browser. The dedicated administrator workspace file `client/src/pages/AdminPortal.tsx` is staged on GitHub's direct-main upload form; no commit has been made at this point.
+
+The dedicated Meta administrator workspace was submitted to GitHub direct-main with the commit title “Open Meta leads in dedicated admin workspace.” GitHub shows its standard “Processing your files” state; confirmation follows before using it in production.
+
+GitHub confirmed the direct-main release as commit `106d9a5`, “Open Meta leads in dedicated admin workspace.” The repository shows 21 production deployments. The new workspace will be checked after its deployment becomes active.
+
+GitHub’s raw main-branch source confirms the dedicated `admin-integrations` rendering is published. The production site still showed the prior full operations behavior on its last page load, so Railway has not yet been verified to serve the newest frontend commit. Railway’s service page has been opened and is loading for deployment status inspection.
+
+Railway’s build log for deployment `3823e34e` confirms source installation and `pnpm run build` completed successfully, then image publication completed. The Deploy Logs view contained no startup output while the status remained Deploying, so the release is still not claimed active. No paid-ad action or data migration was performed.
+
+The new Railway deployment’s build has completed with no recorded build error, but it is still marked Deploying and its deployment log has no startup output after image publication. Service deployment configuration is being inspected read-only to identify the blocker; no setting was changed.
+
+Railway service settings confirm the repository and `main` branch are connected with auto-deploy enabled, the custom start command defaults to `pnpm run start`, and no pre-deploy step or healthcheck path is configured. The app therefore has no project-configured migration or healthcheck command blocking this release. Railway itself still reports its container-creation phase; a safe deployment retry is being prepared.
+
+The stuck deployment has now remained in Railway’s container-creation phase for more than twelve minutes despite a successful image build and no configured pre-deploy command. The existing active production deployment remains online. A cancellation and clean retry of only this pending application deployment is the reversible recovery path; it neither changes Meta ads nor customer data.
+
+The deployment detail view was re-opened after refreshing the authenticated browser connection. It is still loading and will be inspected before a retry action is taken.
+
+Railway confirms there is no active deployment while the new release remains stuck. The retry dialog states it will rebuild and deploy the exact same configuration. This retry does not alter service variables, domains, source, data, or Meta advertising settings.
+
+Railway accepted the exact-configuration retry and confirmed “Redeploy started.” Its first post-retry browser status check timed out before returning a resulting state, so completion remains unverified.
+
+After the exact-configuration retry, the Railway service page was reopened following a browser connection refresh. Initial rendering did not return deployment details, so a post-load inspection is required before drawing any conclusion.
+
+A production asset comparison now returns a different active JavaScript asset than the prior deployment, consistent with the newest frontend release being served. The authenticated administrator page has been reopened and is loading for direct workspace verification.
+
+The reloaded production administrator portal visibly shows the signed-in DreamCarz command center. The Integrations navigation was invoked using its identified sidebar control; the browser tool timed out before a resulting screen was returned, so the subsequent state must be inspected before any Meta connection action can be claimed.
