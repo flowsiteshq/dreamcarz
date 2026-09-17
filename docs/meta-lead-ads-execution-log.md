@@ -41,3 +41,25 @@ The administrator page’s Integrations navigation is confirmed to use a delayed
 The integrated administrator surface has a single long-body operations layout. Its Integrations control re-renders the operations content and issues a smooth scroll to the Meta section after a short delay. Browser-native keyboard focus interacted unpredictably with that animation; no management action, Page setting, or lead test was submitted while navigating.
 
 The administrator page confirms that the Meta integration component is placed after the Fleet Operations section and before extension, settlement, DCP, and other operational sections. Browser focus movement remains inconsistent on this unusually long page. No lead, marketing action, campaign, Page, billing, vehicle, customer, or transaction control was activated.
+
+## 2026-09-17 signed app-webhook configuration release
+
+The Meta app Webhooks screen confirmed that the Dreamcarz app has no callback configured and that the Page object is selected. The revised server implementation was checkpointed after passing focused Meta tests, typecheck, production build, and retry-worker build. It uses a server-only app access token to request the app-level Page `leadgen` callback configuration, followed by the existing Page installation call. The GitHub direct-main file upload was submitted; GitHub was still processing the upload at the latest browser check. No Meta campaign, ad set, ad, form, audience, budget, or publishing action was performed.
+
+GitHub confirmed direct-main commit `aa8d3f1` titled “Configure signed Meta lead webhook safely.” The commit updates only `server/metaLeadAds.ts` and is ready for Railway’s repository deployment path. It contains no campaign, ad set, ad, budget, audience, targeting, form-creation, or publication operation.
+
+A Railway deployment-status page was opened for the GitHub release. The first content extraction returned only Railway’s cookie notice and the browser status view timed out, so successful deployment is not yet claimed from that check.
+
+After the GitHub update, production reachability probes returned HTTP 200 for the public homepage and HTTP 403 for an unsigned webhook request. The latter preserves the expected signature/verification gate. The authenticated administrator browser page did not finish rendering within the browser inspection timeout, so the revised admin action is not yet treated as verified live.
+
+A production administrator reload completed and showed the authenticated DreamCarz command center. The subsequent Integrations navigation timed out before the browser tool returned a state, so no operation was triggered or claimed from that attempt.
+
+The browser reloaded the production administrator command center successfully. Two attempts to open the Meta Integrations surface via its sidebar timed out at the browser-tool layer before a resulting screen could be read; no subscription or test action is being claimed from those timing-out clicks.
+
+The attempted Railway deployment-list deep link returned Railway’s 404 page, rather than a deployment record. This does not affect the independent production HTTP reachability result and is not used as evidence of a successful new release.
+
+Railway’s service overview again exposed only its cookie-notice extraction and timed out during browser status rendering. Deployment health therefore remains unverified from Railway’s interface; production HTTP remains responsive.
+
+The browser session became unresponsive after the Railway pages. Re-selecting the authenticated My Browser routing restored navigation to the DreamCarz administrator URL, where the initial content now shows the existing NextRoll consent banner. This is a browser-session state only; no consent choice or Meta operation was made.
+
+After browser recovery, the DreamCarz administrative command center is again visible. Its Meta Integrations click is timing out during the long rendered page transition; no button result is asserted from it. A post-transition inspection follows.
