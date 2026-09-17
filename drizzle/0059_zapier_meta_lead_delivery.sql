@@ -1,0 +1,2 @@
+ALTER TABLE `meta_lead_events` ADD `deliverySource` enum('meta_webhook','zapier') DEFAULT 'meta_webhook' NOT NULL;--> statement-breakpoint
+ALTER TABLE `meta_lead_events` ADD `providerPayloadJson` text;

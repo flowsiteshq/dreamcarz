@@ -797,6 +797,8 @@ export const metaLeadForms = mysqlTable("meta_lead_forms", {
  */
 export const metaLeadEvents = mysqlTable("meta_lead_events", {
   id: int("id").autoincrement().primaryKey(),
+  /** The approved delivery route; never a customer-selectable value. */
+  deliverySource: mysqlEnum("deliverySource", ["meta_webhook", "zapier"]).default("meta_webhook").notNull(),
   metaLeadId: varchar("metaLeadId", { length: 128 }).notNull(),
   pageId: varchar("pageId", { length: 128 }).notNull(),
   metaFormId: varchar("metaFormId", { length: 128 }),
@@ -806,6 +808,12 @@ export const metaLeadEvents = mysqlTable("meta_lead_events", {
   receivedAt: timestamp("receivedAt").defaultNow().notNull(),
   payloadDigest: varchar("payloadDigest", { length: 64 }).notNull(),
   structuralMetadata: text("structuralMetadata"),
+  /**
+   * Bounded server-only delivery data used solely to make authenticated Zapier
+   * requests durable before mapping them to the protected source record. This
+   * column is never returned by the administrator status or exception APIs.
+   */
+  providerPayloadJson: text("providerPayloadJson"),
   processingStatus: mysqlEnum("processingStatus", ["received", "processing", "retry_scheduled", "processed", "manual_review", "ignored"]).default("received").notNull(),
   attempts: int("attempts").default(0).notNull(),
   nextAttemptAt: timestamp("nextAttemptAt"),

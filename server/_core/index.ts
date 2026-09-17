@@ -14,6 +14,7 @@ import { registerGoogleOAuthRoutes } from "../googleOAuth";
 import { registerDreamCarzZoomRoute } from "../zoomOpportunity";
 import { registerMetaLeadAdsWebhook } from "../metaLeadAdsWebhook";
 import { registerMetaLeadAdsRetryRoute } from "../metaLeadAdsRetry";
+import { registerZapierMetaLeadWebhook } from "../zapierMetaLeadWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,7 @@ async function startServer() {
   registerStripeWebhook(app);
   registerCoCardWebhook(app);
   registerMetaLeadAdsWebhook(app);
+  registerZapierMetaLeadWebhook(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
