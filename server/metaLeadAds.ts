@@ -511,9 +511,33 @@ async function markMetaLeadProcessingFailure(db: Database, event: typeof metaLea
 export async function processMetaLeadEvent(eventId: number) {
   const db = await getDb();
   if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
-  const event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
+  let event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
   if (!event) throw new MetaLeadProcessingError("meta_event_not_found", false);
   if (["processed", "ignored"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
+  if (event.processingStatus === "processing") {
+    const leaseExpiredAt = new Date(Date.now() - 10 * 60_000);
+    if (event.updatedAt > leaseExpiredAt) return { status: event.processingStatus, eventId: event.id };
+    // A process may terminate after it claims an event but before it persists an
+    // outcome. Requeue only an expired lease; the conditional update prevents a
+    // still-running webhook or worker from being stolen.
+    const reset = await db.update(metaLeadEvents).set({
+      processingStatus: "retry_scheduled",
+      nextAttemptAt: new Date(),
+      lastErrorCode: "processing_lease_expired",
+      lastErrorAt: new Date(),
+    }).where(and(
+      eq(metaLeadEvents.id, event.id),
+      eq(metaLeadEvents.processingStatus, "processing"),
+      lte(metaLeadEvents.updatedAt, leaseExpiredAt),
+    ));
+    const affectedRows = Number((reset as Array<{ affectedRows?: number | bigint }>)[0]?.affectedRows ?? 0);
+    if (affectedRows !== 1) {
+      const current = (await db.select({ processingStatus: metaLeadEvents.processingStatus }).from(metaLeadEvents).where(eq(metaLeadEvents.id, event.id)).limit(1))[0];
+      return { status: current?.processingStatus ?? "ignored", eventId: event.id };
+    }
+    event = (await db.select().from(metaLeadEvents).where(eq(metaLeadEvents.id, eventId)).limit(1))[0];
+    if (!event) throw new MetaLeadProcessingError("meta_event_not_found", false);
+  }
   if (!["received", "retry_scheduled"].includes(event.processingStatus)) return { status: event.processingStatus, eventId: event.id };
 
   try {
