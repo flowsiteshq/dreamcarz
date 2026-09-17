@@ -93,3 +93,17 @@ After the exact-configuration retry, the Railway service page was reopened follo
 A production asset comparison now returns a different active JavaScript asset than the prior deployment, consistent with the newest frontend release being served. The authenticated administrator page has been reopened and is loading for direct workspace verification.
 
 The reloaded production administrator portal visibly shows the signed-in DreamCarz command center. The Integrations navigation was invoked using its identified sidebar control; the browser tool timed out before a resulting screen was returned, so the subsequent state must be inspected before any Meta connection action can be claimed.
+
+The production JavaScript bundle contains the dedicated Meta Lead Ads workspace source. However, the remote browser automation has intermittently timed out while attempting to activate the Integrations control, and its console-execution channel is unsupported for the connected browser. No connection, subscription, test lead, or campaign operation has been invoked through that UI as a result.
+
+The authenticated GitHub browser now has direct-main write access. The validated `server/metaLeadAdsCron.ts` retry-worker file was uploaded and its GitHub direct-main commit was submitted as “Add Railway Meta lead retry worker.” GitHub is processing that file publication; completion is pending verification.
+
+GitHub confirmed direct-main commit `e11cc46`, “Add Railway Meta lead retry worker,” and the published source was fetched and verified. Two supporting files still need a follow-on GitHub release: `package.json` adds the worker build/start scripts, and `AdminPortal.tsx` adds a stable `?section=integrations` entry point. The browser session again became inconsistent when opening the root upload page; no second upload was attempted while GitHub reported uploads disabled.
+
+The browser-controlled Meta app route currently redirects to Meta Business’s sign-in page, while the user’s screenshot separately shows an authenticated developer-dashboard session under user takeover. This means the automated browser does not presently have access to the authenticated Meta session. No Page, app, form, subscription, or campaign setting has been changed from the automated session.
+
+After the user restored shared browser control, the connected session is confirmed authenticated to `flowsiteshq/dreamcarz` and shows GitHub commit `e11cc46` for the Meta retry-worker file. The browser is currently on GitHub rather than Meta; supporting release files can now be published through this authenticated session.
+
+GitHub confirmed direct-main commit `07b8941`, “Add Meta retry worker package commands.” This publishes the build and one-shot-start scripts required for the separate Railway retry-worker service. No ad, Page, form, campaign, or customer-data operation was part of this release.
+
+GitHub confirmed direct-main commit `0db45ec`, “Add direct Meta Lead Ads workspace link.” This makes `/admin?section=integrations` open the dedicated Meta Lead Ads workspace after deployment. The worker and its package commands are now published in GitHub; Railway deployment activation remains to be verified.
