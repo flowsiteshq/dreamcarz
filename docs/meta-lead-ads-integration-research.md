@@ -12,6 +12,12 @@ Meta may retry failed webhook deliveries, so the DreamCarz design requires a dur
 
 The Lead Ads Testing Tool can create and delete test leads for a selected Page and form. Meta documents one test lead per form at a time and provides a delivery-status view for debugging webhook arrival. [4]
 
+## Dreamcarz app configuration audit — September 17, 2026
+
+The existing Dreamcarz Meta app initially exposed only the **Create & manage ads with Marketing API** use case. On September 17, 2026, the approved **Capture & manage ad leads with Marketing API** use case was added through the Meta Developer dashboard. The addition did not open, modify, publish, activate, submit, or otherwise change the existing paid advertising campaign.
+
+The newly configured use case exposes `leads_retrieval`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`, `ads_management`, and `business_management` as **Ready for testing**. `pages_manage_metadata` is offered as an additional permission and is required for the planned Page webhook subscription. The next configuration step is to enable that permission and configure the secure callback only after the production endpoint and rotated server-only credentials are ready.
+
 ## Sources
 
 [1] Meta, “Webhooks for Leads.” https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-leadgen/
