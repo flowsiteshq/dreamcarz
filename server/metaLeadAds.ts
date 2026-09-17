@@ -17,6 +17,7 @@ import {
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
+export const ZAPIER_META_LEAD_INGEST_PATH = "/api/integrations/zapier/meta-leads";
 
 const MAX_PROCESSING_ATTEMPTS = 7;
 const MAX_STORED_META_ANSWER_BYTES = 60_000;
@@ -61,6 +62,41 @@ export type MetaLeadAdsConfig = {
   graphReady: boolean;
 };
 
+export type ZapierMetaLeadConfig = {
+  enabled: boolean;
+  ingestSecret: string;
+  pageId: string;
+  ready: boolean;
+};
+
+type ZapierMetaLeadPayload = {
+  lead_id?: unknown;
+  leadgen_id?: unknown;
+  id?: unknown;
+  page_id?: unknown;
+  form_id?: unknown;
+  form_name?: unknown;
+  campaign_id?: unknown;
+  campaign_name?: unknown;
+  adset_id?: unknown;
+  adset_name?: unknown;
+  ad_id?: unknown;
+  ad_name?: unknown;
+  created_time?: unknown;
+  submitted_at?: unknown;
+  platform?: unknown;
+  field_data?: unknown;
+  custom_answers?: unknown;
+  custom_disclaimer_responses?: unknown;
+  full_name?: unknown;
+  first_name?: unknown;
+  last_name?: unknown;
+  email?: unknown;
+  phone_number?: unknown;
+  phone?: unknown;
+  interest?: unknown;
+};
+
 export class MetaLeadProcessingError extends Error {
   constructor(
     public readonly code: string,
@@ -95,6 +131,18 @@ export function getMetaLeadAdsConfig(env: NodeJS.ProcessEnv = process.env): Meta
   };
 }
 
+/**
+ * Zapier delivery is independent of the direct Meta app-token configuration.
+ * It is tied to the same server-configured Dreamcarz Page allow-list and its
+ * own high-entropy bearer value, neither of which is returned to a browser.
+ */
+export function getZapierMetaLeadConfig(env: NodeJS.ProcessEnv = process.env): ZapierMetaLeadConfig {
+  const enabled = optionalEnv(env.ZAPIER_META_LEAD_ADS_ENABLED).toLowerCase() === "true";
+  const ingestSecret = optionalEnv(env.ZAPIER_META_LEAD_INGEST_SECRET);
+  const pageId = optionalEnv(env.META_PAGE_ID);
+  return { enabled, ingestSecret, pageId, ready: enabled && Boolean(ingestSecret && pageId) };
+}
+
 function safeText(value: unknown, maxLength: number) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim().slice(0, maxLength) : null;
 }
@@ -122,6 +170,12 @@ function timingSafeTextEqual(left: string, right: string) {
   const leftBuffer = Buffer.from(left, "utf8");
   const rightBuffer = Buffer.from(right, "utf8");
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+/** Verifies Zapier's separately configured static bearer without logging it. */
+export function verifyZapierMetaLeadAuthorization(header: string | undefined, expectedSecret: string | undefined) {
+  const received = /^Bearer\s+(.+)$/i.exec(header ?? "")?.[1];
+  return Boolean(received && expectedSecret && timingSafeTextEqual(received, expectedSecret));
 }
 
 /** Verifies Meta's documented sha256=<hex> signature against unparsed request bytes. */
@@ -238,6 +292,91 @@ export function parseMetaLeadWebhookPayload(payload: unknown) {
   return Array.from(results.values());
 }
 
+function zapierPayloadValue(payload: Record<string, unknown>, names: string[]) {
+  const normalized = new Map(Object.entries(payload).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value]));
+  for (const name of names) {
+    const value = normalized.get(name.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function zapierScalarText(value: unknown, maxLength: number) {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return safeText(String(value), maxLength);
+  return null;
+}
+
+function zapierFieldData(payload: Record<string, unknown>) {
+  const supplied = zapierPayloadValue(payload, ["field_data", "field data", "answers", "custom_answers"]);
+  if (Array.isArray(supplied)) return supplied;
+  if (supplied && typeof supplied === "object") {
+    return Object.entries(supplied as Record<string, unknown>).flatMap(([name, value]) => {
+      const safeName = safeText(name, 160);
+      if (!safeName || value === undefined || value === null) return [];
+      const text = typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : JSON.stringify(value);
+      return text ? [{ name: safeName, values: [text.slice(0, 4_000)] }] : [];
+    });
+  }
+  const reserved = new Set([
+    "leadid", "leadgenid", "id", "pageid", "formid", "formname", "campaignid", "campaignname", "adsetid", "adsetname", "adid", "adname",
+    "createdtime", "submittedat", "platform", "customdisclaimerresponses", "istest", "test", "fielddata", "answers", "customanswers",
+  ]);
+  const extras = Object.entries(payload).flatMap(([key, value]) => {
+    if (reserved.has(key.toLowerCase().replace(/[^a-z0-9]/g, ""))) return [];
+    const name = safeText(key, 160);
+    if (!name || value === undefined || value === null) return [];
+    const text = typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+      ? String(value)
+      : JSON.stringify(value);
+    return text ? [{ name, values: [text.slice(0, 4_000)] }] : [];
+  });
+  const contactFields = [
+    ["full_name", zapierPayloadValue(payload, ["full_name", "full name", "name"])],
+    ["first_name", zapierPayloadValue(payload, ["first_name", "first name"])],
+    ["last_name", zapierPayloadValue(payload, ["last_name", "last name"])],
+    ["email", zapierPayloadValue(payload, ["email", "email address"])],
+    ["phone_number", zapierPayloadValue(payload, ["phone_number", "phone number", "phone"])],
+    ["interest", zapierPayloadValue(payload, ["interest", "vehicle interest", "service interest"])],
+  ].flatMap(([name, value]) => {
+    const text = zapierScalarText(value, 320);
+    return text ? [{ name, values: [text] }] : [];
+  });
+  return [...contactFields, ...extras];
+}
+
+/**
+ * Accepts a version-tolerant, explicitly mapped Zapier Custom Request body.
+ * Meta's Lead ID, Page ID, and Form ID remain required; any unmapped scalar
+ * fields are retained as protected custom form answers rather than discarded.
+ */
+export function parseZapierMetaLeadPayload(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new MetaLeadProcessingError("invalid_zapier_meta_lead_payload", false);
+  const payload = input as Record<string, unknown>;
+  const metaLeadId = safeIdentifier(zapierPayloadValue(payload, ["lead_id", "leadgen_id", "lead id", "facebook lead id", "id"]));
+  const pageId = safeIdentifier(zapierPayloadValue(payload, ["page_id", "page id", "facebook page id"]));
+  const formId = safeIdentifier(zapierPayloadValue(payload, ["form_id", "form id", "instant form id"]));
+  if (!metaLeadId || !pageId || !formId) throw new MetaLeadProcessingError("zapier_meta_lead_identifiers_missing", false);
+  const fieldData = zapierFieldData(payload);
+  const customDisclaimerResponses = zapierPayloadValue(payload, ["custom_disclaimer_responses", "custom disclaimer responses"]);
+  return {
+    metaLeadId,
+    pageId,
+    formId,
+    formName: zapierScalarText(zapierPayloadValue(payload, ["form_name", "form name", "instant form name"]), 255),
+    campaignId: safeIdentifier(zapierPayloadValue(payload, ["campaign_id", "campaign id"])),
+    campaignName: zapierScalarText(zapierPayloadValue(payload, ["campaign_name", "campaign name"]), 255),
+    adSetId: safeIdentifier(zapierPayloadValue(payload, ["adset_id", "adset id", "ad set id", "adgroup_id"])),
+    adSetName: zapierScalarText(zapierPayloadValue(payload, ["adset_name", "adset name", "ad set name"]), 255),
+    adId: safeIdentifier(zapierPayloadValue(payload, ["ad_id", "ad id"])),
+    adName: zapierScalarText(zapierPayloadValue(payload, ["ad_name", "ad name"]), 255),
+    platform: zapierScalarText(zapierPayloadValue(payload, ["platform", "placement"]), 96),
+    submittedAt: safeDateFromMetaTimestamp(zapierPayloadValue(payload, ["created_time", "created time", "submitted_at", "submitted at"])),
+    fieldData,
+    customDisclaimerResponses,
+    isTest: zapierPayloadValue(payload, ["is_test", "test"]) === true || zapierPayloadValue(payload, ["is_test", "test"]) === "true",
+  };
+}
+
 function isDuplicateKeyError(error: unknown) {
   const code = (error as { code?: unknown })?.code;
   return code === "ER_DUP_ENTRY" || code === 1062 || /duplicate/i.test(error instanceof Error ? error.message : "");
@@ -335,6 +474,59 @@ export async function persistMetaLeadWebhookEvents(rawBody: Buffer, payload: unk
     }
   }
   return { accepted, duplicates, ignored: events.length - accepted - duplicates };
+}
+
+/**
+ * Stores an authenticated Zapier delivery before mapping it. The complete
+ * provider body is size-bounded and retained only in the server-side event
+ * inbox, so an interrupted request can be retried without asking Zapier to
+ * replay personal data.
+ */
+export async function persistZapierMetaLeadEvent(payload: unknown) {
+  const config = getZapierMetaLeadConfig();
+  if (!config.ready) throw new MetaLeadProcessingError("zapier_meta_lead_not_configured", false);
+  const event = parseZapierMetaLeadPayload(payload);
+  if (event.pageId !== config.pageId) throw new MetaLeadProcessingError("zapier_meta_page_not_allowed", false);
+  const providerPayloadJson = JSON.stringify(payload);
+  if (Buffer.byteLength(providerPayloadJson, "utf8") > MAX_STORED_META_ANSWER_BYTES) throw new MetaLeadProcessingError("zapier_meta_payload_too_large", false);
+  const db = await getDb();
+  if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
+  const metaConfig = getMetaLeadAdsConfig();
+  const integration = await findOrCreateIntegration(db, event.pageId, metaConfig, { status: "connected" });
+  const payloadDigest = crypto.createHash("sha256").update(providerPayloadJson).digest("hex");
+  const existing = (await db.select({ id: metaLeadEvents.id }).from(metaLeadEvents).where(eq(metaLeadEvents.metaLeadId, event.metaLeadId)).limit(1))[0];
+  if (existing) return { accepted: 0, duplicates: 1, eventId: Number(existing.id) };
+  try {
+    const inserted = await db.insert(metaLeadEvents).values({
+      deliverySource: "zapier",
+      metaLeadId: event.metaLeadId,
+      pageId: event.pageId,
+      metaFormId: event.formId,
+      metaAdSetId: event.adSetId,
+      metaAdId: event.adId,
+      providerCreatedAt: event.submittedAt,
+      payloadDigest,
+      structuralMetadata: JSON.stringify({ object: "zapier", trigger: "facebook_lead_ads_new_lead" }),
+      providerPayloadJson,
+      processingStatus: "received",
+      nextAttemptAt: new Date(),
+    });
+    await upsertObservedMetaForm(db, Number(integration.id), event.formId, { formName: event.formName, lastReceivedAt: event.submittedAt ?? new Date() });
+    await db.update(metaLeadIntegrations).set({
+      status: "connected",
+      graphApiVersion: metaConfig.graphApiVersion,
+      lastWebhookReceivedAt: new Date(),
+      lastErrorAt: null,
+      lastErrorCode: null,
+    }).where(eq(metaLeadIntegrations.id, Number(integration.id)));
+    return { accepted: 1, duplicates: 0, eventId: Number((inserted as Array<{ insertId?: number | bigint }>)[0]?.insertId) };
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      const raced = (await db.select({ id: metaLeadEvents.id }).from(metaLeadEvents).where(eq(metaLeadEvents.metaLeadId, event.metaLeadId)).limit(1))[0];
+      return { accepted: 0, duplicates: 1, eventId: Number(raced?.id) };
+    }
+    throw error;
+  }
 }
 
 function metaGraphUrl(config: MetaLeadAdsConfig, path: string, params: Record<string, string> = {}) {
@@ -575,7 +767,12 @@ export async function processMetaLeadEvent(eventId: number) {
     }
 
     const config = getMetaLeadAdsConfig();
-    if (!config.enabled || !config.pageId || event.pageId !== config.pageId) throw new MetaLeadProcessingError("meta_page_not_allowed", false);
+    const zapierConfig = getZapierMetaLeadConfig();
+    if (event.deliverySource === "zapier") {
+      if (!zapierConfig.ready || event.pageId !== zapierConfig.pageId) throw new MetaLeadProcessingError("zapier_meta_page_not_allowed", false);
+    } else if (!config.enabled || !config.pageId || event.pageId !== config.pageId) {
+      throw new MetaLeadProcessingError("meta_page_not_allowed", false);
+    }
     // Claim the row before retrieving the lead. This conditional update prevents
     // concurrent webhook, administrator, and worker paths from creating two
     // global marketing leads before the provider-ID unique source record exists.
@@ -593,15 +790,60 @@ export async function processMetaLeadEvent(eventId: number) {
       const current = (await db.select({ processingStatus: metaLeadEvents.processingStatus }).from(metaLeadEvents).where(eq(metaLeadEvents.id, event.id)).limit(1))[0];
       return { status: current?.processingStatus ?? "ignored", eventId: event.id };
     }
-    const sourceLead = await metaGraphRequest(config, event.metaLeadId, { params: { fields: "id,created_time,ad_id,form_id,platform,field_data,custom_disclaimer_responses" } }) as MetaGraphLead;
-    const returnedLeadId = safeIdentifier(sourceLead.id);
-    if (returnedLeadId !== event.metaLeadId) throw new MetaLeadProcessingError("meta_lead_identifier_mismatch", false);
-    const formId = safeIdentifier(sourceLead.form_id) ?? event.metaFormId;
-    if (!formId) throw new MetaLeadProcessingError("meta_form_identifier_missing", false);
-    const mapped = mapMetaLeadFields(sourceLead.field_data);
-    const fieldDataJson = serializeMetaAnswers(sourceLead.field_data, "meta_field_data");
-    const disclaimersJson = serializeMetaAnswers(sourceLead.custom_disclaimer_responses, "meta_disclaimer_responses");
-    const attribution = await resolveAttribution(config, sourceLead, event);
+    let sourceLead: MetaGraphLead;
+    let formId: string;
+    let mapped: ReturnType<typeof mapMetaLeadFields>;
+    let fieldDataJson: string;
+    let disclaimersJson: string;
+    let attribution: MetaAttribution;
+    let isTestLead = false;
+    if (event.deliverySource === "zapier") {
+      let rawPayload: unknown;
+      try {
+        rawPayload = JSON.parse(event.providerPayloadJson ?? "");
+      } catch {
+        throw new MetaLeadProcessingError("zapier_meta_payload_unavailable", false);
+      }
+      const delivered = parseZapierMetaLeadPayload(rawPayload);
+      if (delivered.metaLeadId !== event.metaLeadId || delivered.pageId !== event.pageId || delivered.formId !== event.metaFormId) {
+        throw new MetaLeadProcessingError("zapier_meta_lead_identifier_mismatch", false);
+      }
+      sourceLead = {
+        id: delivered.metaLeadId,
+        created_time: delivered.submittedAt?.toISOString() ?? null,
+        ad_id: delivered.adId,
+        form_id: delivered.formId,
+        platform: delivered.platform,
+        field_data: delivered.fieldData,
+        custom_disclaimer_responses: delivered.customDisclaimerResponses,
+      };
+      formId = delivered.formId;
+      mapped = mapMetaLeadFields(delivered.fieldData);
+      fieldDataJson = serializeMetaAnswers(delivered.fieldData, "zapier_meta_field_data");
+      disclaimersJson = serializeMetaAnswers(delivered.customDisclaimerResponses, "zapier_meta_disclaimer_responses");
+      attribution = {
+        formName: delivered.formName,
+        formStatus: null,
+        campaignId: delivered.campaignId,
+        campaignName: delivered.campaignName,
+        adSetId: delivered.adSetId ?? event.metaAdSetId ?? null,
+        adSetName: delivered.adSetName,
+        adId: delivered.adId ?? event.metaAdId ?? null,
+        adName: delivered.adName,
+      };
+      isTestLead = delivered.isTest;
+    } else {
+      sourceLead = await metaGraphRequest(config, event.metaLeadId, { params: { fields: "id,created_time,ad_id,form_id,platform,field_data,custom_disclaimer_responses" } }) as MetaGraphLead;
+      const returnedLeadId = safeIdentifier(sourceLead.id);
+      if (returnedLeadId !== event.metaLeadId) throw new MetaLeadProcessingError("meta_lead_identifier_mismatch", false);
+      const resolvedFormId = safeIdentifier(sourceLead.form_id) ?? event.metaFormId;
+      if (!resolvedFormId) throw new MetaLeadProcessingError("meta_form_identifier_missing", false);
+      formId = resolvedFormId;
+      mapped = mapMetaLeadFields(sourceLead.field_data);
+      fieldDataJson = serializeMetaAnswers(sourceLead.field_data, "meta_field_data");
+      disclaimersJson = serializeMetaAnswers(sourceLead.custom_disclaimer_responses, "meta_disclaimer_responses");
+      attribution = await resolveAttribution(config, sourceLead, event);
+    }
     const integration = await findOrCreateIntegration(db, event.pageId, config, { status: "connected" });
     await upsertObservedMetaForm(db, Number(integration.id), formId, { formName: attribution.formName, formStatus: attribution.formStatus, lastReceivedAt: safeDateFromMetaTimestamp(sourceLead.created_time) ?? event.providerCreatedAt ?? new Date() });
     const resolution = await resolveMarketingLead(db, mapped);
@@ -625,7 +867,7 @@ export async function processMetaLeadEvent(eventId: number) {
         fieldDataJson,
         customDisclaimerResponsesJson: disclaimersJson,
         mappedInterest: mapped.interest,
-        isTestLead: Boolean(testRun),
+        isTestLead: Boolean(testRun) || isTestLead,
       });
     } catch (error) {
       if (!isDuplicateKeyError(error)) throw error;
@@ -680,9 +922,15 @@ export async function processDueMetaLeadEvents(limit = 20, pageId?: string) {
 
 /** Runs only for the currently allow-listed, server-configured Page. */
 export async function processConfiguredDueMetaLeadEvents(limit = 20) {
-  const config = getMetaLeadAdsConfig();
-  if (!config.enabled || !config.pageId) throw new MetaLeadProcessingError("meta_page_not_allowed", false);
-  return processDueMetaLeadEvents(limit, config.pageId);
+  const metaConfig = getMetaLeadAdsConfig();
+  const zapierConfig = getZapierMetaLeadConfig();
+  const pageId = metaConfig.enabled && metaConfig.pageId
+    ? metaConfig.pageId
+    : zapierConfig.ready
+      ? zapierConfig.pageId
+      : null;
+  if (!pageId) throw new MetaLeadProcessingError("meta_page_not_allowed", false);
+  return processDueMetaLeadEvents(limit, pageId);
 }
 
 export async function attachMetaLeadRetrySchedule(integrationId: number, taskUid: string, administratorId: number) {
@@ -735,11 +983,25 @@ function safeConfigurationSummary(config: MetaLeadAdsConfig) {
   return { configured: missing.length === 0, missing, graphApiVersion: config.graphApiVersion, pageId: config.pageId || null, callbackUrl: `https://www.dreamcarz.io${META_LEAD_WEBHOOK_PATH}` };
 }
 
+function safeZapierConfigurationSummary(config: ZapierMetaLeadConfig) {
+  const missing = [] as string[];
+  if (!config.enabled) missing.push("ZAPIER_META_LEAD_ADS_ENABLED");
+  if (!config.ingestSecret) missing.push("ZAPIER_META_LEAD_INGEST_SECRET");
+  if (!config.pageId) missing.push("META_PAGE_ID");
+  return {
+    configured: missing.length === 0,
+    missing,
+    endpoint: `https://www.dreamcarz.io${ZAPIER_META_LEAD_INGEST_PATH}`,
+    authentication: "Bearer token (server-only)",
+  };
+}
+
 export async function getMetaLeadAdminStatus() {
   const db = await getDb();
   if (!db) throw new MetaLeadProcessingError("database_unavailable", true);
   const config = getMetaLeadAdsConfig();
   const configuration = safeConfigurationSummary(config);
+  const zapierDelivery = safeZapierConfigurationSummary(getZapierMetaLeadConfig());
   const integration = config.pageId ? (await db.select().from(metaLeadIntegrations).where(eq(metaLeadIntegrations.pageId, config.pageId)).limit(1))[0] ?? null : null;
   const forms = integration ? await db.select().from(metaLeadForms).where(eq(metaLeadForms.integrationId, integration.id)).orderBy(desc(metaLeadForms.lastReceivedAt)).limit(50) : [];
   const openEvents = await db.select({
@@ -755,6 +1017,7 @@ export async function getMetaLeadAdminStatus() {
   const recentTests = integration ? await db.select().from(metaLeadTestRuns).where(eq(metaLeadTestRuns.integrationId, integration.id)).orderBy(desc(metaLeadTestRuns.createdAt)).limit(5) : [];
   return {
     configuration,
+    zapierDelivery,
     integration,
     forms,
     pendingEvents: openEvents.filter(item => ["received", "processing", "retry_scheduled"].includes(item.processingStatus)).length,

@@ -9,12 +9,15 @@ vi.mock("./paymentProvider", () => ({ cocardPaymentSetupBlocker: vi.fn(), getPay
 import { appRouter } from "./routers";
 import {
   getMetaLeadAdsConfig,
+  getZapierMetaLeadConfig,
   mapMetaLeadFields,
   normalizeMetaLeadEmail,
   normalizeMetaLeadPhone,
   parseMetaLeadWebhookPayload,
+  parseZapierMetaLeadPayload,
   verifyMetaLeadWebhookSignature,
   verifyMetaLeadWebhookToken,
+  verifyZapierMetaLeadAuthorization,
 } from "./metaLeadAds";
 
 describe("Meta Lead Ads security primitives", () => {
@@ -85,6 +88,44 @@ describe("Meta Lead Ads security primitives", () => {
     expect(enabled.webhookReady).toBe(true);
     expect(enabled.graphReady).toBe(true);
   });
+
+  it("accepts only the separately configured Zapier bearer and derives a ready gate without exposing its value", () => {
+    const config = getZapierMetaLeadConfig({ ZAPIER_META_LEAD_ADS_ENABLED: "true", ZAPIER_META_LEAD_INGEST_SECRET: "zapier-test-secret", META_PAGE_ID: "page-123" });
+    expect(config.ready).toBe(true);
+    expect(verifyZapierMetaLeadAuthorization("Bearer zapier-test-secret", config.ingestSecret)).toBe(true);
+    expect(verifyZapierMetaLeadAuthorization("Bearer wrong", config.ingestSecret)).toBe(false);
+    expect(verifyZapierMetaLeadAuthorization(undefined, config.ingestSecret)).toBe(false);
+  });
+
+  it("normalizes a Zapier Facebook Lead Ads delivery while preserving additional custom answers", () => {
+    const lead = parseZapierMetaLeadPayload({
+      lead_id: "lead-987",
+      page_id: "page-123",
+      form_id: "form-456",
+      form_name: "DreamCarz DMV form",
+      full_name: "Avery Driver",
+      email: "avery@example.test",
+      phone_number: "+1 410 555 0198",
+      vehicle_interest: "Rent / SUV",
+      custom_question: "Weekend pickup",
+      created_time: "2026-09-17T20:00:00.000Z",
+      is_test: true,
+    });
+    expect(lead).toMatchObject({ metaLeadId: "lead-987", pageId: "page-123", formId: "form-456", formName: "DreamCarz DMV form", isTest: true });
+    expect(mapMetaLeadFields(lead.fieldData)).toMatchObject({ contactName: "Avery Driver", contactEmail: "avery@example.test", contactPhone: "+1 410 555 0198", interest: "Rent / SUV" });
+    expect(lead.fieldData).toContainEqual({ name: "custom_question", values: ["Weekend pickup"] });
+  });
+
+  it("retains object-form custom answers supplied by a Zapier mapping", () => {
+    const lead = parseZapierMetaLeadPayload({
+      lead_id: "lead-988",
+      page_id: "page-123",
+      form_id: "form-456",
+      field_data: { full_name: "Taylor Driver", email: "taylor@example.test", travel_need: "Airport pickup" },
+    });
+    expect(lead.fieldData).toContainEqual({ name: "travel_need", values: ["Airport pickup"] });
+    expect(mapMetaLeadFields(lead.fieldData)).toMatchObject({ contactName: "Taylor Driver", contactEmail: "taylor@example.test" });
+  });
 });
 
 describe("Meta Lead Ads application boundaries", () => {
@@ -92,7 +133,9 @@ describe("Meta Lead Ads application boundaries", () => {
     const serverSource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
     const routerSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const retrySource = readFileSync(new URL("./metaLeadAdsRetry.ts", import.meta.url), "utf8");
+    const zapierRouteSource = readFileSync(new URL("./zapierMetaLeadWebhook.ts", import.meta.url), "utf8");
     expect(serverSource.indexOf("registerMetaLeadAdsWebhook(app)")).toBeLessThan(serverSource.indexOf("express.json"));
+    expect(serverSource.indexOf("registerZapierMetaLeadWebhook(app)")).toBeLessThan(serverSource.indexOf("express.json"));
     expect(routerSource).toContain("metaLeadAds: router({");
     expect(routerSource).toContain("status: adminProcedure.query");
     expect(routerSource).toContain("subscribePageLeadgen: adminProcedure.mutation");
@@ -106,6 +149,11 @@ describe("Meta Lead Ads application boundaries", () => {
     const cronWorkerSource = readFileSync(new URL("./metaLeadAdsCron.ts", import.meta.url), "utf8");
     expect(cronWorkerSource).toContain("processConfiguredDueMetaLeadEvents(20)");
     expect(cronWorkerSource).not.toContain("setInterval");
+    expect(zapierRouteSource).toContain("verifyZapierMetaLeadAuthorization");
+    expect(zapierRouteSource).toContain("express.raw({ type: \"application/json\"");
+    expect(zapierRouteSource).toContain("persistZapierMetaLeadEvent(payload)");
+    expect(zapierRouteSource).toContain("processMetaLeadEvent(persisted.eventId)");
+    expect(zapierRouteSource).toContain("immediate.status === \"retry_scheduled\"");
 
     const nonAdmin = appRouter.createCaller({ user: { id: 9, role: "user" }, req: { headers: {} }, res: {} } as never);
     await expect(nonAdmin.metaLeadAds.status()).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -119,6 +167,9 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(serviceSource).toContain("fields: \"leadgen\"");
     expect(serviceSource).toContain("include_values: \"false\"");
     expect(serviceSource).toContain("subscribed_fields: \"leadgen\"");
+    expect(serviceSource).toContain("deliverySource: \"zapier\"");
+    expect(serviceSource).toContain("providerPayloadJson");
+    expect(serviceSource).toContain("zapierConfig.ready");
     expect(serviceSource).toContain('fields: "id,name"');
     expect(serviceSource).not.toContain("leadgen_forms{id,name,status}");
     expect(serviceSource).toContain("affectedRows !== 1");
