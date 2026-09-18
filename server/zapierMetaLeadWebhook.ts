@@ -42,7 +42,14 @@ export function registerZapierMetaLeadWebhook(app: Express) {
 
     let payload: unknown;
     try {
-      payload = JSON.parse(req.body.toString("utf8"));
+      // API by Zapier may prefix an otherwise JSON-serialized mapped object with
+      // its selected content-type marker. Accept only that exact non-secret
+      // marker, then keep the same strict JSON/schema validation below.
+      const rawBody = req.body.toString("utf8");
+      const jsonBody = rawBody.startsWith("application/json")
+        ? rawBody.slice("application/json".length).trimStart()
+        : rawBody;
+      payload = JSON.parse(jsonBody);
       // Reject malformed data before creating an inbox record, while retaining
       // all valid custom fields through the parser's raw-payload path.
       parseZapierMetaLeadPayload(payload);
