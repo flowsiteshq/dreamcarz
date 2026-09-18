@@ -14,6 +14,7 @@ import {
   users,
   vehicleInquiries,
 } from "../drizzle/schema";
+import { queueStaffSmsNotifications } from "./staffSms";
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
@@ -887,6 +888,14 @@ export async function processMetaLeadEvent(eventId: number) {
     await db.update(metaLeadEvents).set({ processingStatus: "processed", processedAt: new Date(), nextAttemptAt: null, lastErrorCode: null, lastErrorAt: null }).where(eq(metaLeadEvents.id, event.id));
     await db.update(metaLeadIntegrations).set({ status: "connected", lastSuccessfulLeadAt: new Date(), lastErrorAt: null, lastErrorCode: null }).where(eq(metaLeadIntegrations.id, Number(integration.id)));
     if (testRun) await db.update(metaLeadTestRuns).set({ status: "processed", processedAt: new Date(), errorCode: null }).where(eq(metaLeadTestRuns.id, testRun.id));
+    if (resolution.created && !testRun && !isTestLead) {
+      void queueStaffSmsNotifications({
+        eventType: "marketing_opt_in",
+        sourceRecordType: "marketing_lead",
+        sourceRecordId: resolution.lead.id,
+        message: `DreamCarz: A new opted-in Meta lead was received (lead ${resolution.lead.id}). Review the protected Admin portal.`,
+      }).catch(() => undefined);
+    }
     return { status: "processed", eventId: event.id, marketingLeadId: resolution.lead.id };
   } catch (error) {
     const classified = error instanceof MetaLeadProcessingError

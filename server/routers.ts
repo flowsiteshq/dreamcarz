@@ -114,6 +114,7 @@ import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/market
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
 import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
+import { queueStaffSmsNotifications } from "./staffSms";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -2952,7 +2953,13 @@ export const appRouter = router({
 
         const referenceCode = nanoid(7).toUpperCase().replace(/[^A-Z0-9]/g, "X");
         const reference = `ADL-${new Date().getFullYear()}-${referenceCode}`;
-        await db.insert(advertisingLeads).values({ ...input, reference, source: "facebook" });
+        const inserted = await db.insert(advertisingLeads).values({ ...input, reference, source: "facebook" });
+        void queueStaffSmsNotifications({
+          eventType: "marketing_opt_in",
+          sourceRecordType: "advertising_lead",
+          sourceRecordId: Number(inserted[0].insertId),
+          message: `DreamCarz: A new opted-in marketing lead was received (${reference}). Review the protected Admin portal.`,
+        }).catch(() => undefined);
         return { success: true, reference } as const;
       }),
   }),
@@ -3593,6 +3600,12 @@ export const appRouter = router({
       await activateAssociateRole(db, ctx.user.id);
       const profile = (await db.select({ id: referralProfiles.id }).from(referralProfiles).where(eq(referralProfiles.userId, ctx.user.id)).limit(1))[0];
       if (!profile) await db.insert(referralProfiles).values({ userId: ctx.user.id, referralCode: `DC-${nanoid(8).toUpperCase()}` });
+      void queueStaffSmsNotifications({
+        eventType: "associate_enrollment_activated",
+        sourceRecordType: "associate_enrollment",
+        sourceRecordId: enrollment.id,
+        message: `DreamCarz: An Associate enrollment was verified and activated (${enrollment.reference}). Review the protected Admin portal.`,
+      }).catch(() => undefined);
       return { status: "active" as const };
     }),
   }),
@@ -3650,6 +3663,12 @@ export const appRouter = router({
       const result = await db.insert(associateLeads).values({ associateUserId: ctx.user.id, ...input });
       const leadId = Number(result[0].insertId);
       await db.insert(associateLeadActivityEvents).values({ associateUserId: ctx.user.id, leadId, eventType: "lead_created", status: "new" });
+      void queueStaffSmsNotifications({
+        eventType: "associate_opt_in",
+        sourceRecordType: "associate_lead",
+        sourceRecordId: leadId,
+        message: `DreamCarz: A new consented Associate lead was captured (lead ${leadId}). Review the protected Associate portal.`,
+      }).catch(() => undefined);
       return { id: leadId };
     }),
     updateLead: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "qualified", "converted", "closed"]), notes: z.string().trim().max(2_000).optional() })).mutation(async ({ ctx, input }) => {
