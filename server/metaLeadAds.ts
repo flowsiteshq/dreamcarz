@@ -14,7 +14,7 @@ import {
   users,
   vehicleInquiries,
 } from "../drizzle/schema";
-import { queueStaffOperationalAlert } from "./staffSms";
+import { getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
@@ -1011,6 +1011,7 @@ export async function getMetaLeadAdminStatus() {
   const config = getMetaLeadAdsConfig();
   const configuration = safeConfigurationSummary(config);
   const zapierDelivery = safeZapierConfigurationSummary(getZapierMetaLeadConfig());
+  const staffEmailAlert = getStaffOperationalAlertStatus();
   const integration = config.pageId ? (await db.select().from(metaLeadIntegrations).where(eq(metaLeadIntegrations.pageId, config.pageId)).limit(1))[0] ?? null : null;
   const forms = integration ? await db.select().from(metaLeadForms).where(eq(metaLeadForms.integrationId, integration.id)).orderBy(desc(metaLeadForms.lastReceivedAt)).limit(50) : [];
   const openEvents = await db.select({
@@ -1027,6 +1028,7 @@ export async function getMetaLeadAdminStatus() {
   return {
     configuration,
     zapierDelivery,
+    staffEmailAlert,
     integration,
     forms,
     pendingEvents: openEvents.filter(item => ["received", "processing", "retry_scheduled"].includes(item.processingStatus)).length,
