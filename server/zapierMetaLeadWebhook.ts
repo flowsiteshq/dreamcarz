@@ -16,6 +16,20 @@ import { consumeRateLimit, rateLimitKey } from "./rateLimit";
  * this endpoint, stays in Railway and Zapier only, and is never logged.
  */
 export function registerZapierMetaLeadWebhook(app: Express) {
+  /**
+   * API by Zapier uses this non-mutating request to validate its encrypted
+   * connection. It deliberately returns no Page, form, lead, or credential
+   * data, and it is registered with the same bearer gate as intake.
+   */
+  app.get(`${ZAPIER_META_LEAD_INGEST_PATH}/connection`, (req, res) => {
+    const config = getZapierMetaLeadConfig();
+    if (!config.ready) return res.status(503).json({ connected: false, code: "zapier_meta_lead_not_configured" });
+    if (!verifyZapierMetaLeadAuthorization(req.headers.authorization, config.ingestSecret)) {
+      return res.status(401).json({ connected: false, code: "unauthorized" });
+    }
+    return res.status(200).json({ connected: true, provider: "zapier" });
+  });
+
   app.post(ZAPIER_META_LEAD_INGEST_PATH, express.raw({ type: "application/json", limit: "256kb" }), async (req, res) => {
     const config = getZapierMetaLeadConfig();
     if (!config.ready) return res.status(503).json({ received: false, code: "zapier_meta_lead_not_configured" });

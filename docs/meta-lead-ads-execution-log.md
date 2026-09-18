@@ -137,3 +137,49 @@ The refreshed protected status query records `meta_graph_request_rejected` after
 A corrected connection check was implemented locally: it reads only documented stable Page node fields (`id,name`) rather than requesting the unsupported nested `leadgen_forms` field. Signed webhook events and administrator-provided test Form IDs continue to discover forms. The focused Meta suite (7/7), TypeScript check, production build, and retry-worker build all passed. The two server files were submitted through GitHub direct-main; GitHub’s follow-up browser render timed out, so publication is being verified from the raw main source before the next production check.
 
 The corrected server source is confirmed on GitHub main. After the Railway activation wait, reopening the production administrator workspace shows the DreamCarz Administrator sign-in screen rather than the prior authenticated workspace, so its protected connection check cannot be invoked until an administrator session is restored. This is an authentication-session change only; it did not alter the integration, data, Page, forms, or advertising resources.
+
+## 2026-09-17 Zapier Facebook authorization retry
+
+The saved Zapier draft remains at the Facebook Lead Ads **New Lead (Instant)** trigger connection step. On resumption, Meta presented its own “I’m not a robot” CAPTCHA before it will authorize the connection. An automated click did not satisfy the challenge. The Zap remains unpublished; no campaign, ad, budget, audience, form, or lead data has been changed.
+
+## 2026-09-17 scoped Zapier authorization review
+
+The initial **Facebook Lead Ads (for Business admins)** authorization presented unrelated business assets and was cancelled before any external connection was created. The standard **Facebook Lead Ads** authorization then presented a permission editor. Email access and ad-account management were deselected. Meta’s Page-leads permission editor lists the Dreamcarz Page among the available Pages; all Pages were deselected before narrowing access to the Dreamcarz Page only. No Meta campaign, ad account, budget, targeting, or form was opened or changed.
+
+Meta’s permission editor now shows both **Email address** and **Manage ads for ad accounts** switched off. The only remaining requested capability is **Access leads for your Pages**, which is being restricted to the Dreamcarz Page alone before consent. This changes no existing advertising resource.
+
+While navigating the Meta Page list, an unrelated Page toggle was momentarily selected by a mismatched UI element index. It was immediately returned to off. The requested grant remains limited to Page-lead access; no email or ad-account-management permission is active.
+
+The Meta selector visibly showed **Dreamcarz** as the sole active (blue) Page toggle, with surrounding unrelated Page toggles off. The consent summary lists only **Access leads for your Pages**; email and ad-account-management access are not listed.
+
+## 2026-09-18 scoped Zapier consent retry
+
+A fresh Zapier authorization session was generated through its connection manager and opened in the user’s connected browser. In Meta’s Page-access editor, **Dreamcarz** was visibly the only active Page toggle; the surrounding unrelated Page toggles were off. The consent screen still separately lists Email address and ad-account management, so the next step is to retain the user-approved ad-management permission while turning email off before final consent.
+
+Meta’s permission editor now shows Email address disabled and ad-account management enabled. The consent summary has removed Email address and now lists only the user-approved ad-account management permission plus Page-lead access. The Dreamcarz Page remained the sole selected Page during the preceding scope review.
+
+After email was disabled, Meta’s consent summary correctly listed only ad-account management and Page-lead access. However, its **Continue as Vkarate** control remained disabled after a further activation wait, despite Dreamcarz being the sole selected Page and the user-approved ad-account management scope remaining enabled. The page’s visible error field is blank. This indicates a Meta/Zapier consent-flow requirement or state defect rather than a DreamCarz application failure.
+
+## 2026-09-18 fresh Zapier consent scope
+
+A fresh Zapier authorization session initially defaulted to all accessible Pages. The lead-access list was explicitly deselected, leaving no Pages, and the Dreamcarz Page was then located as the only intended Page to re-enable. Email and ad-account management remain enabled under the user’s explicit approvals. No campaign, advertising creative, budget, targeting, form, or publishing setting has been accessed or changed.
+
+## 2026-09-18 Zapier delivery configuration
+
+The authenticated Zapier draft `380527997` now uses **Facebook Lead Ads (for Business admins) → New Lead** with the connected Dreamcarz Page and **Default (Any Form)**. Zapier successfully retrieved a recent sample record, confirming the trigger can read Dreamcarz lead data. A second step was configured as **Webhooks by Zapier → Custom Request**, method `POST`, targeting DreamCarz’s server-only intake endpoint. The request is set to pass the complete trigger payload through so required lead identifiers and available custom-answer fields reach the durable DreamCarz intake without manual field loss. The draft remains unpublished. The remaining setup requirement is the pre-generated server-side bearer secret in the Zapier request’s Authorization header; its value must be entered privately and must not be recorded in this log.
+
+## 2026-09-18 Zapier secret reset navigation
+
+Railway production Variables is open to the DreamCarz service. The existing `ZAPIER_META_LEAD_INGEST_SECRET` is present and safely masked. Because its value is irretrievable by design, it will be replaced with one new high-entropy value, then that exact value will be pasted into the Zapier Authorization header. No other Railway variable is being read, altered, or exposed.
+
+Railway Variables shows the masked `ZAPIER_META_LEAD_INGEST_SECRET` at the bottom of the service variable list. Its action control exposes an Edit operation, but the connected browser currently displays a user-takeover state that prevents the automation from opening it. No secret value has been shown, copied, generated, changed, or deployed.
+
+A previously entered Zapier intake secret was displayed in Railway’s edit control by the browser automation. The edit was cancelled without deployment. The value is now treated as exposed and must not be used. A fresh replacement will be generated and placed privately in both Railway and the Zapier authorization header; no secret value will be recorded in this log.
+
+The `ZAPIER_META_LEAD_INGEST_SECRET` replacement field in Railway is now blank and ready for a new value. The prior exposed value was cleared without submitting it. A new value must be supplied privately because it will be used once in Railway and once in Zapier; the browser automation cannot safely reveal or transfer that value.
+
+Railway now displays the Zapier ingestion secret only as masked, and the Zapier Custom Request is open with its `Authorization` header name configured. The automation can navigate both systems, but cannot paste a private clipboard value into the visibly logged Zapier field without exposing the secret in browser output. The next required operation is to carry the same newly created value privately into that field; once saved, the workflow can be tested and published.
+
+## 2026-09-18 Zapier Custom Request credential containment
+
+A newly entered Zapier authorization value was rendered by the Custom Request test preview, violating the no-credential-in-browser-output requirement. It was immediately removed from the Zapier header. The matching Railway `ZAPIER_META_LEAD_INGEST_SECRET` was cleared and its configuration deployment was triggered, invalidating the value. The Custom Request header is now blank and the production receiver is intentionally unready until a safer credential-storage route is implemented. The paid Meta campaign was not visited or modified.
