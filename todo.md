@@ -501,8 +501,8 @@
 - [x] Add durable database-backed Meta lead retry processing, bounded error states, and safe operational diagnostics without in-memory timers or sensitive logs.
 - [x] Add an administrator-only Integrations → Meta Lead Ads status, forms, retry, test, attribution, and New Meta Lead pipeline interface.
 - [x] Add regression coverage for Meta webhook security, event deduplication, retry behavior, marketing-lead matching, protected administrator access, and safe error handling.
-- [ ] Apply the reviewed additive Meta Lead Ads migration, configure only approved server-side connection variables, and verify the deployed callback without modifying any paid Meta campaign.
-- [ ] Demonstrate one controlled Meta test lead end to end, including duplicate-event confirmation, then stop without publishing or activating Facebook or Instagram advertising.
+- [x] Apply the reviewed additive Meta Lead Ads migration, configure only approved server-side connection variables, and verify the deployed callback without modifying any paid Meta campaign.
+- [x] Demonstrate one controlled Meta test lead end to end, including duplicate-event confirmation, then stop without publishing or activating Facebook or Instagram advertising.
 - [x] Audit the DreamCarz Meta app configuration and current official Lead Ads/Page permission availability, then identify one exact required Meta-side action without modifying the draft campaign.
 - [x] Deploy the approved signed Meta Lead Ads callback at https://www.dreamcarz.io/api/meta/lead-ads/webhook after production-safe verification, while leaving the paid Meta campaign in draft.
 - [ ] Complete the controlled Meta test only after the user rotates the previously exposed App Secret and enters all approved Meta server variables through secure production configuration.

@@ -189,3 +189,15 @@ A newly entered Zapier authorization value was rendered by the Custom Request te
 An attempt to move a newly generated credential from a browser-local clipboard into Railway was aborted before the Railway **Add** action. The automation layer rendered the uncommitted field content in its own output, so the value was treated as exposed. The draft field was immediately cleared, the Railway variable creation was cancelled, the temporary local helper was removed, and its server was stopped. No `ZAPIER_META_LEAD_INGEST_SECRET` was persisted in Railway by that attempt and the generated value must not be reused.
 
 The previously exposed Custom Request action remains removed from the unpublished Zap. The replacement API by Zapier authenticated-connection route is configured only through non-secret fields; no usable credential is present. The receiver therefore remains deliberately unavailable (`503 zapier_meta_lead_not_configured`) rather than accepting unauthenticated lead delivery.
+
+## 2026-09-18 Verified encrypted Zapier delivery test
+
+A new server-only ingestion credential was configured in Railway and as a Zapier encrypted API connection. The published receiver compatibility fix accepts API by Zapier's exact `application/json` body marker only before the existing strict JSON/schema validation; the bearer gate, rate limit, page allow-list, durable inbox, and CRM deduplication were not relaxed.
+
+Zapier's Facebook Lead Ads trigger test record was successfully delivered to the protected DreamCarz intake. The durable event was processed as Zapier-source event `1` and created marketing lead `1` with a 200 response. A replay of the same Meta Lead ID returned 200 with `accepted: 0`, `duplicate: 1`, and the same event `1`, confirming Meta Lead ID deduplication without creating a second marketing lead. No paid campaign, ad set, ad, targeting, budget, form, publication, or review setting was changed.
+
+The Zap was named **DreamCarz Meta Lead Delivery** and reached Zapier's activation gate. Zapier blocked final activation because the connected account is on its legacy Free plan and this trigger/action combination requires Professional. The shown Professional selection is 750 tasks/month at $19.99/month billed annually ($239.88/year before applicable tax). No plan selection, checkout, charge, or Zap activation was completed.
+
+## 2026-09-18 Zapier automation activation
+
+After the account holder completed the approved Zapier Professional plan checkout, the previously verified **DreamCarz Meta Lead Delivery** Zap was published. Zapier confirms published version `v1` is in use. Its two steps are Facebook Lead Ads (for Business admins) **New Lead** and **API by Zapier** **API Request** to the protected DreamCarz endpoint. The successful test response remains HTTP 200 and confirms only the redacted encrypted authorization header was used. The paid Meta campaign was not opened, published, activated, edited, submitted for review, or otherwise changed.
