@@ -14,7 +14,7 @@ import {
   users,
   vehicleInquiries,
 } from "../drizzle/schema";
-import { queueStaffSmsNotifications } from "./staffSms";
+import { queueStaffOperationalAlert } from "./staffSms";
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
@@ -889,7 +889,7 @@ export async function processMetaLeadEvent(eventId: number) {
     await db.update(metaLeadIntegrations).set({ status: "connected", lastSuccessfulLeadAt: new Date(), lastErrorAt: null, lastErrorCode: null }).where(eq(metaLeadIntegrations.id, Number(integration.id)));
     if (testRun) await db.update(metaLeadTestRuns).set({ status: "processed", processedAt: new Date(), errorCode: null }).where(eq(metaLeadTestRuns.id, testRun.id));
     if (resolution.created && !testRun && !isTestLead) {
-      void queueStaffSmsNotifications({
+      void queueStaffOperationalAlert({
         eventType: "marketing_opt_in",
         sourceRecordType: "marketing_lead",
         sourceRecordId: resolution.lead.id,

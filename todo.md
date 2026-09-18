@@ -507,5 +507,5 @@
 - [x] Deploy the approved signed Meta Lead Ads callback at https://www.dreamcarz.io/api/meta/lead-ads/webhook after production-safe verification, while leaving the paid Meta campaign in draft.
 - [ ] Complete the controlled Meta test only after the user rotates the previously exposed App Secret and enters all approved Meta server variables through secure production configuration.
 - [x] Restore a secure authenticated GitHub release path for flowsiteshq/dreamcarz so the validated Meta Lead Ads release can trigger Railway production deployment without exposing credentials.
-- [x] Add a server-only, idempotent staff-SMS outbox for opted-in leads and provider-verified Associate enrollment activation, with no customer contact data in alert text.
-- [ ] Configure the approved Twilio sender, internal recipient list, and Railway server variables; then perform one controlled staff-SMS delivery and duplicate-suppression check.
+- [x] Add a server-only, idempotent staff-alert outbox for opted-in leads and provider-verified Associate enrollment activation, with no customer contact data in alert text.
+- [ ] Configure the Zapier email hook to deliver internal alerts to `www.dreamcarz.io@gmail.com`, add the server-only Railway hook variables, and perform one controlled email and duplicate-suppression check.

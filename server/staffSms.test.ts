@@ -3,71 +3,49 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 import { getDb } from "./db";
-import { getStaffSmsNotificationStatus, queueStaffSmsNotifications } from "./staffSms";
+import { getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
 
 const mockedGetDb = vi.mocked(getDb);
-const smsEnvKeys = [
-  "STAFF_SMS_NOTIFICATIONS_ENABLED",
-  "STAFF_SMS_TWILIO_ACCOUNT_SID",
-  "STAFF_SMS_TWILIO_AUTH_TOKEN",
-  "STAFF_SMS_TWILIO_FROM",
-  "STAFF_SMS_TWILIO_MESSAGING_SERVICE_SID",
-  "STAFF_SMS_RECIPIENTS",
-] as const;
+const alertEnvKeys = ["STAFF_EMAIL_ALERTS_ENABLED", "STAFF_EMAIL_ZAPIER_HOOK_URL"] as const;
+const originalEnv = Object.fromEntries(alertEnvKeys.map(key => [key, process.env[key]]));
 
-const originalEnv = Object.fromEntries(smsEnvKeys.map(key => [key, process.env[key]]));
-
-function resetSmsEnvironment() {
-  for (const key of smsEnvKeys) delete process.env[key];
+function resetAlertEnvironment() {
+  for (const key of alertEnvKeys) delete process.env[key];
 }
 
-describe("staff SMS notifications", () => {
+describe("staff operational email alerts", () => {
   beforeEach(() => {
     mockedGetDb.mockReset();
-    resetSmsEnvironment();
+    resetAlertEnvironment();
   });
 
   afterEach(() => {
-    resetSmsEnvironment();
-    for (const key of smsEnvKeys) {
+    resetAlertEnvironment();
+    for (const key of alertEnvKeys) {
       const value = originalEnv[key];
       if (value) process.env[key] = value;
     }
   });
 
-  it("remains disabled until explicit provider credentials and staff recipients are configured", () => {
-    expect(getStaffSmsNotificationStatus()).toEqual({
-      enabled: false,
-      ready: false,
-      recipientCount: 0,
-      provider: "twilio",
-    });
+  it("remains disabled until the server-only Zapier email hook is configured", () => {
+    expect(getStaffOperationalAlertStatus()).toEqual({ enabled: false, ready: false, provider: "zapier_email" });
   });
 
-  it("recognizes a complete server-only Twilio configuration without exposing it", () => {
-    process.env.STAFF_SMS_NOTIFICATIONS_ENABLED = "true";
-    process.env.STAFF_SMS_TWILIO_ACCOUNT_SID = "ACtest";
-    process.env.STAFF_SMS_TWILIO_AUTH_TOKEN = "test-secret";
-    process.env.STAFF_SMS_TWILIO_FROM = "+15555550101";
-    process.env.STAFF_SMS_RECIPIENTS = "+15555550102,+15555550103";
+  it("accepts only an HTTPS Zapier hook when email delivery is enabled", () => {
+    process.env.STAFF_EMAIL_ALERTS_ENABLED = "true";
+    process.env.STAFF_EMAIL_ZAPIER_HOOK_URL = "https://hooks.zapier.com/hooks/catch/123/abc/";
+    expect(getStaffOperationalAlertStatus()).toEqual({ enabled: true, ready: true, provider: "zapier_email" });
 
-    expect(getStaffSmsNotificationStatus()).toEqual({
-      enabled: true,
-      ready: true,
-      recipientCount: 2,
-      provider: "twilio",
-    });
+    process.env.STAFF_EMAIL_ZAPIER_HOOK_URL = "https://untrusted.example.test/hook";
+    expect(getStaffOperationalAlertStatus()).toEqual({ enabled: true, ready: false, provider: "zapier_email" });
   });
 
-  it("records one disabled, recipient-hashed outbox item per configured staff recipient before activation", async () => {
-    process.env.STAFF_SMS_RECIPIENTS = "+15555550102";
+  it("records a single disabled, recipient-free outbox alert before the hook is activated", async () => {
     const values = vi.fn().mockResolvedValue(undefined);
-    const select = vi.fn(() => ({
-      from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })),
-    }));
+    const select = vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })) })) }));
     mockedGetDb.mockResolvedValue({ select, insert: vi.fn(() => ({ values })) } as never);
 
-    const result = await queueStaffSmsNotifications({
+    const result = await queueStaffOperationalAlert({
       eventType: "marketing_opt_in",
       sourceRecordType: "marketing_lead",
       sourceRecordId: 19,
@@ -82,6 +60,6 @@ describe("staff SMS notifications", () => {
       status: "disabled",
       recipientHash: expect.any(String),
     }));
-    expect(JSON.stringify(values.mock.calls[0]?.[0])).not.toContain("+15555550102");
+    expect(JSON.stringify(values.mock.calls[0]?.[0])).not.toContain("@gmail.com");
   });
 });
