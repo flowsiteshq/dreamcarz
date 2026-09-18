@@ -183,3 +183,9 @@ Railway now displays the Zapier ingestion secret only as masked, and the Zapier 
 ## 2026-09-18 Zapier Custom Request credential containment
 
 A newly entered Zapier authorization value was rendered by the Custom Request test preview, violating the no-credential-in-browser-output requirement. It was immediately removed from the Zapier header. The matching Railway `ZAPIER_META_LEAD_INGEST_SECRET` was cleared and its configuration deployment was triggered, invalidating the value. The Custom Request header is now blank and the production receiver is intentionally unready until a safer credential-storage route is implemented. The paid Meta campaign was not visited or modified.
+
+## 2026-09-18 Aborted browser credential transfer
+
+An attempt to move a newly generated credential from a browser-local clipboard into Railway was aborted before the Railway **Add** action. The automation layer rendered the uncommitted field content in its own output, so the value was treated as exposed. The draft field was immediately cleared, the Railway variable creation was cancelled, the temporary local helper was removed, and its server was stopped. No `ZAPIER_META_LEAD_INGEST_SECRET` was persisted in Railway by that attempt and the generated value must not be reused.
+
+The previously exposed Custom Request action remains removed from the unpublished Zap. The replacement API by Zapier authenticated-connection route is configured only through non-secret fields; no usable credential is present. The receiver therefore remains deliberately unavailable (`503 zapier_meta_lead_not_configured`) rather than accepting unauthenticated lead delivery.
