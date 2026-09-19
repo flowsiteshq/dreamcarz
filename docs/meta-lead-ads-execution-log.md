@@ -201,3 +201,7 @@ The Zap was named **DreamCarz Meta Lead Delivery** and reached Zapier's activati
 ## 2026-09-18 Zapier automation activation
 
 After the account holder completed the approved Zapier Professional plan checkout, the previously verified **DreamCarz Meta Lead Delivery** Zap was published. Zapier confirms published version `v1` is in use. Its two steps are Facebook Lead Ads (for Business admins) **New Lead** and **API by Zapier** **API Request** to the protected DreamCarz endpoint. The successful test response remains HTTP 200 and confirms only the redacted encrypted authorization header was used. The paid Meta campaign was not opened, published, activated, edited, submitted for review, or otherwise changed.
+
+## 2026-09-19 Paid Meta Instant Form authorization
+
+The account holder approved creation and publication of one new DreamCarz paid Meta Instant Form lead ad with a USD 25/day budget, immediate start, a 30-mile radius around Lanham, Maryland, DreamCarz branding, the stated rent / rent-to-own copy, a Get Quote call to action, and an authenticated Meta Instant Form-to-Zapier-to-DreamCarz CRM delivery path. The pre-existing website-lead ad set remains untouched. This approval supersedes the earlier no-publish constraint solely for this explicit campaign payload.
