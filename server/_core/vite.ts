@@ -58,10 +58,32 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // The HTML entry point must always be revalidated. Its Vite asset names are
+  // content-hashed; caching an older index.html after a Railway deploy can make
+  // a mobile browser request a CSS file that no longer exists and display raw,
+  // unstyled markup. Versioned assets themselves can be cached indefinitely.
+  app.use(
+    express.static(distPath, {
+      setHeaders(res, filePath) {
+        const relativePath = path.relative(distPath, filePath);
+        if (relativePath === "index.html") {
+          res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
+          return;
+        }
+
+        if (relativePath.startsWith(`assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return;
+        }
+
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      },
+    })
+  );
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
