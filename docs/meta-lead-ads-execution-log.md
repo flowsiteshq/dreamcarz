@@ -205,3 +205,33 @@ After the account holder completed the approved Zapier Professional plan checkou
 ## 2026-09-19 Paid Meta Instant Form authorization
 
 The account holder approved creation and publication of one new DreamCarz paid Meta Instant Form lead ad with a USD 25/day budget, immediate start, a 30-mile radius around Lanham, Maryland, DreamCarz branding, the stated rent / rent-to-own copy, a Get Quote call to action, and an authenticated Meta Instant Form-to-Zapier-to-DreamCarz CRM delivery path. The pre-existing website-lead ad set remains untouched. This approval supersedes the earlier no-publish constraint solely for this explicit campaign payload.
+
+## 2026-09-20 Paid ad creative completion
+
+The approved DreamCarz Page hero image was selected as the media for the existing **New Leads Ad** draft. Square and horizontal placement crops were configured, and the preview now renders the car image, headline, description, and **Get quote** call to action. The destination remains the approved DreamCarz `/get-started` URL with campaign tracking parameters.
+
+Meta reports one non-delivering placement because the selected source image does not have sufficient resolution for a vertical fullscreen crop. More importantly, Ads Manager also reports that the ad account does not have access to the currently selected Instagram profile (`#1815199`). The ad has not been published from this state; resolving the identity configuration is required before a truthful live-launch confirmation.
+
+The existing ad set remains configured for **Website** conversion, **landing page views**, the requested **30-mile radius around 10001 Derekwood Lane, Lanham, Maryland**, and minimum age 18. No budget, location, age, bid strategy, or campaign status was changed during error diagnosis.
+
+## 2026-09-21 DreamCarz Instagram creation
+
+The account holder completed Instagram's native registration flow and created the DreamCarz profile `dreamcarz.io`. The profile is currently a new personal account with no media and has not yet been connected to the Dreamcarz Facebook Page or used for advertising. Next required configuration is conversion to a professional Business account, then Page/ad-account linking to resolve the existing Instagram identity validation error.
+
+## 2026-09-21 Instagram business profile and current Meta launch blocker
+
+The DreamCarz Instagram profile `dreamcarz.io` was converted to a professional **Business** account using Instagram’s native account-type workflow. The Dreamcarz Facebook Page’s **Linked accounts → Instagram** screen still shows `Not connected`. The Page’s connection flow advances through its message-access setting, but Meta’s authorization continuation does not open or complete the profile authorization.
+
+In the same existing My Browser Meta session, Ads Manager repeatedly displays `Refresh your screen` alongside `Some of your data failed to load` and `Error: component failed to load`; triggering the supplied refresh returns to the same failure state. No campaign, ad set, budget, audience, location, creative, destination, or status was changed during this diagnosis. The connected Meta read access continues to report campaign `120251507937250458` (`DreamCarz | Lanham 30mi | Rent to Own Leads`) as `PAUSED`, with ad set `120251507937230458` effective status `CAMPAIGN_PAUSED`.
+
+## 2026-09-21 Instagram Page attachment completed; Ads Manager launch blocked
+
+The Dreamcarz Facebook Page connection dialog confirmed that the Page is now attached to the professional Instagram profile `@dreamcarz.io`. This was completed in the existing My Browser Meta session. The profile connection is no longer the blocker.
+
+Immediately after the attachment, Meta Ads Manager continued to return `Some of your data failed to load` / API-load failures in the existing `New Leads Ad` editor. The editor and review workspace remained in a loading state and did not expose a trustworthy publish control. Read access at the same time confirmed campaign `120251507937250458` is still `PAUSED` and ad set `120251507937230458` has effective status `CAMPAIGN_PAUSED`. No launch was claimed and no campaign, ad set, budget, audience, location, creative, destination, or status was changed while Meta’s editor was failing.
+
+## 2026-09-21 Meta publication attempt blocked by Ads Manager request failure
+
+With the Dreamcarz Facebook Page and `@dreamcarz.io` now linked, the approved campaign was opened in the existing Meta Ads Manager session and **Review and publish** was invoked. Meta accepted the click and displayed `Preparing your changes for review...`, but never completed the review request. At the same time the interface displayed `Invalid request. (#1)`, `Your internet connection was lost`, and `Some of your data failed to load`; campaign rows were unavailable. The stalled review request was cancelled rather than allowing an ambiguous submission.
+
+A post-attempt status check confirms the campaign `120251507937250458` remains `PAUSED` and the ad set `120251507937230458` remains `CAMPAIGN_PAUSED`. Ads are therefore not running. No campaign, ad set, budget, audience, location, creative, destination, or delivery status changed as a result of this failed Meta-side request.
