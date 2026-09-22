@@ -138,6 +138,7 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(serverSource.indexOf("registerZapierMetaLeadWebhook(app)")).toBeLessThan(serverSource.indexOf("express.json"));
     expect(routerSource).toContain("metaLeadAds: router({");
     expect(routerSource).toContain("status: adminProcedure.query");
+    expect(routerSource).toContain("replayCurrentFacebookLeadAlerts: adminProcedure.mutation");
     expect(routerSource).toContain("subscribePageLeadgen: adminProcedure.mutation");
     expect(routerSource).toContain("processDueEventsNow: adminProcedure.mutation");
     expect(retrySource).toContain("hasValidRetryBearer(req.headers.authorization, retrySecret)");

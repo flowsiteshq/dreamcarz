@@ -2,49 +2,35 @@
 
 ## Purpose and scope
 
-DreamCarz queues a **staff-only operational alert** when a prospective customer grants contact consent or an Associate enrollment is verified and activated. The alert never contacts customers. It deliberately excludes customer phone numbers, email addresses, payment information, form answers, passwords, access tokens, and other restricted data; staff use the protected DreamCarz portal to review the corresponding record.
+DreamCarz queues a **staff-only operational alert** when a prospective customer grants contact consent or an Associate enrollment is verified and activated. The alert never contacts customers. For Facebook and Instagram leads, the owner-approved contact alert delivers the lead's **name, phone number, email address, interest, and source** to the configured staff recipients so staff can follow up. It excludes payment information, account information, full form answers, passwords, access tokens, and other restricted data.
 
-Each event is recorded in a durable, idempotent outbox. A delivery key prevents duplicate notifications, and the database stores only a one-way recipient hash—not an email-to-text address or phone number. Failed attempts remain available to the existing bounded retry worker.
+Each event is recorded in a durable, idempotent outbox. A delivery key prevents duplicate notifications, and the database stores only a one-way recipient hash—not an email-to-text address or phone number. Failed server-side attempts remain available to the existing bounded retry worker.
 
 ## Triggered events
 
 | Event | When the alert is queued | Safe alert content |
 | --- | --- | --- |
-| Marketing opt-in | A public advertising lead submits the required contact-consent form, or a new non-test Meta/Zapier lead is created. | Safe lead reference/ID and an instruction to review the protected Admin portal. |
+| Marketing opt-in | A public advertising lead submits the required contact-consent form, or a new non-test Meta/Zapier lead is created. | Lead name, phone, email, interest, and Facebook/Instagram source for staff follow-up. |
 | Associate opt-in | An active Associate captures a consented lead in the Associate portal. | Safe lead ID and an instruction to review the protected Associate portal. |
-| Associate enrollment activated | The hosted $149 enrollment payment and $49 monthly subscription are provider-verified and Associate access is activated. | Safe enrollment reference and an instruction to review the protected Admin portal. |
+| Associate enrollment activated | The hosted enrollment payment and subscription are provider-verified and Associate access is activated. | Safe enrollment reference and an instruction to review the protected Admin portal. |
 
-## Existing staff email route
+## Active plain-text staff-text route
 
-The existing **Email by Zapier** workflow continues to deliver the full internal alert to `www.dreamcarz.io@gmail.com`. It remains optional and separate from phone delivery.
+The live route is **DreamCarz outbox → server-only Zapier Catch Hook → authorized Dojo Flow Gmail → staff T-Mobile email-to-text gateways**. The published automation uses Gmail’s `Send Email` action with a **plain-text** body and HTML signature rendering disabled. The recipient gateway addresses and webhook URL are stored only in server-side configuration; they are not kept in source control, the database, or this document.
 
-| Variable | Required value |
+| Railway variable | Purpose |
 | --- | --- |
-| `STAFF_EMAIL_ALERTS_ENABLED` | `true` to enable the existing email route. |
-| `STAFF_EMAIL_ZAPIER_HOOK_URL` | The server-only HTTPS Catch Hook URL from the published DreamCarz Staff Lead and Enrollment Alerts Zap. |
+| `STAFF_EMAIL_ALERTS_ENABLED` | Enables creation and delivery of the staff operational-alert outbox route. |
+| `STAFF_EMAIL_ZAPIER_HOOK_URL` | Stores the HTTPS Catch Hook URL for the published staff-alert automation. |
 
-The application accepts only HTTPS `hooks.zapier.com` hook URLs.
+The application accepts only HTTPS `hooks.zapier.com` hook URLs. The Zap delivers the approved Facebook/Instagram follow-up fields—name, phone, email, interest, and source—only to the configured staff recipients. It does not include payment data, account data, full form answers, or credentials.
 
-## Direct Gmail-to-T-Mobile text route
+## 2026-09-22 production validation
 
-The requested text route is direct **DreamCarz Gmail → T-Mobile email-to-text gateway**. It does not use SendBlue, Twilio, a public client-side secret, or a customer messaging workflow. Text recipients are server-only Railway configuration values and are never committed to source control or stored in the database.
+Railway accepted and deployed the two server-only staff-alert variables. A synthetic, no-customer-data marketing opt-in was accepted by the live DreamCarz API. The published Zap then recorded a successful Catch Hook step and a successful Gmail send step. The message settings recorded by Zapier were `plain` body type with HTML signature rendering set to `false`.
 
-| Railway variable | Required value |
-| --- | --- |
-| `STAFF_SMS_EMAIL_GATEWAY_ENABLED` | `true` |
-| `STAFF_SMS_SMTP_USER` | `www.dreamcarz.io@gmail.com` |
-| `STAFF_SMS_SMTP_APP_PASSWORD` | A new Google **App Password** for the DreamCarz Gmail account, stored only in Railway. Never use the normal Gmail password. |
-| `STAFF_SMS_T_MOBILE_GATEWAYS` | Comma-separated T-Mobile gateway addresses, for example `10digitnumber@tmomail.net`. |
+Both staff handsets confirmed receipt of the production test as plain text. Railway then successfully deployed the approved contact-detail alert update. A protected administrator replay reviewed **19 current non-test Facebook/Instagram leads** and queued **19** one-time staff deliveries. Zapier records the corresponding 19 current batch runs as successful, with the Gmail plain-text send action completing for each run. The replay uses a separate delivery variant, so it does not suppress any prior safe-reference test notification; repeating the replay does not create another contact-detail delivery for the same lead.
 
-The integration uses authenticated Gmail SMTP (`smtp.gmail.com`) and sends a concise, plain-text staff alert to each configured T-Mobile gateway address. Gmail message IDs are retained as provider references, while recipient values remain in Railway only. A Gmail App Password is required because standard Google sign-in/OAuth was not available to the server-side delivery worker.
+## Optional direct SMTP route
 
-## Verification procedure
-
-After the server-only variables are added, use an internal test event containing no customer data. Verify all of the following:
-
-1. Each configured staff line receives one plain-text alert.
-2. The matching outbox records are marked `sent` with a Gmail provider message ID.
-3. Replaying the same source event creates no second text or email outbox record.
-4. The retry worker changes a temporary SMTP failure to `retry_scheduled` rather than silently dropping the alert.
-
-> The prior Email by Zapier and Gmail compose tests are not proof of direct text delivery. Production direct Gmail-to-T-Mobile delivery remains **disabled** until its four Railway variables are configured and the controlled no-customer-data test passes.
+The application also contains an optional direct Gmail-to-T-Mobile SMTP implementation. It remains disabled unless a current mailbox-specific App Password and the private recipient gateway list are configured in Railway. It is not required for the currently active Zapier/Gmail route, and no normal Gmail password is used or stored by DreamCarz.

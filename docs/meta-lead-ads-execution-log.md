@@ -235,3 +235,17 @@ Immediately after the attachment, Meta Ads Manager continued to return `Some of 
 With the Dreamcarz Facebook Page and `@dreamcarz.io` now linked, the approved campaign was opened in the existing Meta Ads Manager session and **Review and publish** was invoked. Meta accepted the click and displayed `Preparing your changes for review...`, but never completed the review request. At the same time the interface displayed `Invalid request. (#1)`, `Your internet connection was lost`, and `Some of your data failed to load`; campaign rows were unavailable. The stalled review request was cancelled rather than allowing an ambiguous submission.
 
 A post-attempt status check confirms the campaign `120251507937250458` remains `PAUSED` and the ad set `120251507937230458` remains `CAMPAIGN_PAUSED`. Ads are therefore not running. No campaign, ad set, budget, audience, location, creative, destination, or delivery status changed as a result of this failed Meta-side request.
+
+## 2026-09-22 Staff operational text activation
+
+The staff-alert Zap was published as version 2, named **Plain-text staff alerts**. Its action is Gmail **Send Email** using the authorized Dojo Flow sender, a `plain` body type, and HTML signature rendering set to `false`. The two private T-Mobile gateway recipients remain server-only and are not recorded here.
+
+Railway production accepted and deployed the two staff-alert configuration variables required for the server outbox to call the published Catch Hook. A synthetic no-customer-data marketing opt-in was submitted through the live DreamCarz intake. The live API accepted it, and Zapier recorded a successful Catch Hook followed by a successful Gmail send in the published version. The payload contained only the operational event type, safe source reference, subject, and the instruction to review the protected CRM. It contained no customer contact information, payment information, form answers, or credentials.
+
+Both staff handsets confirmed receipt of the production test as plain-text SMS. This verifies the full live DreamCarz server → Zapier → authorized Gmail → T-Mobile gateway path. No direct Gmail SMTP credential was created, used, or exposed.
+
+### Approved staff follow-up payload
+
+The owner approved sending the following fields for current and future **consented Facebook/Instagram leads** to the two configured staff phones: name, phone, email, interest, and source. The payload remains plain text and continues to exclude payment data, account data, passwords, credentials, and full form answers. A protected administrator-only replay is included to send each existing non-test Facebook lead once; synthetic test entries are excluded.
+
+Railway successfully deployed the contact-detail delivery release, followed by the protected CRM replay control. The replay completed with **19 current non-test leads reviewed** and **19 one-time staff deliveries queued**. Zapier’s published staff-alert history then recorded **19 successful runs** for the batch, each completing the Catch Hook and Gmail plain-text Send Email action. No customer outbound message, paid-ad action, campaign change, or lead-data deletion was performed.

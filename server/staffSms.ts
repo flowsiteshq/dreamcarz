@@ -24,6 +24,8 @@ type StaffAlertQueueInput = {
   sourceRecordType: "marketing_lead" | "advertising_lead" | "associate_lead" | "associate_enrollment";
   sourceRecordId: string | number;
   message: string;
+  /** Separates an approved replay from a previous safe-reference-only alert. */
+  deliveryVariant?: "safe" | "contact_details";
 };
 
 const MAX_ATTEMPTS = 6;
@@ -106,7 +108,7 @@ function getStaffAlertDeliveryConfigs(): StaffAlertDeliveryConfig[] {
 }
 
 function deliveryKey(input: StaffAlertQueueInput, config: StaffAlertDeliveryConfig) {
-  return `${input.eventType}:${input.sourceRecordType}:${input.sourceRecordId}:${config.provider}:${config.recipientHash.slice(0, 32)}`;
+  return `${input.deliveryVariant ?? "safe"}:${input.eventType}:${input.sourceRecordType}:${input.sourceRecordId}:${config.provider}:${config.recipientHash.slice(0, 32)}`;
 }
 
 function retryDelayMs(attempts: number) {
@@ -117,11 +119,37 @@ function safeMessage(input: StaffAlertQueueInput) {
   return input.message.trim().slice(0, MESSAGE_MAX_LENGTH);
 }
 
+type StaffLeadContactAlert = {
+  contactName: string | null | undefined;
+  contactPhone: string | null | undefined;
+  contactEmail: string | null | undefined;
+  interest: string | null | undefined;
+  source: string;
+};
+
+function leadAlertValue(value: string | null | undefined, fallback = "Not provided") {
+  const normalized = value?.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+  return normalized || fallback;
+}
+
+/** Formats the user-approved staff-only lead contact alert with no payment or account data. */
+export function formatStaffLeadContactAlert(lead: StaffLeadContactAlert) {
+  const message = [
+    "DreamCarz new lead — contact promptly",
+    `Name: ${leadAlertValue(lead.contactName)}`,
+    `Phone: ${leadAlertValue(lead.contactPhone)}`,
+    `Email: ${leadAlertValue(lead.contactEmail)}`,
+    `Interest: ${leadAlertValue(lead.interest)}`,
+    `Source: ${leadAlertValue(lead.source)}`,
+  ].join("\n");
+  return message.slice(0, MESSAGE_MAX_LENGTH);
+}
+
 /**
- * Queues staff-only operational alerts. Zapier continues to deliver the full
- * email; the optional Gmail route sends only a short plain-text copy to each
- * configured T-Mobile email-to-text address. Customer contact details, payment
- * data, tokens, answers, and credentials are never placed in either payload.
+ * Queues staff-only operational alerts. The user-approved contact-details
+ * variant delivers a prospect's name, phone, email, interest, and source only
+ * to the configured staff recipients. Payment data, account data, form answers,
+ * tokens, and credentials are never placed in the payload.
  */
 export async function queueStaffOperationalAlert(input: StaffAlertQueueInput) {
   const db = await getDb();

@@ -14,7 +14,7 @@ import {
   users,
   vehicleInquiries,
 } from "../drizzle/schema";
-import { getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
+import { formatStaffLeadContactAlert, getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
@@ -893,7 +893,14 @@ export async function processMetaLeadEvent(eventId: number) {
         eventType: "marketing_opt_in",
         sourceRecordType: "marketing_lead",
         sourceRecordId: resolution.lead.id,
-        message: `DreamCarz: A new opted-in Meta lead was received (lead ${resolution.lead.id}). Review the protected Admin portal.`,
+        deliveryVariant: "contact_details",
+        message: formatStaffLeadContactAlert({
+          contactName: resolution.lead.contactName,
+          contactPhone: resolution.lead.contactPhone,
+          contactEmail: resolution.lead.contactEmail,
+          interest: resolution.lead.interest,
+          source: "Facebook / Instagram Instant Form",
+        }),
       }).catch(() => undefined);
     }
     return { status: "processed", eventId: event.id, marketingLeadId: resolution.lead.id };
