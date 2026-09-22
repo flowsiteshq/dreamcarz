@@ -25,7 +25,7 @@ type StaffAlertQueueInput = {
   sourceRecordId: string | number;
   message: string;
   /** Separates an approved replay from a previous safe-reference-only alert. */
-  deliveryVariant?: "safe" | "contact_details";
+  deliveryVariant?: "safe" | "contact_details" | `contact_details:manual_replay_${string}`;
 };
 
 const MAX_ATTEMPTS = 6;

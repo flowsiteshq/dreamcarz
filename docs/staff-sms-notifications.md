@@ -29,7 +29,11 @@ The application accepts only HTTPS `hooks.zapier.com` hook URLs. The Zap deliver
 
 Railway accepted and deployed the two server-only staff-alert variables. A synthetic, no-customer-data marketing opt-in was accepted by the live DreamCarz API. The published Zap then recorded a successful Catch Hook step and a successful Gmail send step. The message settings recorded by Zapier were `plain` body type with HTML signature rendering set to `false`.
 
-Both staff handsets confirmed receipt of the production test as plain text. Railway then successfully deployed the approved contact-detail alert update. A protected administrator replay reviewed **19 current non-test Facebook/Instagram leads** and queued **19** one-time staff deliveries. Zapier records the corresponding 19 current batch runs as successful, with the Gmail plain-text send action completing for each run. The replay uses a separate delivery variant, so it does not suppress any prior safe-reference test notification; repeating the replay does not create another contact-detail delivery for the same lead.
+Both staff handsets confirmed receipt of the production test as plain text. The current production Zap is version 3, **Lead contact details**. It maps the server-provided plain-text message into Gmail, so the approved name, phone, email, interest, and source fields are sent rather than a generic sentence.
+
+At 10:51 ET on 2026-09-22, the protected administrator resend reviewed **20 current non-test Facebook/Instagram leads** and queued **20** new, durable staff-delivery records. Zapier recorded 20 corresponding successful version-3 runs; each completed its Catch Hook and Gmail plain-text send action. A representative run confirmed that only the approved lead-contact fields were passed to Gmail. Handset confirmation for this larger current-lead batch remains pending.
+
+The administrator resend creates a separately keyed, auditable batch only when a staff operator explicitly presses the current-lead control. It remains limited to one batch per UTC hour, while normal new-lead notifications retain their permanent per-lead deduplication.
 
 ## Optional direct SMTP route
 

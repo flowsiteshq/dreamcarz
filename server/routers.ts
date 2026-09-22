@@ -2982,9 +2982,20 @@ export const appRouter = router({
       }
     }),
 
-    replayCurrentFacebookLeadAlerts: adminProcedure.mutation(async () => {
+    replayCurrentFacebookLeadAlerts: adminProcedure
+      .input(z.object({ resend: z.boolean().optional() }).optional())
+      .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead alerts are temporarily unavailable." });
+
+      // A staff operator may explicitly resend the current lead batch after a
+      // delivery configuration correction. Keep this bounded to one batch per
+      // UTC hour while preserving the normal, permanent lead-event dedupe.
+      const isManualResend = input?.resend === true;
+      const replayHour = new Date().toISOString().slice(0, 13).replace(/[-:T]/g, "");
+      const deliveryVariant = isManualResend
+        ? `contact_details:manual_replay_${replayHour}` as const
+        : "contact_details" as const;
 
       const directLeads = await db.select({
         id: advertisingLeads.id,
@@ -3018,7 +3029,7 @@ export const appRouter = router({
           eventType: "marketing_opt_in",
           sourceRecordType: "advertising_lead",
           sourceRecordId: lead.id,
-          deliveryVariant: "contact_details",
+          deliveryVariant,
           message: formatStaffLeadContactAlert({ ...lead, interest: "Not provided", source: "Facebook lead landing page" }),
         });
         queued += result.queued;
@@ -3030,12 +3041,12 @@ export const appRouter = router({
           eventType: "marketing_opt_in",
           sourceRecordType: "marketing_lead",
           sourceRecordId: lead.id,
-          deliveryVariant: "contact_details",
+          deliveryVariant,
           message: formatStaffLeadContactAlert({ ...lead, source: "Facebook / Instagram Instant Form" }),
         });
         queued += result.queued;
       }
-      return { reviewed: directLeads.length + deliveredMetaLeadIds.size, queued } as const;
+      return { reviewed: directLeads.length + deliveredMetaLeadIds.size, queued, resent: isManualResend } as const;
     }),
 
     refreshConnection: adminProcedure.mutation(async ({ ctx }) => {
