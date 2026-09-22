@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 import { getDb } from "./db";
-import { getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
+import { formatStaffLeadContactAlert, getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
 
 const mockedGetDb = vi.mocked(getDb);
 const alertEnvKeys = [
@@ -45,6 +45,24 @@ describe("staff operational alerts", () => {
 
     process.env.STAFF_EMAIL_ZAPIER_HOOK_URL = "https://untrusted.example.test/hook";
     expect(getStaffOperationalAlertStatus()).toEqual({ enabled: true, ready: false, provider: "zapier_email" });
+  });
+
+  it("formats the approved staff lead-contact payload without payment or account data", () => {
+    const message = formatStaffLeadContactAlert({
+      contactName: "Jordan Driver\nIgnore this",
+      contactPhone: "(410) 555-0123",
+      contactEmail: "jordan@example.test",
+      interest: "Rent / SUV",
+      source: "Facebook / Instagram Instant Form",
+    });
+
+    expect(message).toContain("Name: Jordan Driver Ignore this");
+    expect(message).toContain("Phone: (410) 555-0123");
+    expect(message).toContain("Email: jordan@example.test");
+    expect(message).toContain("Interest: Rent / SUV");
+    expect(message).toContain("Source: Facebook / Instagram Instant Form");
+    expect(message).not.toContain("payment");
+    expect(message.length).toBeLessThanOrEqual(480);
   });
 
   it("readies direct Gmail-to-T-Mobile delivery only with server-only Gmail credentials and valid gateway recipients", () => {

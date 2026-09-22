@@ -72,8 +72,10 @@ import {
   transactionSettlements,
   transactionAdjustments,
   referralConversionEvents,
+  marketingLeads,
+  metaLeadRecords,
 } from "../drizzle/schema";
-import { eq, and, desc, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { filterPartnerDirectory, partnerActivationValue } from "../shared/partnerDirectory";
 import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
@@ -114,7 +116,7 @@ import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/market
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
 import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
-import { queueStaffOperationalAlert } from "./staffSms";
+import { formatStaffLeadContactAlert, queueStaffOperationalAlert } from "./staffSms";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -2958,7 +2960,14 @@ export const appRouter = router({
           eventType: "marketing_opt_in",
           sourceRecordType: "advertising_lead",
           sourceRecordId: Number(inserted[0].insertId),
-          message: `DreamCarz: A new opted-in marketing lead was received (${reference}). Review the protected Admin portal.`,
+          deliveryVariant: "contact_details",
+          message: formatStaffLeadContactAlert({
+            contactName: input.contactName,
+            contactPhone: input.contactPhone,
+            contactEmail: input.contactEmail,
+            interest: "Not provided",
+            source: "Facebook lead landing page",
+          }),
         }).catch(() => undefined);
         return { success: true, reference } as const;
       }),
@@ -2971,6 +2980,62 @@ export const appRouter = router({
       } catch (error) {
         return metaLeadTrpcError(error);
       }
+    }),
+
+    replayCurrentFacebookLeadAlerts: adminProcedure.mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Lead alerts are temporarily unavailable." });
+
+      const directLeads = await db.select({
+        id: advertisingLeads.id,
+        contactName: advertisingLeads.contactName,
+        contactPhone: advertisingLeads.contactPhone,
+        contactEmail: advertisingLeads.contactEmail,
+      }).from(advertisingLeads).where(and(
+        eq(advertisingLeads.source, "facebook"),
+        eq(advertisingLeads.consentToContact, true),
+        notLike(advertisingLeads.contactEmail, "%@example.invalid"),
+      ));
+
+      const metaLeads = await db.select({
+        id: marketingLeads.id,
+        contactName: marketingLeads.contactName,
+        contactPhone: marketingLeads.contactPhone,
+        contactEmail: marketingLeads.contactEmail,
+        interest: marketingLeads.interest,
+      }).from(marketingLeads)
+        .innerJoin(metaLeadRecords, eq(metaLeadRecords.marketingLeadId, marketingLeads.id))
+        .where(and(
+          eq(marketingLeads.primarySource, "meta_lead_ads"),
+          eq(marketingLeads.contactConsentStatus, "meta_form_submitted"),
+          eq(metaLeadRecords.isTestLead, false),
+        ));
+
+      let queued = 0;
+      const deliveredMetaLeadIds = new Set<number>();
+      for (const lead of directLeads) {
+        const result = await queueStaffOperationalAlert({
+          eventType: "marketing_opt_in",
+          sourceRecordType: "advertising_lead",
+          sourceRecordId: lead.id,
+          deliveryVariant: "contact_details",
+          message: formatStaffLeadContactAlert({ ...lead, interest: "Not provided", source: "Facebook lead landing page" }),
+        });
+        queued += result.queued;
+      }
+      for (const lead of metaLeads) {
+        if (deliveredMetaLeadIds.has(lead.id)) continue;
+        deliveredMetaLeadIds.add(lead.id);
+        const result = await queueStaffOperationalAlert({
+          eventType: "marketing_opt_in",
+          sourceRecordType: "marketing_lead",
+          sourceRecordId: lead.id,
+          deliveryVariant: "contact_details",
+          message: formatStaffLeadContactAlert({ ...lead, source: "Facebook / Instagram Instant Form" }),
+        });
+        queued += result.queued;
+      }
+      return { reviewed: directLeads.length + deliveredMetaLeadIds.size, queued } as const;
     }),
 
     refreshConnection: adminProcedure.mutation(async ({ ctx }) => {
