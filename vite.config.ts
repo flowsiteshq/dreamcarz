@@ -165,6 +165,9 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
   build: {
+    // Keep the public experience compatible with current and recent iOS Safari
+    // rather than emitting the newest syntax only.
+    target: "es2020",
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
