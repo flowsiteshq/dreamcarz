@@ -691,6 +691,31 @@ export const associateEnrollmentEvents = mysqlTable("associate_enrollment_events
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("associate_enrollment_event_owner_idx").on(table.userId, table.createdAt), index("associate_enrollment_event_enrollment_idx").on(table.enrollmentId, table.createdAt)]);
 
+/**
+ * A staff-only, idempotent SMS outbox. It stores recipient hashes rather than
+ * phone numbers and excludes customer contact data, payment data, and secrets.
+ */
+export const staffSmsNotifications = mysqlTable("staff_sms_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  eventType: mysqlEnum("eventType", ["marketing_opt_in", "associate_opt_in", "associate_enrollment_activated"]).notNull(),
+  sourceRecordType: mysqlEnum("sourceRecordType", ["marketing_lead", "advertising_lead", "associate_lead", "associate_enrollment"]).notNull(),
+  sourceRecordId: varchar("sourceRecordId", { length: 160 }).notNull(),
+  deliveryKey: varchar("deliveryKey", { length: 255 }).notNull().unique(),
+  recipientHash: varchar("recipientHash", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["disabled", "pending", "sending", "sent", "retry_scheduled", "failed"]).default("disabled").notNull(),
+  message: varchar("message", { length: 480 }).notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  lastErrorCode: varchar("lastErrorCode", { length: 96 }),
+  providerMessageSid: varchar("providerMessageSid", { length: 160 }),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("staff_sms_status_due_idx").on(table.status, table.nextAttemptAt),
+  index("staff_sms_source_idx").on(table.sourceRecordType, table.sourceRecordId),
+]);
+
 /** Public advertising leads collect only the contact details and consent needed for an initial DreamCarz follow-up. */
 export const advertisingLeads = mysqlTable("advertising_leads", {
   id: int("id").autoincrement().primaryKey(),
