@@ -14,6 +14,7 @@ import {
   users,
   vehicleInquiries,
 } from "../drizzle/schema";
+import { getStaffOperationalAlertStatus, queueStaffOperationalAlert } from "./staffSms";
 
 export const META_LEAD_WEBHOOK_PATH = "/api/meta/lead-ads/webhook";
 export const META_LEAD_RETRY_PATH = "/api/scheduled/meta-lead-ads-retry";
@@ -887,6 +888,14 @@ export async function processMetaLeadEvent(eventId: number) {
     await db.update(metaLeadEvents).set({ processingStatus: "processed", processedAt: new Date(), nextAttemptAt: null, lastErrorCode: null, lastErrorAt: null }).where(eq(metaLeadEvents.id, event.id));
     await db.update(metaLeadIntegrations).set({ status: "connected", lastSuccessfulLeadAt: new Date(), lastErrorAt: null, lastErrorCode: null }).where(eq(metaLeadIntegrations.id, Number(integration.id)));
     if (testRun) await db.update(metaLeadTestRuns).set({ status: "processed", processedAt: new Date(), errorCode: null }).where(eq(metaLeadTestRuns.id, testRun.id));
+    if (resolution.created && !testRun && !isTestLead) {
+      void queueStaffOperationalAlert({
+        eventType: "marketing_opt_in",
+        sourceRecordType: "marketing_lead",
+        sourceRecordId: resolution.lead.id,
+        message: `DreamCarz: A new opted-in Meta lead was received (lead ${resolution.lead.id}). Review the protected Admin portal.`,
+      }).catch(() => undefined);
+    }
     return { status: "processed", eventId: event.id, marketingLeadId: resolution.lead.id };
   } catch (error) {
     const classified = error instanceof MetaLeadProcessingError
@@ -1002,6 +1011,7 @@ export async function getMetaLeadAdminStatus() {
   const config = getMetaLeadAdsConfig();
   const configuration = safeConfigurationSummary(config);
   const zapierDelivery = safeZapierConfigurationSummary(getZapierMetaLeadConfig());
+  const staffEmailAlert = getStaffOperationalAlertStatus();
   const integration = config.pageId ? (await db.select().from(metaLeadIntegrations).where(eq(metaLeadIntegrations.pageId, config.pageId)).limit(1))[0] ?? null : null;
   const forms = integration ? await db.select().from(metaLeadForms).where(eq(metaLeadForms.integrationId, integration.id)).orderBy(desc(metaLeadForms.lastReceivedAt)).limit(50) : [];
   const openEvents = await db.select({
@@ -1018,6 +1028,7 @@ export async function getMetaLeadAdminStatus() {
   return {
     configuration,
     zapierDelivery,
+    staffEmailAlert,
     integration,
     forms,
     pendingEvents: openEvents.filter(item => ["received", "processing", "retry_scheduled"].includes(item.processingStatus)).length,

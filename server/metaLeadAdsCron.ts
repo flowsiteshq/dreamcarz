@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { MetaLeadProcessingError, processConfiguredDueMetaLeadEvents } from "./metaLeadAds";
+import { processDueStaffOperationalAlerts } from "./staffSms";
 
 /**
  * One-shot Railway Cron entry point. This worker intentionally has no HTTP
@@ -9,8 +10,11 @@ import { MetaLeadProcessingError, processConfiguredDueMetaLeadEvents } from "./m
  */
 async function main() {
   try {
-    const result = await processConfiguredDueMetaLeadEvents(20);
-    console.log(JSON.stringify({ ok: true, worker: "meta-lead-retry", ...result }));
+    const [metaLeadResult, staffSmsResult] = await Promise.all([
+      processConfiguredDueMetaLeadEvents(20),
+      processDueStaffOperationalAlerts(20),
+    ]);
+    console.log(JSON.stringify({ ok: true, worker: "meta-lead-retry", metaLeadResult, staffSmsResult }));
     process.exit(0);
   } catch (error) {
     const code = error instanceof MetaLeadProcessingError ? error.code : "meta_lead_retry_worker_failed";

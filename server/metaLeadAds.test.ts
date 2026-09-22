@@ -150,7 +150,10 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(cronWorkerSource).toContain("processConfiguredDueMetaLeadEvents(20)");
     expect(cronWorkerSource).not.toContain("setInterval");
     expect(zapierRouteSource).toContain("verifyZapierMetaLeadAuthorization");
+    expect(zapierRouteSource).toContain('app.get(`${ZAPIER_META_LEAD_INGEST_PATH}/connection`');
+    expect(zapierRouteSource).toContain('return res.status(200).json({ connected: true, provider: "zapier" })');
     expect(zapierRouteSource).toContain("express.raw({ type: \"application/json\"");
+    expect(zapierRouteSource).toContain('rawBody.startsWith("application/json")');
     expect(zapierRouteSource).toContain("persistZapierMetaLeadEvent(payload)");
     expect(zapierRouteSource).toContain("processMetaLeadEvent(persisted.eventId)");
     expect(zapierRouteSource).toContain("immediate.status === \"retry_scheduled\"");
