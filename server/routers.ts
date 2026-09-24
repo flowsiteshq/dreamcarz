@@ -3006,6 +3006,7 @@ export const appRouter = router({
         eq(advertisingLeads.source, "facebook"),
         eq(advertisingLeads.consentToContact, true),
         notLike(advertisingLeads.contactEmail, "%@example.invalid"),
+        notLike(advertisingLeads.contactEmail, "%@example.test"),
       ));
 
       const metaLeads = await db.select({
@@ -3020,6 +3021,7 @@ export const appRouter = router({
           eq(marketingLeads.primarySource, "meta_lead_ads"),
           eq(marketingLeads.contactConsentStatus, "meta_form_submitted"),
           eq(metaLeadRecords.isTestLead, false),
+          notLike(marketingLeads.contactEmail, "%@example.test"),
         ));
 
       let queued = 0;

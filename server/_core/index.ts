@@ -15,6 +15,7 @@ import { registerDreamCarzZoomRoute } from "../zoomOpportunity";
 import { registerMetaLeadAdsWebhook } from "../metaLeadAdsWebhook";
 import { registerMetaLeadAdsRetryRoute } from "../metaLeadAdsRetry";
 import { registerZapierMetaLeadWebhook } from "../zapierMetaLeadWebhook";
+import { maintenanceModeGate } from "../maintenanceMode";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -45,6 +46,10 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // The verified payment and lead webhook routes above stay available. All
+  // login, admin, customer, and public app routes below are unavailable while
+  // DREAMCARZ_MAINTENANCE_MODE=true.
+  app.use(maintenanceModeGate());
   registerOAuthRoutes(app);
   registerGoogleOAuthRoutes(app);
   registerDreamCarzZoomRoute(app);

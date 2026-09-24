@@ -141,6 +141,7 @@ describe("Meta Lead Ads application boundaries", () => {
     expect(routerSource).toContain("replayCurrentFacebookLeadAlerts: adminProcedure");
     expect(routerSource).toContain("input(z.object({ resend: z.boolean().optional() }).optional())");
     expect(routerSource).toContain("contact_details:manual_replay_");
+    expect(routerSource).toContain('notLike(marketingLeads.contactEmail, "%@example.test")');
     expect(routerSource).toContain("subscribePageLeadgen: adminProcedure.mutation");
     expect(routerSource).toContain("processDueEventsNow: adminProcedure.mutation");
     expect(retrySource).toContain("hasValidRetryBearer(req.headers.authorization, retrySecret)");
