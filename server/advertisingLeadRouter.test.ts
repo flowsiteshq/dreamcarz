@@ -57,4 +57,12 @@ describe("public advertising lead capture", () => {
     expect(landingPageSource).not.toContain("/concierge?");
     expect(landingPageSource).toContain("Please do not enter payment, driver-license, or password details here.");
   });
+
+  it("offers a recorded opt-in caller a direct call or private AI Concierge next step", () => {
+    expect(landingPageSource).toContain("setCompleted");
+    expect(landingPageSource).toContain('DREAMCARZ_CALL_LINK = "tel:+13017722500"');
+    expect(landingPageSource).toContain("Call DreamCarz");
+    expect(landingPageSource).toContain("Continue to AI Concierge");
+    expect(landingPageSource).toContain("Save details and choose next step");
+  });
 });
