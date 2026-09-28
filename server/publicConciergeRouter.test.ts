@@ -139,6 +139,19 @@ describe("public DreamCarz concierge", () => {
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 
+  it.each(["I need a vehicle", "I’m looking for an SUV", "Help me find a car"])("starts guided purchase discovery for a conversational request: %s", async question => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question });
+
+    expect(result).toMatchObject({
+      intent: "purchase",
+      source: "purchase_discovery",
+      recommendedVehicleIds: [],
+      marketEstimate: null,
+    });
+    expect(result.answer).toContain("What type of vehicle");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
   it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {
     vi.mocked(getActiveMasterProgramConfiguration).mockResolvedValue({
       code: "DREAMCARZ_MASTER_2026_09_11",
@@ -226,7 +239,7 @@ describe("public DreamCarz concierge", () => {
     vi.mocked(listLLMModels).mockResolvedValue({ data: [{ id: "claude-haiku-4-5" }] } as never);
     vi.mocked(invokeLLM).mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ answer: longAnswer, intent: "explore", vehicleClass: "all", nextPrompt: "What matters most?", recommendedVehicleIds: [] }) } }] } as never);
 
-    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "I need a vehicle" });
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "Can you recommend a vehicle that fits my needs?" });
 
     expect(result.answer).toHaveLength(220);
     expect(result.answer).toBe(longAnswer.slice(0, 220));
