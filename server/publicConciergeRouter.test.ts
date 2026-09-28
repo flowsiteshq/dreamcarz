@@ -155,8 +155,9 @@ describe("public DreamCarz concierge", () => {
   it("keeps the active guided question in the chat instead of re-rendering a stale duplicate prompt", () => {
     expect(conciergePageSource).toContain("{history.map(entry => {");
     expect(conciergePageSource).not.toContain('aria-label="Current Concierge question"');
-    expect(conciergePageSource).toContain("purchaseVehicleTypeReply(vehicleType)");
-    expect(conciergePageSource).toContain("purchasePriorityReply(priority)");
+    expect(conciergePageSource).toContain("advancePurchaseConversation(value, currentProfile)");
+    expect(conciergePageSource).toContain("nextBestPurchaseQuestion(shopperProfile)");
+    expect(conciergePageSource).toContain("setPurchaseJourneyState(transition.journeyState)");
   });
 
   it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {
