@@ -1,17 +1,6 @@
-import { MapView } from "@/components/Map";
-import { useCallback } from "react";
-
-const HOUSTON_MARKET_CENTER = { lat: 29.7604, lng: -95.3698 } as const;
+const HOUSTON_MAP_EMBED_URL = "https://www.google.com/maps?output=embed&q=Houston%2C%20Texas";
 
 export default function HoustonInvestorMap() {
-  const addHoustonMarker = useCallback((map: google.maps.Map) => {
-    new google.maps.marker.AdvancedMarkerElement({
-      map,
-      position: HOUSTON_MARKET_CENTER,
-      title: "Houston, Texas",
-    });
-  }, []);
-
   return (
     <section aria-labelledby="houston-market-map-title" className="overflow-hidden border border-[#d7ad4c]/35 bg-[#11110f]">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 px-6 py-5 sm:px-8">
@@ -21,11 +10,13 @@ export default function HoustonInvestorMap() {
         </div>
         <p className="max-w-sm text-xs leading-5 text-white/55">A geographic reference for the Houston market. It does not represent a property, vehicle location, service-area guarantee, or investment offer.</p>
       </div>
-      <MapView
-        className="h-[300px] sm:h-[380px]"
-        initialCenter={HOUSTON_MARKET_CENTER}
-        initialZoom={10}
-        onMapReady={addHoustonMarker}
+      <iframe
+        title="Houston, Texas market map"
+        src={HOUSTON_MAP_EMBED_URL}
+        className="h-[300px] w-full border-0 sm:h-[380px]"
+        loading="eager"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
       />
     </section>
   );
