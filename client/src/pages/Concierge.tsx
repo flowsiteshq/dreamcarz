@@ -2,13 +2,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ConciergeEnrollmentPanel } from "@/components/ConciergeEnrollmentPanel";
 import { ConciergeWorkspace } from "@/components/ConciergeWorkspace";
 import { conciergeComposerPlaceholder, shouldShowVehicleClassChoice, vehicleIdsForClass, type ConciergeIntent as Intent, type ConciergeSecureField, type ConciergeVehicleClass as VehicleClass } from "@/lib/conciergeFlow";
+import { detectPurchaseVehicleType, emptyPurchaseDiscovery, matchingPurchaseInventory, nextPurchaseStep, purchaseBudgetStyleLabel, purchaseConditionLabel, purchaseMatchLabel, purchasePriorityLabel, purchaseQuestion, purchaseUseLabel, purchaseVehicleTypeLabel, type PurchaseBudgetStyle, type PurchaseCondition, type PurchaseDiscovery, type PurchaseDiscoveryStep, type PurchasePriority, type PurchaseUse, type PurchaseVehicleType } from "@/lib/purchaseDiscovery";
 import { takeHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
 import { takeAdvertisingLeadHandoff } from "@/lib/advertisingLeadHandoff";
 import { trpc } from "@/lib/trpc";
 import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
 import { getComingSoonVehicle } from "@shared/comingSoonVehicles";
-import { ArrowRight, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Scale, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -43,7 +44,7 @@ const welcome = (name: string | null | undefined, signedIn: boolean, intent: Int
   text: intent === "rental"
     ? signedIn ? `Hi ${firstName(name)}. What type of vehicle are you looking to rent?` : "What type of vehicle are you looking to rent?"
     : intent === "purchase"
-      ? signedIn ? `Hi ${firstName(name)}. What type of vehicle are you looking to buy?` : "What type of vehicle are you looking to buy?"
+      ? purchaseQuestion("vehicle_type", emptyPurchaseDiscovery())
       : signedIn ? `Hi ${firstName(name)}. How can I help?` : "Hi. How can I help?",
 });
 
@@ -63,6 +64,9 @@ export default function Concierge() {
   const [question, setQuestion] = useState("");
   const [intent, setIntent] = useState<Intent>(getRouteIntent);
   const [vehicleClass, setVehicleClass] = useState<VehicleClass>(null);
+  const [purchaseDiscovery, setPurchaseDiscovery] = useState<PurchaseDiscovery>(emptyPurchaseDiscovery);
+  const [purchaseStep, setPurchaseStep] = useState<PurchaseDiscoveryStep | null>(() => getRouteIntent() === "purchase" ? "vehicle_type" : null);
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const [timeline, setTimeline] = useState<Timeline>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [recommendedIds, setRecommendedIds] = useState<string[] | null>(null);
@@ -126,6 +130,8 @@ export default function Concierge() {
     const classMatches = vehicleClass ? inventory.filter(item => item.vehicleClass === vehicleClass) : inventory;
     return (recommendedIds ? classMatches.filter(item => recommendedIds.includes(item.vehicleId)) : classMatches).slice(0, 2);
   }, [inventory, vehicleClass, recommendedIds]);
+  const purchaseMatches = useMemo(() => matchingPurchaseInventory(inventory, purchaseDiscovery), [inventory, purchaseDiscovery]);
+  const purchaseResultsReady = intent === "purchase" && purchaseStep === "results";
   const selectedVehicle = inventory.find(item => item.vehicleId === selectedVehicleId) ?? null;
   const savedPathVehicleId = activeTransaction?.vehicleId ?? savedJourney?.selectedVehicleId ?? null;
   const savedPathVehicle = inventory.find(item => item.vehicleId === savedPathVehicleId) ?? null;
@@ -206,6 +212,41 @@ export default function Concierge() {
     if (dashboardCreationField && !dashboardQuestionMode) {
       await answerDashboardCreation(rawQuestion);
       return;
+    }
+    if (intent === "purchase" && purchaseStep === "vehicle_type") {
+      const vehicleType = detectPurchaseVehicleType(value);
+      if (vehicleType) {
+        selectPurchaseVehicleType(vehicleType);
+        return;
+      }
+    }
+    if (intent === "purchase" && purchaseStep === "priority") {
+      const priority = /\b(payment|budget|afford)\b/i.test(value) ? "low_payment" : /\b(luxury|premium)\b/i.test(value) ? "luxury" : /\b(reliable|reliability)\b/i.test(value) ? "reliability" : /\b(performance|fast|sport)\b/i.test(value) ? "performance" : /\b(family|passengers?|space|room)\b/i.test(value) ? "family_space" : /\b(fuel|economy|efficient)\b/i.test(value) ? "fuel_economy" : null;
+      if (priority) {
+        selectPurchasePriority(priority);
+        return;
+      }
+    }
+    if (intent === "purchase" && purchaseStep === "condition") {
+      const condition = /\bnew\b/i.test(value) ? "new" : /\bused|pre-?owned\b/i.test(value) ? "used" : /\beither|both|open\b/i.test(value) ? "either" : null;
+      if (condition) {
+        selectPurchaseCondition(condition);
+        return;
+      }
+    }
+    if (intent === "purchase" && purchaseStep === "budget_style") {
+      const budgetStyle = /\b(month|monthly)\b/i.test(value) && /\b(price|total|both)\b/i.test(value) ? "both" : /\b(month|monthly)\b/i.test(value) ? "monthly_payment" : /\b(price|total)\b/i.test(value) ? "total_price" : null;
+      if (budgetStyle) {
+        selectPurchaseBudgetStyle(budgetStyle);
+        return;
+      }
+    }
+    if (intent === "purchase" && purchaseStep === "use") {
+      const primaryUse = /\b(family|passengers?|kids|space)\b/i.test(value) ? "family" : /\b(commut|daily|work drive)\b/i.test(value) ? "commuting" : /\b(work|cargo|business|haul)\b/i.test(value) ? "work" : /\b(weekend|lifestyle|fun)\b/i.test(value) ? "weekends" : /\b(not sure|anything)\b/i.test(value) ? "not_sure" : null;
+      if (primaryUse) {
+        selectPurchaseUse(primaryUse);
+        return;
+      }
     }
     const memberEntry: Entry = { id: `${Date.now()}-member`, role: "member", text: value };
     const conversation = [...history.slice(-5), memberEntry].map(entry => ({ role: entry.role === "member" ? "member" as const : "concierge" as const, text: entry.text.slice(0, 420) }));
@@ -354,13 +395,39 @@ export default function Concierge() {
     setSelectedVehicleId(vehicleId);
     setTimeline(null);
     const vehicle = inventory.find(item => item.vehicleId === vehicleId);
-    if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: `Perfect. I’ve saved the ${vehicle.vehicleName}. When would you like to drive?` });
+    if (vehicle) append({ id: `${Date.now()}-selection`, role: "concierge", text: intent === "purchase" ? `The ${vehicle.vehicleName} is on your buying path. When would you like DreamCarz to review its current purchase details with you?` : `Perfect. I’ve saved the ${vehicle.vehicleName}. When would you like to drive?` });
   };
   const selectVehicleClass = (choice: Exclude<VehicleClass, null>) => {
     setVehicleClass(choice);
     setRecommendedIds(vehicleIdsForClass(inventory, choice));
     append({ id: `${Date.now()}-class`, role: "member", text: choice === "suv" ? "SUV" : "Sedan" });
     append({ id: `${Date.now() + 1}-class-guide`, role: "concierge", text: `Here are two confirmed ${choice === "suv" ? "SUV" : "sedan"} options. Choose the one that fits you.` });
+  };
+  const continuePurchaseDiscovery = (memberText: string, nextDiscovery: PurchaseDiscovery) => {
+    if (!purchaseStep || purchaseStep === "results") return;
+    const nextStep = nextPurchaseStep(purchaseStep);
+    const choiceClass = nextDiscovery.vehicleType === "suv" || nextDiscovery.vehicleType === "sedan" ? nextDiscovery.vehicleType : null;
+    setPurchaseDiscovery(nextDiscovery);
+    setPurchaseStep(nextStep);
+    setVehicleClass(choiceClass);
+    setRecommendedIds(nextStep === "results" ? matchingPurchaseInventory(inventory, nextDiscovery).map(vehicle => vehicle.vehicleId) : null);
+    append({ id: `${Date.now()}-purchase-choice`, role: "member", text: memberText });
+    append({ id: `${Date.now() + 1}-purchase-guide`, role: "concierge", text: purchaseQuestion(nextStep, nextDiscovery) });
+  };
+  const selectPurchaseVehicleType = (vehicleType: PurchaseVehicleType) => continuePurchaseDiscovery(purchaseVehicleTypeLabel(vehicleType), { ...purchaseDiscovery, vehicleType });
+  const selectPurchasePriority = (priority: Exclude<PurchasePriority, null>) => continuePurchaseDiscovery(purchasePriorityLabel(priority), { ...purchaseDiscovery, priority });
+  const selectPurchaseCondition = (condition: Exclude<PurchaseCondition, null>) => continuePurchaseDiscovery(purchaseConditionLabel(condition), { ...purchaseDiscovery, condition });
+  const selectPurchaseBudgetStyle = (budgetStyle: Exclude<PurchaseBudgetStyle, null>) => continuePurchaseDiscovery(purchaseBudgetStyleLabel(budgetStyle), { ...purchaseDiscovery, budgetStyle });
+  const selectPurchaseUse = (primaryUse: Exclude<PurchaseUse, null>) => continuePurchaseDiscovery(purchaseUseLabel(primaryUse), { ...purchaseDiscovery, primaryUse });
+  const restartPurchaseDiscovery = () => {
+    const initial = emptyPurchaseDiscovery();
+    setPurchaseDiscovery(initial);
+    setPurchaseStep("vehicle_type");
+    setVehicleClass(null);
+    setRecommendedIds(null);
+    setSelectedVehicleId(null);
+    setComparisonIds([]);
+    append({ id: `${Date.now()}-purchase-restart`, role: "concierge", text: purchaseQuestion("vehicle_type", initial) });
   };
   const restore = () => {
     if (!savedJourney) return;
@@ -375,6 +442,13 @@ export default function Concierge() {
     setIntent(nextIntent);
     setHistory([welcome(user?.name, isAuthenticated, nextIntent)]);
     setVehicleClass(null); setRecommendedIds(null); setSelectedVehicleId(null); setTimeline(null); setEnrollmentReference(null); setNotice("");
+    setComparisonIds([]);
+    if (nextIntent === "purchase") {
+      setPurchaseDiscovery(emptyPurchaseDiscovery());
+      setPurchaseStep("vehicle_type");
+    } else {
+      setPurchaseStep(null);
+    }
   };
   const changeVehicle = () => {
     setVehicleClass(null); setRecommendedIds(null); setSelectedVehicleId(null); setTimeline(null); setEnrollmentReference(null); setNotice("");
@@ -395,6 +469,7 @@ export default function Concierge() {
   const reset = () => {
     setIntent("explore"); setHistory([welcome(user?.name, isAuthenticated, "explore")]);
     setVehicleClass(null); setRecommendedIds(null); setSelectedVehicleId(null); setTimeline(null); setEnrollmentReference(null); setNotice("");
+    setPurchaseDiscovery(emptyPurchaseDiscovery()); setPurchaseStep(null); setComparisonIds([]);
   };
   const continueJourney = async () => {
     if (intent === "membership") { navigate("/pricing"); return; }
@@ -465,9 +540,29 @@ export default function Concierge() {
                 <p className="mt-2 break-words text-[19px] font-semibold leading-7 text-[#1c1c1c] sm:text-[21px]">{activeQuestion}</p>
               </div>
             </section>
-            {showVehicleClassChoice ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1">{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold">{option.kind === "suv" ? "SUV" : "Sedan"}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
-            {recommendedIds?.length && !selectedVehicle ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className="overflow-hidden rounded-xl border border-[#e6e6e6] bg-white text-left active:scale-[0.98]"><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500"><CarFront size={13} className="text-[#a8832d]" /> Choose</span></div></button>)}</div></div> : null}
-            {selectedVehicle && !dashboardCreationField ? <div className="rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center gap-3"><img src={selectedVehicle.image} alt="" className="h-14 w-20 rounded-lg bg-white object-contain" /><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Selected vehicle</p><p className="mt-1 text-sm font-semibold">{selectedVehicle.vehicleName}</p></div><Check size={17} className="ml-auto text-[#a8832d]" /></div><div className="mt-4 flex flex-wrap gap-2" aria-label="Choose timing">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => { setTimeline(item); if (!isAuthenticated) openAccount(); }} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? "Just exploring" : item === "soon" ? "Soon" : "This week"}</button>)}</div>{timeline && !isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">I’ll create your dashboard here and keep this vehicle saved.</p> : null}{timeline ? <button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? "Save & continue" : "Create your dashboard"}<ArrowRight size={15} /></button> : null}</div> : null}
+            {intent === "purchase" && purchaseStep === "vehicle_type" ? <div className="grid gap-3 sm:grid-cols-2">{([
+              ["suv", "SUV", "Space, comfort & versatility", CarFront],
+              ["sedan", "Sedan", "Daily driving & efficiency", CarFront],
+              ["truck", "Truck", "Work, cargo & capability", CarFront],
+              ["sports_luxury", "Sports / Luxury", "Style, premium feel & performance", Sparkles],
+              ["ev_hybrid", "EV / Hybrid", "Electric or fuel-saving options", BadgeCheck],
+              ["not_sure", "Not sure yet", "Answer a few questions and we’ll narrow it down", Compass],
+            ] as const).map(([type, label, detail, Icon]) => <button type="button" key={type} onClick={() => selectPurchaseVehicleType(type)} className="group rounded-2xl border border-[#e7e2d6] bg-white p-5 text-left shadow-[0_8px_24px_rgba(32,27,17,0.05)] transition-transform duration-150 active:scale-[0.98] hover:border-[#c7a34d]"><Icon size={21} className="text-[#a8832d]" /><p className="mt-5 font-display text-xl font-bold text-[#1d1d1b]">{label}</p><p className="mt-1 text-sm leading-5 text-[#666158]">{detail}</p><span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-[#936f1f]">Choose <ArrowRight size={13} /></span></button>)}</div> : null}
+            {intent === "purchase" && purchaseStep === "priority" ? <div className="grid gap-3 sm:grid-cols-2">{([
+              ["low_payment", "Low payment", "Keep the payment as manageable as possible"],
+              ["luxury", "Luxury", "Premium design, comfort and feel"],
+              ["reliability", "Reliability", "A dependable everyday choice"],
+              ["performance", "Performance", "A more responsive driving experience"],
+              ["family_space", "Family space", "Room for people, gear and plans"],
+              ["fuel_economy", "Fuel economy", "Focus on efficient driving"],
+            ] as const).map(([priority, label, detail]) => <button type="button" key={priority} onClick={() => selectPurchasePriority(priority)} className="rounded-2xl border border-[#e7e2d6] bg-white p-5 text-left transition-colors hover:border-[#c7a34d] active:scale-[0.98]"><p className="font-semibold text-[#1d1d1b]">{label}</p><p className="mt-1 text-sm leading-5 text-[#666158]">{detail}</p></button>)}</div> : null}
+            {intent === "purchase" && purchaseStep === "condition" ? <div className="grid gap-3 sm:grid-cols-3">{(["new", "used", "either"] as const).map(condition => <button type="button" key={condition} onClick={() => selectPurchaseCondition(condition)} className="rounded-2xl border border-[#e7e2d6] bg-white px-5 py-6 text-left transition-colors hover:border-[#c7a34d] active:scale-[0.98]"><p className="font-display text-xl font-bold text-[#1d1d1b]">{purchaseConditionLabel(condition)}</p><p className="mt-2 text-sm leading-5 text-[#666158]">{condition === "new" ? "Prioritize newer vehicle options." : condition === "used" ? "Focus on pre-owned possibilities." : "Keep your options open."}</p></button>)}</div> : null}
+            {intent === "purchase" && purchaseStep === "budget_style" ? <div className="grid gap-3 sm:grid-cols-3">{(["monthly_payment", "total_price", "both"] as const).map(style => <button type="button" key={style} onClick={() => selectPurchaseBudgetStyle(style)} className="rounded-2xl border border-[#e7e2d6] bg-white px-5 py-6 text-left transition-colors hover:border-[#c7a34d] active:scale-[0.98]"><p className="font-display text-xl font-bold text-[#1d1d1b]">{purchaseBudgetStyleLabel(style)}</p><p className="mt-2 text-sm leading-5 text-[#666158]">{style === "monthly_payment" ? "Compare options around your intended monthly payment." : style === "total_price" ? "Start with the vehicle’s final purchase price." : "Review both during a personalized quote."}</p></button>)}</div> : null}
+            {intent === "purchase" && purchaseStep === "use" ? <div className="grid gap-3 sm:grid-cols-2">{(["family", "commuting", "work", "weekends", "not_sure"] as const).map(primaryUse => <button type="button" key={primaryUse} onClick={() => selectPurchaseUse(primaryUse)} className="rounded-2xl border border-[#e7e2d6] bg-white p-5 text-left transition-colors hover:border-[#c7a34d] active:scale-[0.98]"><p className="font-semibold text-[#1d1d1b]">{purchaseUseLabel(primaryUse)}</p><p className="mt-1 text-sm leading-5 text-[#666158]">{primaryUse === "family" ? "Prioritize room and everyday practicality." : primaryUse === "commuting" ? "Prioritize an easy daily-driving fit." : primaryUse === "work" ? "Prioritize capacity and business needs." : primaryUse === "weekends" ? "Prioritize lifestyle and driving enjoyment." : "We’ll keep the recommendation broad."}</p></button>)}</div> : null}
+            {showVehicleClassChoice && !purchaseStep ? <div className="grid max-w-md grid-cols-2 gap-3 pt-1">{vehicleClassChoices.map(option => <button type="button" key={option.kind} onClick={() => selectVehicleClass(option.kind)} className="overflow-hidden rounded-2xl border border-[#e7e7e7] bg-white text-left active:scale-[0.98]"><div className="h-28 bg-[#f7f6f3] sm:h-32">{option.image ? <img src={option.image} alt={`${option.kind === "suv" ? "SUV" : "Sedan"} rental category`} className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center text-gray-400"><CarFront size={28} /></span>}</div><div className="flex items-center justify-between px-3 py-2.5"><span className="text-sm font-semibold">{option.kind === "suv" ? "SUV" : "Sedan"}</span><ArrowRight size={14} className="text-[#a8832d]" /></div></button>)}</div> : null}
+            {purchaseResultsReady && !selectedVehicle ? <section aria-label="Buying results" className="rounded-2xl border border-[#e2d3a3] bg-[#fffdf8] p-4 shadow-[0_12px_30px_rgba(110,83,24,0.08)] sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eadfbf] pb-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">Your buying results</p><h2 className="mt-1 font-display text-2xl font-bold text-[#1d1d1b]">Confirmed DreamCarz vehicles to explore</h2><p className="mt-1 max-w-xl text-sm leading-5 text-[#666158]">Matched to your preferences. Purchase price, estimated payment, mileage, condition, availability, and location are confirmed during review—not guessed here.</p></div><button type="button" onClick={restartPurchaseDiscovery} className="inline-flex items-center gap-1.5 rounded-full border border-[#cdbb80] bg-white px-3 py-2 text-xs font-semibold text-[#725415] hover:bg-[#f9f3e3]"><Compass size={13} /> Refine results</button></div><div className="mt-4 grid gap-4 lg:grid-cols-2">{purchaseMatches.slice(0, 4).map(vehicle => { const compared = comparisonIds.includes(vehicle.vehicleId); const fit = vehicle.vehicleClass === "suv" ? "Best for room, passengers and versatility" : "Best for everyday commuting and an easy-to-park profile"; return <article key={vehicle.vehicleId} className="overflow-hidden rounded-xl border border-[#e8e1d1] bg-white"><div className="h-40 bg-[#f7f5f0]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><span className="inline-flex rounded-full bg-[#f4ecd8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#84661f]">{purchaseMatchLabel(vehicle, purchaseDiscovery)}</span><h3 className="mt-2 font-display text-xl font-bold text-[#1d1d1b]">{vehicle.vehicleName}</h3></div><BadgeCheck size={18} className="shrink-0 text-[#a8832d]" /></div><p className="mt-2 text-sm leading-5 text-[#5f5b52]">{fit}</p><dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#eee8da] pt-4 text-xs"><div><dt className="font-semibold text-[#706b60]">Purchase price</dt><dd className="mt-1 text-[#1d1d1b]">Review to confirm</dd></div><div><dt className="font-semibold text-[#706b60]">Estimated payment</dt><dd className="mt-1 text-[#1d1d1b]">Personalized scenario</dd></div><div><dt className="font-semibold text-[#706b60]">Mileage / condition</dt><dd className="mt-1 text-[#1d1d1b]">Review to confirm</dd></div><div><dt className="font-semibold text-[#706b60]">Location</dt><dd className="mt-1 text-[#1d1d1b]">Review to confirm</dd></div></dl><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => selectVehicle(vehicle.vehicleId)} className="inline-flex h-10 items-center gap-2 rounded-full bg-black px-4 text-xs font-semibold text-white active:scale-[0.97]">Explore buying this car <ArrowRight size={13} /></button><button type="button" onClick={() => setComparisonIds(ids => compared ? ids.filter(id => id !== vehicle.vehicleId) : [...ids, vehicle.vehicleId].slice(-2))} className={`inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold ${compared ? "border-[#a8832d] bg-[#faf1d7] text-[#705210]" : "border-[#ddd3b9] bg-white text-[#4b463c]"}`}><Scale size={13} /> {compared ? "In comparison" : "Compare"}</button></div></div></article>; })}</div>{comparisonIds.length === 2 ? <section aria-label="Vehicle comparison" className="mt-5 overflow-hidden rounded-xl border border-[#e2d3a3] bg-white"><div className="flex items-center gap-2 border-b border-[#eadfbf] bg-[#fcf7e9] px-4 py-3"><Scale size={15} className="text-[#a8832d]" /><div><p className="text-sm font-bold text-[#1d1d1b]">Compare your two selections</p><p className="text-xs text-[#686257]">A DreamCarz advisor confirms the live details before any decision.</p></div></div><div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm"><thead><tr className="border-b border-[#eee8da]"><th className="px-4 py-3 font-semibold text-[#716a5f]">Detail</th>{comparisonIds.map(id => <th key={id} className="px-4 py-3 font-semibold text-[#1d1d1b]">{inventory.find(vehicle => vehicle.vehicleId === id)?.vehicleName}</th>)}</tr></thead><tbody>{[["Best fit", "Matched to your selections"], ["Price", "Confirmed during review"], ["Estimated payment", "Personalized after review"], ["Mileage / condition", "Confirmed during review"], ["Availability / location", "Confirmed during review"]].map(([label, value]) => <tr key={label} className="border-b border-[#f0ece2] last:border-0"><th className="px-4 py-3 font-medium text-[#686257]">{label}</th>{comparisonIds.map(id => <td key={id} className="px-4 py-3 text-[#1d1d1b]">{label === "Best fit" ? (inventory.find(vehicle => vehicle.vehicleId === id)?.vehicleClass === "suv" ? "Room & versatility" : "Everyday driving") : value}</td>)}</tr>)}</tbody></table></div></section> : <p className="mt-4 text-xs text-[#6b6559]">Select <strong>Compare</strong> on two vehicles to see them side by side.</p>}</section> : null}
+            {recommendedIds?.length && !selectedVehicle && !purchaseResultsReady ? <div className="pt-3"><p className="mb-3 text-xs font-semibold text-gray-500">Confirmed matches</p><div className="grid gap-3 sm:grid-cols-2">{visibleVehicles.map(vehicle => <button type="button" key={vehicle.vehicleId} onClick={() => selectVehicle(vehicle.vehicleId)} className="overflow-hidden rounded-xl border border-[#e6e6e6] bg-white text-left active:scale-[0.98]"><div className="h-32 bg-[#f7f6f3]"><img src={vehicle.image} alt={vehicle.vehicleName} className="h-full w-full object-contain" /></div><div className="p-3"><h2 className="font-display text-lg font-bold">{vehicle.vehicleName}</h2><span className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-gray-500"><CarFront size={13} className="text-[#a8832d]" /> Choose</span></div></button>)}</div></div> : null}
+            {selectedVehicle && !dashboardCreationField ? <div className="rounded-2xl border border-[#e5d6a3] bg-[#fffdf8] p-4"><div className="flex items-center gap-3"><img src={selectedVehicle.image} alt="" className="h-14 w-20 rounded-lg bg-white object-contain" /><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a8832d]">{intent === "purchase" ? "Buying path selected" : "Selected vehicle"}</p><p className="mt-1 text-sm font-semibold">{selectedVehicle.vehicleName}</p></div><Check size={17} className="ml-auto text-[#a8832d]" /></div>{intent === "purchase" ? <p className="mt-3 text-xs leading-5 text-[#5f5b52]">DreamCarz will confirm price, estimated payment, mileage, condition, location, and availability before presenting purchase terms.</p> : null}<div className="mt-4 flex flex-wrap gap-2" aria-label="Choose timing">{(["exploring", "soon", "this_week"] as const).map(item => <button type="button" key={item} onClick={() => { setTimeline(item); if (!isAuthenticated) openAccount(); }} className={`rounded-full border px-3 py-2 text-xs font-semibold ${timeline === item ? "border-black bg-black text-white" : "border-[#ddd4c2] bg-white"}`}>{item === "exploring" ? (intent === "purchase" ? "I’m exploring" : "Just exploring") : item === "soon" ? "Soon" : "This week"}</button>)}</div>{timeline && !isAuthenticated ? <p className="mt-3 text-xs leading-5 text-gray-500">I’ll create your dashboard here and keep this vehicle path saved.</p> : null}{timeline ? <button type="button" onClick={() => void continueJourney()} disabled={sending} className="mt-4 inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{sending ? "Saving…" : isAuthenticated ? (intent === "purchase" ? "Continue purchase path" : "Save & continue") : "Create your dashboard"}<ArrowRight size={15} /></button> : null}</div> : null}
             {enrollmentReference ? <ConciergeEnrollmentPanel reference={enrollmentReference} onProgress={message => append({ id: `${Date.now()}-enrollment-progress`, role: "concierge", text: message })} /> : null}
             {notice ? <p className="text-sm text-red-700">{notice}</p> : null}
           </div>
