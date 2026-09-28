@@ -496,7 +496,10 @@ export const appRouter = router({
             waitlistVehicleId: plannedVehicle.id,
           };
         }
-        const asksToPurchase = input.context?.customerIntent === "purchase" || /\b(buy|buying|purchase|own|ownership|finance|financing)\b/i.test(input.question);
+        const asksForRental = /\b(rent|rental|lease|reservation)\b/i.test(input.question);
+        const hasRentalTiming = /\b(today|tomorrow|this\s+week|weekend|for\s+\d{1,2}\s+days?)\b/i.test(input.question);
+        const asksForVehicleDiscovery = /\b(?:need|find|looking\s+for|help(?:\s+me)?\s+find)\s+(?:an?\s+)?(?:vehicle|car|suv|sedan|truck|crossover|hybrid|ev)\b/i.test(input.question);
+        const asksToPurchase = input.context?.customerIntent === "purchase" || (!asksForRental && !hasRentalTiming && (/\b(buy|buying|purchase|own|ownership|finance|financing)\b/i.test(input.question) || asksForVehicleDiscovery));
         if (asksToPurchase && !input.context?.selectedVehicleId) {
           return {
             answer: "Absolutely. I’ll help you narrow down the right vehicle and explore purchase options that fit what you’re looking for. What type of vehicle are you looking for?",
