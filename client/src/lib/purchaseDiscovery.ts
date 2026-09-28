@@ -75,17 +75,56 @@ export const purchaseUseLabel = (primaryUse: Exclude<PurchaseUse, null>) => ({
   not_sure: "Not sure yet",
 })[primaryUse];
 
+export const purchaseVehicleTypeReply = (vehicleType: PurchaseVehicleType) => ({
+  suv: "I’d like an SUV.",
+  sedan: "I’m looking for a sedan.",
+  truck: "I need a truck.",
+  sports_luxury: "I’m after something sporty or luxurious.",
+  ev_hybrid: "I’d like an EV or hybrid.",
+  not_sure: "I’m not sure yet — I’d like your help narrowing it down.",
+})[vehicleType];
+
+export const purchasePriorityReply = (priority: Exclude<PurchasePriority, null>) => ({
+  low_payment: "Keeping the payment comfortable matters most to me.",
+  luxury: "I want something that feels more premium.",
+  reliability: "I want a dependable everyday vehicle.",
+  performance: "I want something fun and responsive to drive.",
+  family_space: "I need room for family and gear.",
+  fuel_economy: "Fuel efficiency is important to me.",
+})[priority];
+
+export const purchaseConditionReply = (condition: Exclude<PurchaseCondition, null>) => ({
+  new: "I’m leaning toward new.",
+  used: "I’m open to a pre-owned vehicle.",
+  either: "I’m open to new or pre-owned.",
+})[condition];
+
+export const purchaseBudgetStyleReply = (budgetStyle: Exclude<PurchaseBudgetStyle, null>) => ({
+  monthly_payment: "I’d like to start with a monthly payment that works for me.",
+  total_price: "I’d rather start with the overall vehicle price.",
+  both: "Show me both the price and a payment scenario.",
+})[budgetStyle];
+
+export const purchaseUseReply = (primaryUse: Exclude<PurchaseUse, null>) => ({
+  family: "It’ll mainly be for family and passengers.",
+  commuting: "It’ll mainly be for commuting and everyday driving.",
+  work: "I’ll mainly use it for work or cargo.",
+  weekends: "It’s mostly for weekends and lifestyle driving.",
+  not_sure: "I’m still figuring that part out.",
+})[primaryUse];
+
 export const purchaseQuestion = (step: PurchaseDiscoveryStep, discovery: PurchaseDiscovery) => {
   if (step === "vehicle_type") {
-    return "Absolutely. I’ll help you find the right vehicle and explore purchase options that fit what you’re looking for. What type of vehicle are you looking for?";
+    return "Absolutely — let’s make this easy. What kind of vehicle feels like the right fit: something roomy, easy for everyday driving, work-ready, sporty, or fuel-saving?";
   }
   if (step === "priority") {
-    return `Great. What matters most in your ${discovery.vehicleType ? purchaseVehicleTypeLabel(discovery.vehicleType) : "next vehicle"}?`;
+    const vehicle = discovery.vehicleType ? purchaseVehicleTypeLabel(discovery.vehicleType).toLowerCase() : "next vehicle";
+    return `Good choice. When you picture your ${vehicle}, what matters most to you?`;
   }
-  if (step === "condition") return "Would you prefer new, used, or either?";
-  if (step === "budget_style") return "Would you rather shop by total vehicle price or monthly payment?";
-  if (step === "use") return "How will you use this vehicle most?";
-  return "I found confirmed DreamCarz vehicles to start with. These are the strongest matches based on what you shared; final availability, condition, pricing, financing, and location are confirmed by DreamCarz.";
+  if (step === "condition") return "That helps. Are you leaning toward something new, open to a pre-owned vehicle, or happy to see both?";
+  if (step === "budget_style") return "One quick question so I can keep this useful: would you rather start with a comfortable monthly payment or an overall price range?";
+  if (step === "use") return "Last one, then I’ll show you a few places to start. What will this vehicle do most often — family trips, commuting, work, or weekends?";
+  return "Thanks — based on what you shared, here are a few confirmed DreamCarz vehicles worth a closer look. We’ll verify the live details with you before you make any decision.";
 };
 
 const purchaseStepTransitions: Record<Exclude<PurchaseDiscoveryStep, "results">, PurchaseDiscoveryStep> = {
@@ -100,7 +139,7 @@ export const nextPurchaseStep = (step: Exclude<PurchaseDiscoveryStep, "results">
 
 export function detectPurchaseVehicleType(text: string): PurchaseVehicleType | null {
   const value = text.toLowerCase();
-  if (/\b(suv|crossover|family vehicle)\b/.test(value)) return "suv";
+  if (/\b(suv|crossover|family\s+(?:vehicle|car))\b/.test(value)) return "suv";
   if (/\b(sedan|saloon)\b/.test(value)) return "sedan";
   if (/\b(truck|pickup)\b/.test(value)) return "truck";
   if (/\b(sports?|luxury|performance)\b/.test(value)) return "sports_luxury";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectPurchaseVehicleType, emptyPurchaseDiscovery, matchingPurchaseInventory, nextPurchaseStep } from "../client/src/lib/purchaseDiscovery";
+import { detectPurchaseVehicleType, emptyPurchaseDiscovery, matchingPurchaseInventory, nextPurchaseStep, purchasePriorityReply, purchaseQuestion, purchaseVehicleTypeReply } from "../client/src/lib/purchaseDiscovery";
 
 const vehicles = [
   { vehicleId: "sedan-1", vehicleName: "Confirmed Sedan", vehicleClass: "sedan" as const, image: "sedan.png" },
@@ -19,6 +19,14 @@ describe("purchase discovery", () => {
     expect(nextPurchaseStep("condition")).toBe("budget_style");
     expect(nextPurchaseStep("budget_style")).toBe("use");
     expect(nextPurchaseStep("use")).toBe("results");
+  });
+
+  it("uses human conversational language for guided questions and selected replies", () => {
+    const discovery = { ...emptyPurchaseDiscovery(), vehicleType: "suv" as const };
+    expect(purchaseQuestion("vehicle_type", discovery)).toContain("let’s make this easy");
+    expect(purchaseQuestion("priority", discovery)).toContain("When you picture your suv");
+    expect(purchaseVehicleTypeReply("suv")).toBe("I’d like an SUV.");
+    expect(purchasePriorityReply("family_space")).toContain("family and gear");
   });
 
   it("shows only confirmed inventory that matches a supported vehicle class", () => {

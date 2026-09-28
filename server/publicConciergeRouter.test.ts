@@ -134,7 +134,7 @@ describe("public DreamCarz concierge", () => {
       recommendedVehicleIds: [],
       marketEstimate: null,
     });
-    expect(result.answer).toContain("What type of vehicle");
+    expect(result.answer).toContain("Tell me what you need most");
     expect(result.answer).not.toMatch(/\$|monthly payment|available now/i);
     expect(invokeLLM).not.toHaveBeenCalled();
   });
@@ -148,8 +148,15 @@ describe("public DreamCarz concierge", () => {
       recommendedVehicleIds: [],
       marketEstimate: null,
     });
-    expect(result.answer).toContain("What type of vehicle");
+    expect(result.answer).toContain("Tell me what you need most");
     expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("keeps the active guided question in the chat instead of re-rendering a stale duplicate prompt", () => {
+    expect(conciergePageSource).toContain("{history.map(entry => {");
+    expect(conciergePageSource).not.toContain('aria-label="Current Concierge question"');
+    expect(conciergePageSource).toContain("purchaseVehicleTypeReply(vehicleType)");
+    expect(conciergePageSource).toContain("purchasePriorityReply(priority)");
   });
 
   it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {
