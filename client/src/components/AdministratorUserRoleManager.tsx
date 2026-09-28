@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { ShieldCheck, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
-const assignableRoles = ["customer", "associate", "fleet_partner", "operations", "support", "manager"] as const;
+const assignableRoles = ["customer", "associate", "fleet_partner", "investor", "operations", "support", "manager"] as const;
 const label = (role: string) => role.replaceAll("_", " ");
 
 export function AdministratorUserRoleManager() {

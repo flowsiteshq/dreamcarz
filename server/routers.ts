@@ -74,6 +74,9 @@ import {
   referralConversionEvents,
   marketingLeads,
   metaLeadRecords,
+  investmentOpportunities,
+  investmentInterestIndications,
+  investmentOpportunityReports,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -117,6 +120,7 @@ import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
 import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
 import { formatStaffLeadContactAlert, queueStaffOperationalAlert } from "./staffSms";
+import { calculateInvestorProjection, INVESTOR_TARGET_RAISE_CENTS } from "./investorPortal";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -146,6 +150,19 @@ function verifiedDreamCarzOrigin(req: { headers?: Record<string, unknown> }) {
   if (host === "localhost:3000" || host === "127.0.0.1:3000") return `http://${host}`;
   if (host.endsWith(".manus.space") || host.endsWith(".manus.computer")) return `https://${host}`;
   return "https://www.dreamcarz.io";
+}
+
+async function requireInvestorWorkspaceAccess(user: { id: number; role: "admin" | "user" }) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Investor records are temporarily unavailable." });
+  if (user.role === "admin") return db;
+  const assignment = (await db.select({ id: userRoleAssignments.id }).from(userRoleAssignments).where(and(
+    eq(userRoleAssignments.userId, user.id),
+    eq(userRoleAssignments.role, "investor"),
+    isNull(userRoleAssignments.revokedAt),
+  )).limit(1))[0];
+  if (!assignment) throw new TRPCError({ code: "FORBIDDEN", message: "Investor access is not active for this account. Ask DreamCarz to review your access." });
+  return db;
 }
 
 function metaLeadTrpcError(error: unknown): never {
@@ -1102,6 +1119,61 @@ export const appRouter = router({
         if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Active role assignment not found." });
         await db.update(userRoleAssignments).set({ revokedAt: new Date() }).where(eq(userRoleAssignments.id, assignment.id));
         await db.insert(roleAssignmentEvents).values({ roleAssignmentId: assignment.id, targetUserId: input.userId, actorUserId: ctx.user.id, role: input.role, eventType: "role_revoked" });
+        return { success: true };
+      }),
+  }),
+
+  investorPortal: router({
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const db = await requireInvestorWorkspaceAccess(ctx.user);
+      const opportunity = (await db.select().from(investmentOpportunities).where(inArray(investmentOpportunities.status, ["draft", "pending_approval"])).orderBy(desc(investmentOpportunities.createdAt)).limit(1))[0];
+      if (!opportunity) {
+        return { opportunity: null, interest: null, reports: [], projection: null, targetRaiseCents: INVESTOR_TARGET_RAISE_CENTS };
+      }
+      const [interest, reports] = await Promise.all([
+        db.select().from(investmentInterestIndications).where(and(eq(investmentInterestIndications.opportunityId, opportunity.id), eq(investmentInterestIndications.userId, ctx.user.id))).limit(1),
+        db.select().from(investmentOpportunityReports).where(and(eq(investmentOpportunityReports.opportunityId, opportunity.id), eq(investmentOpportunityReports.status, "published"))).orderBy(desc(investmentOpportunityReports.periodMonth)).limit(12),
+      ]);
+      const currentInterest = interest[0] ?? null;
+      const currentMonthlyProfit = reports[0]?.distributableProfitCents ?? opportunity.monthlyDistributableProfitCents ?? null;
+      return {
+        opportunity,
+        interest: currentInterest,
+        reports: reports.reverse(),
+        targetRaiseCents: opportunity.targetRaiseCents,
+        projection: currentInterest ? calculateInvestorProjection({
+          contributionCents: currentInterest.indicatedAmountCents,
+          targetRaiseCents: opportunity.targetRaiseCents,
+          monthlyDistributableProfitCents: currentMonthlyProfit,
+        }) : null,
+      };
+    }),
+    savePlanningAmount: protectedProcedure
+      .input(z.object({ opportunityId: z.number().int().positive(), indicatedAmountCents: z.number().int().min(10_000).max(INVESTOR_TARGET_RAISE_CENTS) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireInvestorWorkspaceAccess(ctx.user);
+        const opportunity = (await db.select({ id: investmentOpportunities.id, targetRaiseCents: investmentOpportunities.targetRaiseCents }).from(investmentOpportunities).where(eq(investmentOpportunities.id, input.opportunityId)).limit(1))[0];
+        if (!opportunity) throw new TRPCError({ code: "NOT_FOUND", message: "This opportunity is no longer available." });
+        if (input.indicatedAmountCents > opportunity.targetRaiseCents) throw new TRPCError({ code: "BAD_REQUEST", message: "Your planning amount cannot exceed the stated target raise." });
+        const existing = (await db.select({ id: investmentInterestIndications.id }).from(investmentInterestIndications).where(and(eq(investmentInterestIndications.opportunityId, input.opportunityId), eq(investmentInterestIndications.userId, ctx.user.id))).limit(1))[0];
+        if (existing) {
+          await db.update(investmentInterestIndications).set({ indicatedAmountCents: input.indicatedAmountCents, status: "draft", submittedAt: null, withdrawnAt: null }).where(eq(investmentInterestIndications.id, existing.id));
+        } else {
+          await db.insert(investmentInterestIndications).values({ opportunityId: input.opportunityId, userId: ctx.user.id, indicatedAmountCents: input.indicatedAmountCents, status: "draft" });
+        }
+        return { success: true, nonBinding: true };
+      }),
+    publishMonthlyReport: protectedProcedure
+      .input(z.object({ opportunityId: z.number().int().positive(), periodMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), grossRevenueCents: z.number().int().min(0).optional(), distributableProfitCents: z.number().int().min(0), sourceReference: z.string().trim().min(3).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required to publish investor reporting." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Investor records are temporarily unavailable." });
+        const existing = (await db.select({ id: investmentOpportunityReports.id }).from(investmentOpportunityReports).where(and(eq(investmentOpportunityReports.opportunityId, input.opportunityId), eq(investmentOpportunityReports.periodMonth, input.periodMonth))).limit(1))[0];
+        const report = { grossRevenueCents: input.grossRevenueCents ?? null, distributableProfitCents: input.distributableProfitCents, status: "published" as const, sourceReference: input.sourceReference, publishedByUserId: ctx.user.id, publishedAt: new Date() };
+        if (existing) await db.update(investmentOpportunityReports).set(report).where(eq(investmentOpportunityReports.id, existing.id));
+        else await db.insert(investmentOpportunityReports).values({ opportunityId: input.opportunityId, periodMonth: input.periodMonth, ...report });
+        await db.update(investmentOpportunities).set({ monthlyDistributableProfitCents: input.distributableProfitCents, reportingAsOf: new Date() }).where(eq(investmentOpportunities.id, input.opportunityId));
         return { success: true };
       }),
   }),

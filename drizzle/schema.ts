@@ -63,7 +63,7 @@ export const googleOAuthIdentities = mysqlTable("google_oauth_identities", {
 export const userRoleAssignments = mysqlTable("user_role_assignments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "operations", "support", "manager", "administrator"]).notNull(),
+  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "investor", "operations", "support", "manager", "administrator"]).notNull(),
   assignedByUserId: int("assignedByUserId"),
   assignedAt: timestamp("assignedAt").defaultNow().notNull(),
   revokedAt: timestamp("revokedAt"),
@@ -75,10 +75,63 @@ export const roleAssignmentEvents = mysqlTable("role_assignment_events", {
   roleAssignmentId: int("roleAssignmentId").notNull(),
   targetUserId: int("targetUserId").notNull(),
   actorUserId: int("actorUserId").notNull(),
-  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "operations", "support", "manager", "administrator"]).notNull(),
+  role: mysqlEnum("role", ["customer", "associate", "fleet_partner", "investor", "operations", "support", "manager", "administrator"]).notNull(),
   eventType: mysqlEnum("eventType", ["role_granted", "role_restored", "role_revoked"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [index("role_assignment_events_target_created_idx").on(table.targetUserId, table.createdAt)]);
+
+/**
+ * Investor workspace records are intentionally limited to preliminary,
+ * approval-gated opportunity information. They do not accept investments,
+ * process payments, issue securities, calculate actual distributions, or
+ * create any ownership interest.
+ */
+export const investmentOpportunities = mysqlTable("investment_opportunities", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  title: varchar("title", { length: 160 }).notNull(),
+  targetRaiseCents: int("targetRaiseCents").notNull(),
+  status: mysqlEnum("status", ["draft", "pending_approval", "closed"]).default("pending_approval").notNull(),
+  monthlyDistributableProfitCents: int("monthlyDistributableProfitCents"),
+  reportingAsOf: timestamp("reportingAsOf"),
+  legalApprovalReference: varchar("legalApprovalReference", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** A non-binding investor indication of interest; no transfer of money or equity occurs here. */
+export const investmentInterestIndications = mysqlTable("investment_interest_indications", {
+  id: int("id").autoincrement().primaryKey(),
+  opportunityId: int("opportunityId").notNull(),
+  userId: int("userId").notNull(),
+  indicatedAmountCents: int("indicatedAmountCents").notNull(),
+  status: mysqlEnum("status", ["draft", "submitted", "withdrawn"]).default("draft").notNull(),
+  submittedAt: timestamp("submittedAt"),
+  withdrawnAt: timestamp("withdrawnAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("investment_interest_opportunity_user_unique").on(table.opportunityId, table.userId),
+  index("investment_interest_user_status_idx").on(table.userId, table.status),
+]);
+
+/** Monthly figures become visible to investors only after an authorized administrator publishes them. */
+export const investmentOpportunityReports = mysqlTable("investment_opportunity_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  opportunityId: int("opportunityId").notNull(),
+  periodMonth: varchar("periodMonth", { length: 7 }).notNull(),
+  grossRevenueCents: int("grossRevenueCents"),
+  distributableProfitCents: int("distributableProfitCents"),
+  status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+  sourceReference: varchar("sourceReference", { length: 255 }),
+  publishedByUserId: int("publishedByUserId"),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("investment_report_opportunity_period_unique").on(table.opportunityId, table.periodMonth),
+  index("investment_report_opportunity_status_idx").on(table.opportunityId, table.status),
+]);
 
 /** Configurable memberships are deliberately unseeded until approved plans and benefits are supplied. */
 export const membershipPlans = mysqlTable("membership_plans", {

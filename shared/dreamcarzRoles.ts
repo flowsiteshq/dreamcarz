@@ -1,4 +1,4 @@
-export const DREAMCARZ_ROLES = ["customer", "associate", "fleet_partner", "operations", "support", "manager", "administrator"] as const;
+export const DREAMCARZ_ROLES = ["customer", "associate", "fleet_partner", "investor", "operations", "support", "manager", "administrator"] as const;
 export type DreamCarzRole = typeof DREAMCARZ_ROLES[number];
 
 export function effectiveDreamCarzRoles(legacyRole: "admin" | "user" | undefined, assignedRoles: DreamCarzRole[]) {
