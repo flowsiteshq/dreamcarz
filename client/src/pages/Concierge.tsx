@@ -45,7 +45,7 @@ const welcome = (name: string | null | undefined, signedIn: boolean, intent: Int
   text: intent === "rental"
     ? signedIn ? `Hi ${firstName(name)}. What type of vehicle are you looking to rent?` : "What type of vehicle are you looking to rent?"
     : intent === "purchase"
-      ? "I can help you narrow this down without making you repeat yourself. What kind of vehicle are you considering?"
+      ? "I’ll keep track of what matters to you and only surface vehicles with details DreamCarz can verify."
       : signedIn ? `Hi ${firstName(name)}. How can I help?` : "Hi. How can I help?",
 });
 
@@ -249,11 +249,11 @@ export default function Concierge() {
           role: "concierge",
           text: `${acknowledged ? `Got it — I’m keeping track of ${describeShopperProfile(transition.profile)}. ` : ""}I found confirmed DreamCarz inventory worth reviewing. I’ll show the trade-offs where live details still need verification.`,
         });
-      } else if (transition.nextQuestion) {
+      } else if (transition.nextQuestion && acknowledged) {
         append({
           id: `${Date.now()}-purchase-question`,
           role: "concierge",
-          text: `${acknowledged ? `Got it — I’m keeping track of ${describeShopperProfile(transition.profile)}. ` : ""}${transition.nextQuestion.prompt}`,
+          text: `Got it — I’m keeping track of ${describeShopperProfile(transition.profile)}.`,
         });
       }
       return;

@@ -93,4 +93,31 @@ describe("shopper profile purchase intelligence", () => {
     expect(transition.journeyState).toBe("results");
     expect("selectedVehicleId" in transition).toBe(false);
   });
+
+  it("refines an active search without discarding prior requirements", () => {
+    let profile = extractShopperProfile(
+      "I need a pre-owned premium SUV under $45,000, preferably black, under 50,000 miles, and something fun to drive.",
+      emptyShopperProfile(),
+    ).profile;
+
+    profile = extractShopperProfile("Those are too expensive. Anything black?", profile).profile;
+
+    expect(profile).toMatchObject({
+      bodyStyle: "suv",
+      condition: "used",
+      positioning: "premium",
+      drivingStyle: "sporty",
+      preferredColor: "black",
+      budgetMethod: "purchase_price",
+      maxPurchasePrice: null,
+    });
+    expect(nextBestPurchaseQuestion(profile)).toMatchObject({ field: "max_purchase_price" });
+  });
+
+  it("recognizes a stated price as a price-budget preference", () => {
+    const profile = extractShopperProfile("I need an SUV under $35,000.", emptyShopperProfile()).profile;
+
+    expect(profile).toMatchObject({ bodyStyle: "suv", budgetMethod: "purchase_price", maxPurchasePrice: 35_000 });
+    expect(nextBestPurchaseQuestion(profile)).toMatchObject({ field: "priority" });
+  });
 });

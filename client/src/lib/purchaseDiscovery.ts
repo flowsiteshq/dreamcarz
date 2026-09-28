@@ -168,7 +168,7 @@ export function extractShopperProfile(message: string, current: ShopperProfile):
   const bodyStyle = latestBodyStyle(lower);
   if (bodyStyle) update("bodyStyle", bodyStyle);
 
-  if (/\b(?:pre[-\s]?owned|used)\b/i.test(value)) update("condition", "used");
+  if (/\b(?:not\s+new|pre[-\s]?owned|used)\b/i.test(value)) update("condition", "used");
   else if (/\b(?:new|brand\s+new)\b/i.test(value)) update("condition", "new");
   else if (/\b(?:either|both|open\s+to\s+(?:both|anything))\b/i.test(value)) update("condition", "either");
 
@@ -193,7 +193,8 @@ export function extractShopperProfile(message: string, current: ShopperProfile):
     if (Number.isInteger(count) && count >= 1 && count <= 15) update("passengerRequirement", count);
   }
 
-  const color = latestMatch(lower, new RegExp(`\\b(?:prefer(?:ably)?|want|like|in)\\s+(${colors.join("|")})\\b`, "gi"))?.[1]
+  const color = latestMatch(lower, new RegExp(`\\b(?:prefer(?:ably)?|want|like|in|anything|show(?:\s+me)?|available)\\s+(${colors.join("|")})\\b`, "gi"))?.[1]
+    ?? latestMatch(lower, new RegExp(`\\b(?:anything|show(?:\s+me)?|available)\\s+in\\s+(${colors.join("|")})\\b`, "gi"))?.[1]
     ?? latestMatch(lower, new RegExp(`\\b(${colors.join("|")})\\s+(?:one|vehicle|car|suv|sedan)\\b`, "gi"))?.[1];
   if (color) update("preferredColor", normalizeColor(color.toLowerCase()));
 
@@ -206,17 +207,30 @@ export function extractShopperProfile(message: string, current: ShopperProfile):
   }).at(-1);
   if (purchasePrice) {
     const parsed = moneyValue(purchasePrice[1], purchasePrice[2]);
-    if (parsed && parsed >= 1_000) update("maxPurchasePrice", parsed);
+    if (parsed && parsed >= 1_000) {
+      update("maxPurchasePrice", parsed);
+      if (next.budgetMethod === null || next.budgetMethod === "either") update("budgetMethod", "purchase_price");
+    }
   }
   const monthly = latestMatch(value, /\b(?:under|below|up\s+to|max(?:imum)?|around)\s*\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:\/?mo\.?|per\s+month|a\s+month|monthly)\b/gi)
     ?? latestMatch(value, /\b(?:monthly\s+(?:payment|budget)\s+(?:of|under|below)?\s*)\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\b/gi);
   if (monthly) {
     const parsed = moneyValue(monthly[1], monthly[2]);
-    if (parsed && parsed > 0) update("targetMonthlyPayment", parsed);
+    if (parsed && parsed > 0) {
+      update("targetMonthlyPayment", parsed);
+      if (next.budgetMethod === null || next.budgetMethod === "either") update("budgetMethod", "monthly_payment");
+    }
   }
   if (/\b(?:total\s+(?:price|cost)|purchase\s+price|overall\s+price)\b/i.test(value)) update("budgetMethod", "purchase_price");
   else if (/\b(?:monthly\s+(?:payment|budget)|per\s+month|\/mo)\b/i.test(value)) update("budgetMethod", "monthly_payment");
   else if (/\b(?:both\s+(?:price|payment)|show\s+me\s+both)\b/i.test(value)) update("budgetMethod", "either");
+
+  // A customer can refine an active search without starting over. Preserve the
+  // selected budget view while clearing only the amount that no longer fits.
+  if (/\b(?:too\s+expensive|cheaper|less\s+expensive|lower\s+(?:the\s+)?(?:price|payment|budget)|smaller\s+(?:price|payment|budget))\b/i.test(value)) {
+    if (next.budgetMethod === "monthly_payment") update("targetMonthlyPayment", null);
+    else update("maxPurchasePrice", null);
+  }
 
   const downPayment = latestMatch(value, /\b(?:down\s+payment|put(?:ting)?\s+down)\s*(?:of)?\s*\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?\b/gi);
   if (downPayment) {
