@@ -125,6 +125,20 @@ describe("public DreamCarz concierge", () => {
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 
+  it("starts an honest guided purchase discovery without inventing price, payment, mileage, or availability", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "I want to buy a car" });
+
+    expect(result).toMatchObject({
+      intent: "purchase",
+      source: "purchase_discovery",
+      recommendedVehicleIds: [],
+      marketEstimate: null,
+    });
+    expect(result.answer).toContain("What type of vehicle");
+    expect(result.answer).not.toMatch(/\$|monthly payment|available now/i);
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
   it("explains an approved membership configuration without presenting its reference rate as a final quote", async () => {
     vi.mocked(getActiveMasterProgramConfiguration).mockResolvedValue({
       code: "DREAMCARZ_MASTER_2026_09_11",

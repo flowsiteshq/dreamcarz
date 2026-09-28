@@ -496,6 +496,19 @@ export const appRouter = router({
             waitlistVehicleId: plannedVehicle.id,
           };
         }
+        const asksToPurchase = input.context?.customerIntent === "purchase" || /\b(buy|buying|purchase|own|ownership|finance|financing)\b/i.test(input.question);
+        if (asksToPurchase && !input.context?.selectedVehicleId) {
+          return {
+            answer: "Absolutely. I’ll help you narrow down the right vehicle and explore purchase options that fit what you’re looking for. What type of vehicle are you looking for?",
+            intent: "purchase" as const,
+            vehicleClass: null,
+            nextPrompt: "Choose SUV, sedan, truck, sports/luxury, EV/hybrid, or tell me you are not sure yet.",
+            recommendedVehicleIds: [],
+            source: "purchase_discovery" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const asksAboutSubscription = /\b(subscription|subscribe|long[-\s]?term|monthly vehicle|monthly car)\b/i.test(input.question);
         if (asksAboutSubscription) {
           const selectedVehicleId = input.context?.selectedVehicleId ?? null;
