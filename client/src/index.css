@@ -53,6 +53,8 @@
 }
 
 :root {
+  /* Deployment revision: forces a fresh versioned stylesheet on mobile browsers. */
+  --dreamcarz-mobile-style-revision: "2026-10-11";
   --radius: 0.75rem;
 
   /* Light theme — white/off-white */

@@ -58,10 +58,32 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // The HTML shell must always be revalidated so a phone receives the current
+  // hashed CSS/JS references after a deployment. Hashed assets, on the other
+  // hand, are immutable and safe to cache long-term. This avoids a stale HTML
+  // shell or an incomplete mobile cache rendering the React app without its CSS.
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        const relativePath = path.relative(distPath, filePath);
+        const isHtmlShell = relativePath === "index.html";
+        const isVersionedAsset = relativePath.startsWith(`assets${path.sep}`);
+
+        if (isHtmlShell) {
+          res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
+        } else if (isVersionedAsset) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=86400");
+        }
+      },
+    })
+  );
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res
+      .set("Cache-Control", "no-store, max-age=0, must-revalidate")
+      .sendFile(path.resolve(distPath, "index.html"));
   });
 }
