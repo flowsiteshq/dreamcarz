@@ -390,7 +390,7 @@ export const appRouter = router({
       vehicleId,
       vehicleName: vehicle.vehicleName,
       image: vehicle.image,
-      vehicleClass: vehicleId.includes("traverse") || vehicleId.includes("equinox") ? "suv" as const : "sedan" as const,
+      vehicleClass: /traverse|equinox|rogue|acadia|enclave|tahoe/.test(vehicleId) ? "suv" as const : "sedan" as const,
     }))),
 
     transcribeVoice: publicProcedure
@@ -521,6 +521,21 @@ export const appRouter = router({
             vehicleClass: null,
             nextPrompt: "Would you like to see sedans or SUVs first?",
             recommendedVehicleIds: vehicleIds,
+            source: "confirmed_inventory" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        const isSimpleVehicleClassRequest = /^(?:show\s+me\s+)?(?:an?\s+)?(?:suv|sedan)s?[?.!]*$/i.test(input.question.trim());
+        const requestedVehicleClass = /\bsuvs?\b/i.test(input.question) ? "suv" as const : /\bsedans?\b/i.test(input.question) ? "sedan" as const : null;
+        if (isSimpleVehicleClassRequest && requestedVehicleClass && !input.context?.selectedVehicleId) {
+          const classVehicleIds = inventory.filter(vehicle => vehicle.vehicleClass === requestedVehicleClass).map(vehicle => vehicle.vehicleId);
+          return {
+            answer: requestedVehicleClass === "suv" ? "SUVs are a great choice for extra room and a higher driving position. I can show you a few options—what matters most to you?" : "We have several sedans that are easy to live with day to day. I can show you a few options—what matters most to you?",
+            intent: "explore" as const,
+            vehicleClass: requestedVehicleClass,
+            nextPrompt: "Would you like to choose one, or tell me what you need it for?",
+            recommendedVehicleIds: classVehicleIds,
             source: "confirmed_inventory" as const,
             marketEstimate: null,
             waitlistVehicleId: null,
