@@ -516,7 +516,7 @@
 - [x] Replace the homepage single-car background with the fleet video, retaining headline, rental/purchase actions, and Concierge prompt.
 - [x] Add poster fallback, inline muted autoplay, pause/resume, reduced-motion/data-saver behavior, and offscreen/background-tab pause handling.
 - [x] Verify playback and controls at desktop and iPhone-width viewports; verify reduced-motion, data-saver, and failed-video fallback; pass typecheck, 33 focused tests, production build, and diff checks.
-- [ ] Deploy the new hero to dreamcarz.io after live-publication approval and verify production playback.
+- [x] Deploy the new hero to dreamcarz.io after live-publication approval and verify production playback; final CDN-delivery release verified on October 15, 2026.
 
 ## Production hero delivery and Concierge continuity repair — October 15, 2026
 - [x] Diagnose production hero media returning the HTML app shell instead of JPEG/MP4 at managed-storage routes; rehost the approved public media at direct CDN URLs.
@@ -524,4 +524,4 @@
 - [x] Add shared context-aware handling for “Do you hav anymore?”, “More”, “Anything else?”, and full-list requests; return all ten SUVs and preserve rental intent instead of resetting category selection.
 - [x] Prevent known rental preferences from swallowing membership questions or being lost when the guidance model fails.
 - [x] Verify desktop and mobile hero playback, controls and fallback; verify all ten SUV option images load in fresh/restored-session browser scenarios; pass typecheck, 73 focused tests and production build.
-- [ ] Deploy and verify the corrected public media and Concierge follow-up on dreamcarz.io.
+- [x] Deploy and verify the corrected public media and Concierge follow-up on dreamcarz.io; Railway deployment 7bbb9a08-2134-4b63-a0af-8ac2e79d09c4 succeeded and all live browser checks passed.
