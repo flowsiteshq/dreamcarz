@@ -410,7 +410,7 @@ export const appRouter = router({
         conversation: z.array(z.object({
           role: z.enum(["member", "concierge"]),
           text: z.string().trim().min(1).max(420),
-        })).max(6).optional(),
+        })).max(20).optional(),
         context: z.object({
           customerIntent: z.enum(["rental", "purchase", "membership", "explore"]),
           selectedVehicleId: z.string().trim().min(2).max(96).nullable(),
