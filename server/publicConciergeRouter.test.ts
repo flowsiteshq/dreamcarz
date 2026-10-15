@@ -182,6 +182,18 @@ describe("public DreamCarz concierge", () => {
     expect(result.answer).toContain("Here are a few to start with");
   });
 
+  it("shows the full SUV list instead of repeating a previously selected vehicle", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "I would like to see all SUV vehicles",
+      conversation: [{ role: "member", text: "I would like to rent a vehicle" }],
+      context: { customerIntent: "rental", selectedVehicleId: "2020-chevrolet-traverse-gray", vehicleType: "suv", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+
+    expect(result).toMatchObject({ intent: "rental", vehicleClass: "suv", source: "confirmed_inventory" });
+    expect(result.recommendedVehicleIds.length).toBeGreaterThan(2);
+    expect(result.answer).toContain("all of our SUV rental options");
+  });
+
   it.each(["I need a vehicle", "I’m looking for an SUV", "Help me find a car"])("starts guided purchase discovery for a conversational request: %s", async question => {
     const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question });
 

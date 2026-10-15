@@ -467,6 +467,24 @@ export const appRouter = router({
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
+        const asksForAllVehicleOptions = /\b(?:all|every|entire|full)\b.*\b(?:suvs?|sedans?|vehicles?|cars?)\b|\b(?:suvs?|sedans?)\b.*\b(?:all|every|list|options?)\b/i.test(input.question);
+        const requestedListClass = /\bsuvs?\b/i.test(input.question) ? "suv" as const : /\bsedans?\b/i.test(input.question) ? "sedan" as const : null;
+        if (asksForAllVehicleOptions && requestedListClass) {
+          const classVehicleIds = inventory.filter(vehicle => vehicle.vehicleClass === requestedListClass).map(vehicle => vehicle.vehicleId);
+          const listIntent = input.context?.customerIntent === "rental" || /\b(rent|rental|lease|reservation)\b/i.test(conversationText) ? "rental" as const : "explore" as const;
+          return {
+            answer: listIntent === "rental"
+              ? `Absolutely—here are all of our ${requestedListClass === "suv" ? "SUV" : "sedan"} rental options. Take a look and choose whichever one feels right.`
+              : `Absolutely—here are all of our ${requestedListClass === "suv" ? "SUV" : "sedan"} options. Take a look and choose whichever one feels right.`,
+            intent: listIntent,
+            vehicleClass: requestedListClass,
+            nextPrompt: "Which one would you like to explore?",
+            recommendedVehicleIds: classVehicleIds,
+            source: "confirmed_inventory" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         if (asksForCost && requestedDays && input.context?.selectedVehicleId && isApprovedTransactionVehicle(input.context.selectedVehicleId)) {
           const estimate = getBwiMarketRentalEstimate(input.context.selectedVehicleId, requestedDays);
           const selectedVehicle = APPROVED_TRANSACTION_VEHICLES[input.context.selectedVehicleId];
