@@ -58,3 +58,6 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+// Let the document-level mobile watchdog know that React has taken over the shell.
+(globalThis as typeof globalThis & { __dreamcarzBootReady?: boolean }).__dreamcarzBootReady = true;

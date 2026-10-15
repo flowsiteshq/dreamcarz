@@ -47,6 +47,9 @@
       .dreamcarz-boot__copy { margin: 10px 0 0; color: #5d584f; font-size: 14px; line-height: 1.5; }
       .dreamcarz-boot__progress { width: 112px; height: 3px; margin: 24px auto 0; overflow: hidden; border-radius: 999px; background: #e5dccb; }
       .dreamcarz-boot__progress::after { display: block; width: 46%; height: 100%; border-radius: inherit; background: #a98331; content: ""; animation: dreamcarz-boot-progress 1.2s ease-in-out infinite alternate; }
+      .dreamcarz-boot__retry { margin-top: 24px; border: 0; border-radius: 999px; padding: 12px 22px; background: #111111; color: #ffffff; font: 600 14px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .dreamcarz-boot__retry:active { transform: scale(0.97); }
+      .dreamcarz-boot--recovery .dreamcarz-boot__copy { max-width: 300px; margin-left: auto; margin-right: auto; }
       @keyframes dreamcarz-boot-progress { from { transform: translateX(-35%); } to { transform: translateX(150%); } }
       @media (prefers-reduced-motion: reduce) { .dreamcarz-boot__progress::after { animation: none; transform: translateX(60%); } }
     </style>
@@ -86,6 +89,46 @@
         </div>
       </div>
     </div>
+    <script>
+      (function () {
+        var bootTimer;
+        var bootFailureShown = false;
+
+        function showBootFailure(message) {
+          if (bootFailureShown || window.__dreamcarzBootReady) return;
+          bootFailureShown = true;
+          if (bootTimer) window.clearTimeout(bootTimer);
+          var root = document.getElementById("root");
+          if (!root) return;
+          root.innerHTML =
+            '<div class="dreamcarz-boot dreamcarz-boot--recovery" role="alert">' +
+              '<div class="dreamcarz-boot__panel">' +
+                '<div class="dreamcarz-boot__mark" aria-hidden="true">DC</div>' +
+                '<p class="dreamcarz-boot__eyebrow">DreamCarz</p>' +
+                '<p class="dreamcarz-boot__title">Almost there.</p>' +
+                '<p class="dreamcarz-boot__copy">' + message + '</p>' +
+                '<button class="dreamcarz-boot__retry" type="button">Try again</button>' +
+              '</div>' +
+            '</div>';
+          root.querySelector("button")?.addEventListener("click", function () {
+            var separator = window.location.search ? "&" : "?";
+            window.location.replace(window.location.href + separator + "refresh=" + Date.now());
+          });
+        }
+
+        window.addEventListener("error", function (event) {
+          if (event.target && event.target.tagName === "SCRIPT") {
+            showBootFailure("The mobile app could not finish loading. Please try again.");
+          }
+        }, true);
+        window.addEventListener("unhandledrejection", function () {
+          showBootFailure("The mobile app could not finish loading. Please try again.");
+        });
+        bootTimer = window.setTimeout(function () {
+          showBootFailure("This is taking longer than expected on this device.");
+        }, 10000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script
       defer

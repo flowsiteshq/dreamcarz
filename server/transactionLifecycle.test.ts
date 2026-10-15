@@ -14,9 +14,10 @@ import {
 } from "../shared/transactionLifecycle";
 
 describe("transaction lifecycle contract", () => {
-  it("allows transactional onboarding only for the eight confirmed inventory vehicles", () => {
-    expect(Object.keys(APPROVED_TRANSACTION_VEHICLES)).toHaveLength(8);
+  it("allows transactional onboarding only for the seventeen confirmed inventory vehicles", () => {
+    expect(Object.keys(APPROVED_TRANSACTION_VEHICLES)).toHaveLength(17);
     expect(isApprovedTransactionVehicle("2024-chevrolet-malibu-gray")).toBe(true);
+    expect(isApprovedTransactionVehicle("2017-buick-lacrosse-white")).toBe(true);
     expect(isApprovedTransactionVehicle("coming-soon-2024-tesla-model-3")).toBe(false);
   });
 

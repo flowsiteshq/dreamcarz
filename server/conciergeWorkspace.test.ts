@@ -16,8 +16,7 @@ describe("selected-vehicle Concierge workspace", () => {
   });
 
   it("guides guests to create an account and returns them to their selected Concierge path", () => {
-    expect(conciergeSource).toContain("I’ll create your dashboard here and keep this vehicle saved.");
-    expect(conciergeSource).toContain("I’ll create your DreamCarz dashboard and keep this vehicle path here.");
+    expect(conciergeSource).toContain("I’ll create your dashboard here and keep this vehicle path saved.");
     expect(conciergeSource).toContain("sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ intent, vehicleClass, timeline, selectedVehicleId }))");
     expect(workspaceSource).toContain("Create your dashboard");
   });

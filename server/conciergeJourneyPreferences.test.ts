@@ -16,7 +16,7 @@ describe("concierge journey preferences", () => {
 
   it("returns only confirmed DreamCarz inventory through the public concierge", async () => {
     const vehicles = await appRouter.createCaller({ req: { headers: {} }, res: {} } as never).concierge.confirmedVehicles();
-    expect(vehicles).toHaveLength(8);
+    expect(vehicles).toHaveLength(17);
     expect(vehicles.map(vehicle => vehicle.vehicleName)).toEqual(expect.arrayContaining(["2024 Chevrolet Malibu", "2022 Chevrolet Traverse", "2024 Ford Fusion", "2020 Chevrolet Traverse", "2019 Chevrolet Malibu", "2015 Ford Taurus", "2020 Chevrolet Equinox"]));
     expect(JSON.stringify(vehicles)).not.toContain("Tesla");
   });

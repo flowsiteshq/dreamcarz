@@ -40,6 +40,15 @@ export const BWI_MARKET_RATE_REFERENCE: Record<ApprovedTransactionVehicleId, Mar
   "2020-chevrolet-equinox-black": { dailyLowCents: 6566, comparator: "mid-size SUV" },
   "2022-chevrolet-traverse-white": { dailyLowCents: 6566, dailyHighCents: 9133, comparator: "SUV comparison range" },
   "2020-chevrolet-traverse-gray": { dailyLowCents: 6566, dailyHighCents: 9133, comparator: "SUV comparison range" },
+  "2022-chevrolet-traverse-white-unit-2": { dailyLowCents: 6566, dailyHighCents: 9133, comparator: "SUV comparison range" },
+  "2017-ford-fusion-silver": { dailyLowCents: 6233, comparator: "mid-size car" },
+  "2020-chevrolet-traverse-silver-unit-2": { dailyLowCents: 6566, dailyHighCents: 9133, comparator: "SUV comparison range" },
+  "2017-buick-lacrosse-white": { dailyLowCents: 6333, comparator: "full-size car" },
+  "2021-nissan-rogue-white": { dailyLowCents: 6566, comparator: "mid-size SUV" },
+  "2017-gmc-acadia-silver": { dailyLowCents: 6566, comparator: "mid-size SUV" },
+  "2020-buick-enclave-black": { dailyLowCents: 6566, dailyHighCents: 9133, comparator: "SUV comparison range" },
+  "2017-chevrolet-tahoe-gray": { dailyLowCents: 9133, comparator: "seven-passenger SUV" },
+  "2019-chevrolet-impala-silver": { dailyLowCents: 6333, comparator: "full-size car" },
 };
 
 /**
@@ -56,6 +65,15 @@ export const PRICELINE_DAILY_MARKET_BENCHMARKS: Record<ApprovedTransactionVehicl
   "2020-chevrolet-equinox-black": { vehicleId: "2020-chevrolet-equinox-black", comparator: "Mazda CX-50 or similar · mid-size SUV", bwiDailyLowCents: 6566, dcaDailyLowCents: 6466 },
   "2022-chevrolet-traverse-white": { vehicleId: "2022-chevrolet-traverse-white", comparator: "SUV comparison range · mid-size SUV to seven-passenger SUV", bwiDailyLowCents: 6566, bwiDailyHighCents: 9133, dcaDailyLowCents: null },
   "2020-chevrolet-traverse-gray": { vehicleId: "2020-chevrolet-traverse-gray", comparator: "SUV comparison range · mid-size SUV to seven-passenger SUV", bwiDailyLowCents: 6566, bwiDailyHighCents: 9133, dcaDailyLowCents: null },
+  "2022-chevrolet-traverse-white-unit-2": { vehicleId: "2022-chevrolet-traverse-white-unit-2", comparator: "SUV comparison range · mid-size SUV to seven-passenger SUV", bwiDailyLowCents: 6566, bwiDailyHighCents: 9133, dcaDailyLowCents: null },
+  "2017-ford-fusion-silver": { vehicleId: "2017-ford-fusion-silver", comparator: "Toyota Corolla or similar · mid-size car", bwiDailyLowCents: 6233, dcaDailyLowCents: 6233 },
+  "2020-chevrolet-traverse-silver-unit-2": { vehicleId: "2020-chevrolet-traverse-silver-unit-2", comparator: "SUV comparison range · mid-size SUV to seven-passenger SUV", bwiDailyLowCents: 6566, bwiDailyHighCents: 9133, dcaDailyLowCents: null },
+  "2017-buick-lacrosse-white": { vehicleId: "2017-buick-lacrosse-white", comparator: "Toyota Camry or similar · full-size car", bwiDailyLowCents: 6333, dcaDailyLowCents: 6333 },
+  "2021-nissan-rogue-white": { vehicleId: "2021-nissan-rogue-white", comparator: "Mazda CX-50 or similar · mid-size SUV", bwiDailyLowCents: 6566, dcaDailyLowCents: 6466 },
+  "2017-gmc-acadia-silver": { vehicleId: "2017-gmc-acadia-silver", comparator: "Mazda CX-50 or similar · mid-size SUV", bwiDailyLowCents: 6566, dcaDailyLowCents: 6466 },
+  "2020-buick-enclave-black": { vehicleId: "2020-buick-enclave-black", comparator: "SUV comparison range · mid-size SUV to seven-passenger SUV", bwiDailyLowCents: 6566, bwiDailyHighCents: 9133, dcaDailyLowCents: null },
+  "2017-chevrolet-tahoe-gray": { vehicleId: "2017-chevrolet-tahoe-gray", comparator: "seven-passenger SUV", bwiDailyLowCents: 9133, dcaDailyLowCents: null },
+  "2019-chevrolet-impala-silver": { vehicleId: "2019-chevrolet-impala-silver", comparator: "Toyota Camry or similar · full-size car", bwiDailyLowCents: 6333, dcaDailyLowCents: 6333 },
 };
 
 export const PRICELINE_MARKET_SNAPSHOT = {

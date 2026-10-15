@@ -31,6 +31,15 @@ const CONFIRMED_CONCIERGE_VEHICLES = [
   { vehicleId: "2015-ford-taurus-gray", vehicleName: "2015 Ford Taurus · Gray", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2015-ford-taurus-gray"].image },
   { vehicleId: "2020-chevrolet-equinox-gray", vehicleName: "2020 Chevrolet Equinox · Gray", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-equinox-gray"].image },
   { vehicleId: "2020-chevrolet-equinox-black", vehicleName: "2020 Chevrolet Equinox · Black", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-equinox-black"].image },
+  { vehicleId: "2022-chevrolet-traverse-white-unit-2", vehicleName: "2022 Chevrolet Traverse · White", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2022-chevrolet-traverse-white-unit-2"].image },
+  { vehicleId: "2017-ford-fusion-silver", vehicleName: "2017 Ford Fusion · Silver", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2017-ford-fusion-silver"].image },
+  { vehicleId: "2020-chevrolet-traverse-silver-unit-2", vehicleName: "2020 Chevrolet Traverse · Silver", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-chevrolet-traverse-silver-unit-2"].image },
+  { vehicleId: "2017-buick-lacrosse-white", vehicleName: "2017 Buick LaCrosse · White", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2017-buick-lacrosse-white"].image },
+  { vehicleId: "2021-nissan-rogue-white", vehicleName: "2021 Nissan Rogue · White", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2021-nissan-rogue-white"].image },
+  { vehicleId: "2017-gmc-acadia-silver", vehicleName: "2017 GMC Acadia · Silver", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2017-gmc-acadia-silver"].image },
+  { vehicleId: "2020-buick-enclave-black", vehicleName: "2020 Buick Enclave · Black", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2020-buick-enclave-black"].image },
+  { vehicleId: "2017-chevrolet-tahoe-gray", vehicleName: "2017 Chevrolet Tahoe · Gray", vehicleClass: "suv", image: APPROVED_TRANSACTION_VEHICLES["2017-chevrolet-tahoe-gray"].image },
+  { vehicleId: "2019-chevrolet-impala-silver", vehicleName: "2019 Chevrolet Impala · Silver", vehicleClass: "sedan", image: APPROVED_TRANSACTION_VEHICLES["2019-chevrolet-impala-silver"].image },
 ] as const;
 
 const firstName = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || "there";
