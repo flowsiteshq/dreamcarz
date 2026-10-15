@@ -449,7 +449,7 @@ export const appRouter = router({
         const inventory = Object.entries(APPROVED_TRANSACTION_VEHICLES).map(([vehicleId, vehicle]) => ({
           vehicleId,
           vehicleName: vehicle.vehicleName,
-          vehicleClass: vehicleId.includes("traverse") || vehicleId.includes("equinox") ? "suv" as const : "sedan" as const,
+          vehicleClass: /traverse|equinox|rogue|acadia|enclave|tahoe/.test(vehicleId) ? "suv" as const : "sedan" as const,
         }));
         if (input.context?.selectedVehicleId && !isApprovedTransactionVehicle(input.context.selectedVehicleId)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Please choose a confirmed DreamCarz vehicle." });
@@ -511,6 +511,19 @@ export const appRouter = router({
             source: "coming_soon_waitlist" as const,
             marketEstimate: null,
             waitlistVehicleId: plannedVehicle.id,
+          };
+        }
+        const asksAboutInventory = /\b(?:what\s+(?:do|vehicles?)\s+you\s+have|which\s+vehicles?|inventory|show\s+me\s+(?:your\s+)?(?:cars|vehicles?)|what\s+cars\s+do\s+you\s+(?:have|offer))\b/i.test(input.question);
+        if (asksAboutInventory) {
+          return {
+            answer: "We currently have confirmed sedans and SUVs, including Malibu, Fusion, Taurus, LaCrosse, Impala, Traverse, Equinox, Rogue, Acadia, Enclave, and Tahoe. I can show you the best matches next.",
+            intent: "explore" as const,
+            vehicleClass: null,
+            nextPrompt: "Would you like to see sedans or SUVs first?",
+            recommendedVehicleIds: vehicleIds,
+            source: "confirmed_inventory" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
           };
         }
         const asksForRental = /\b(rent|rental|lease|reservation)\b/i.test(input.question);
