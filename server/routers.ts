@@ -482,6 +482,38 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
+        // Common customer questions: respond usefully without requiring an LLM.
+        // These are safe next-step explanations, not unverified business policies.
+        const customerQuestion = input.question.toLowerCase();
+        const commonQuestions: Array<{ pattern: RegExp; answer: string; next: string; intent?: "rental" | "purchase" | "membership" | "explore" }> = [
+          { pattern: /\b(deposit|security deposit|hold on (?:my |the )?card)\b/i, answer: "Deposits and payment holds depend on the vehicle and approved terms. We'll show you the applicable amount before you commit.", next: "Are you looking to rent a sedan or SUV?", intent: "rental" },
+          { pattern: /\b(insurance|coverage|insured|collision|damage waiver)\b/i, answer: "Insurance and coverage requirements are reviewed for the specific vehicle and rental or purchase arrangement. Our team can confirm the required protection before checkout.", next: "Are you renting or buying?" },
+          { pattern: /\b(license|driver.?s license|international license|id required|identification)\b/i, answer: "Driver verification may be required before vehicle access. For your security, please provide documents only through DreamCarz's protected onboarding, not this chat.", next: "Are you ready to explore available vehicles?", intent: "rental" },
+          { pattern: /\b(age|how old|under 25|young driver|minimum age)\b/i, answer: "Driver age requirements can vary by program and vehicle. Our team can confirm the applicable minimum age and any restrictions before you apply.", next: "Are you interested in a rental or a purchase?" },
+          { pattern: /\b(cancel|cancellation|refund|money back)\b/i, answer: "Cancellation and refund terms depend on the agreement and its current status. Please review your reservation details or contact DreamCarz support before making changes.", next: "Do you already have a reservation?" },
+          { pattern: /\b(extend|extension|extra day|keep (?:the |my )?car longer)\b/i, answer: "You can request an extension through your DreamCarz account. Extensions require review and confirmation; please don't assume the original return time has changed.", next: "Do you have an active rental?", intent: "rental" },
+          { pattern: /\b(pick.?up|delivery|drop.?off|return location|where.*collect)\b/i, answer: "Pickup, delivery, and return arrangements depend on the confirmed reservation and location. Your approved instructions will appear in your reservation details.", next: "Which area are you hoping to pick up in?", intent: "rental" },
+          { pattern: /\b(mileage|miles|unlimited miles|overage)\b/i, answer: "Mileage allowances and any extra-mile charges depend on the specific vehicle agreement. We'll help you review the terms before booking.", next: "About how far do you expect to drive?", intent: "rental" },
+          { pattern: /\b(gas|fuel|electric charging|charge the car|full tank)\b/i, answer: "Fuel and charging responsibilities depend on the vehicle and agreement. Please check your confirmed rental terms for the return requirements.", next: "Are you considering a gas vehicle or an EV?", intent: "rental" },
+          { pattern: /\b(breakdown|accident|flat tire|stranded|vehicle issue|car won.?t start|emergency)\b/i, answer: "If anyone is in immediate danger, call emergency services first. For vehicle trouble, contact DreamCarz support and report the issue through the Safety & Incident Center.", next: "Are you currently safe?", intent: "rental" },
+          { pattern: /\b(payment methods?|pay with|debit card|credit card|cash|apple pay|financ(?:e|ing))\b/i, answer: "Available payment and financing options depend on the program and checkout configuration. Our team can confirm which methods apply to your transaction.", next: "Are you looking to rent or purchase?" },
+          { pattern: /\b(book|reserve|reservation|availability|available today|available tomorrow)\b/i, answer: "I can help you explore confirmed DreamCarz vehicle listings. Actual availability and reservation approval must be confirmed before pickup.", next: "Would you prefer a sedan or an SUV?", intent: "rental" },
+          { pattern: /\b(office|address|location|hours|open today|phone number|contact|speak to (?:a |someone|staff)|human|representative)\b/i, answer: "You can reach DreamCarz at (301) 772-2500. The published office is 10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Please confirm hours with the team before visiting.", next: "Would you like help choosing a vehicle first?" },
+          { pattern: /\b(trade.?in|down payment|purchase|buy a car|buying a car)\b/i, answer: "I can help you explore DreamCarz purchase options. Trade-in values, financing, and final purchase terms require staff review.", next: "What type of vehicle would you like to buy?", intent: "purchase" },
+        ];
+        const commonAnswer = commonQuestions.find(item => item.pattern.test(customerQuestion));
+        if (commonAnswer) {
+          return {
+            answer: commonAnswer.answer,
+            intent: commonAnswer.intent ?? input.context?.customerIntent ?? "explore" as const,
+            vehicleClass: input.context?.vehicleType ?? null,
+            nextPrompt: commonAnswer.next,
+            recommendedVehicleIds: vehicleIds,
+            source: "verified_topic_guidance" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
