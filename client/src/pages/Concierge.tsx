@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { formatUsdFromCents, type MarketRentalEstimate } from "@shared/marketRateReference";
 import { APPROVED_TRANSACTION_VEHICLES } from "@shared/transactionLifecycle";
 import { getComingSoonVehicle } from "@shared/comingSoonVehicles";
+import { resolveConciergeVehicleRequest } from "@shared/conciergeVehicleRequest";
 import { ArrowRight, BadgeCheck, CarFront, Check, ChevronDown, Compass, Mic, Paperclip, Scale, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -300,10 +301,12 @@ export default function Concierge() {
         setExpandedPurchaseVehicleId(null);
       }
       setVehicleClass(response.vehicleClass === "sedan" || response.vehicleClass === "suv" ? response.vehicleClass : null);
-      const asksForAllVehicleOptions = /\b(?:all|every|entire|full)\b.*\b(?:suvs?|sedans?|vehicles?|cars?)\b|\b(?:suvs?|sedans?)\b.*\b(?:all|every|list|options?)\b/i.test(value);
+      const asksForAllVehicleOptions = resolveConciergeVehicleRequest(value, vehicleClass, conversation).showAll;
       setShowAllVehicleOptions(asksForAllVehicleOptions);
       if (asksForAllVehicleOptions) setSelectedVehicleId(null);
-      setRecommendedIds(/\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value) ? response.recommendedVehicleIds : null);
+      if (asksForAllVehicleOptions || response.source === "confirmed_inventory" || response.vehicleClass || /\b(suv|sedan|family|passengers?|space|room|recommend|show|options?)\b/i.test(value)) {
+        setRecommendedIds(response.recommendedVehicleIds);
+      }
       append({ id: `${Date.now()}-concierge`, role: "concierge", text: response.answer, marketEstimate: response.marketEstimate, waitlistVehicleId: response.waitlistVehicleId });
       if (dashboardQuestionMode && dashboardCreationField) {
         setDashboardQuestionMode(false);

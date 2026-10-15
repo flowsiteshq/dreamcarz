@@ -117,6 +117,7 @@ import {
 } from "../shared/transactionLifecycle";
 import { formatUsdFromCents, getBwiMarketRentalEstimate } from "../shared/marketRateReference";
 import { findComingSoonVehicle } from "../shared/comingSoonVehicles";
+import { resolveConciergeVehicleRequest } from "../shared/conciergeVehicleRequest";
 import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MONTHLY_FEE_CENTS, createAssociateMonthlySubscription, ensureAssociateEnrollmentProduct } from "./associateBilling";
 import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
 import { formatStaffLeadContactAlert, queueStaffOperationalAlert } from "./staffSms";
@@ -467,9 +468,9 @@ export const appRouter = router({
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
-        const asksForAllVehicleOptions = /\b(?:all|every|entire|full)\b.*\b(?:suvs?|sedans?|vehicles?|cars?)\b|\b(?:suvs?|sedans?)\b.*\b(?:all|every|list|options?)\b/i.test(input.question);
-        const requestedListClass = /\bsuvs?\b/i.test(input.question) ? "suv" as const : /\bsedans?\b/i.test(input.question) ? "sedan" as const : null;
-        if (asksForAllVehicleOptions && requestedListClass) {
+        const vehicleRequest = resolveConciergeVehicleRequest(input.question, input.context?.vehicleType ?? null, input.conversation);
+        const requestedListClass = vehicleRequest.vehicleClass;
+        if (vehicleRequest.showAll && requestedListClass) {
           const classVehicleIds = inventory.filter(vehicle => vehicle.vehicleClass === requestedListClass).map(vehicle => vehicle.vehicleId);
           const listIntent = input.context?.customerIntent === "rental" || /\b(rent|rental|lease|reservation)\b/i.test(conversationText) ? "rental" as const : "explore" as const;
           return {
@@ -549,7 +550,7 @@ export const appRouter = router({
         const conversationHasRentalIntent = /\b(rent|rental|lease|reservation)\b/i.test(conversationText);
         const rentalPathActive = asksForRental || conversationHasRentalIntent || input.context?.customerIntent === "rental";
         const requestedVehicleClass = /\bsuvs?\b/i.test(input.question) ? "suv" as const : /\bsedans?\b/i.test(input.question) ? "sedan" as const : null;
-        if ((isSimpleVehicleClassRequest || rentalPathActive) && requestedVehicleClass && !input.context?.selectedVehicleId) {
+        if ((isSimpleVehicleClassRequest || rentalPathActive) && requestedVehicleClass && !asksForCost && !input.context?.selectedVehicleId) {
           const classVehicleIds = inventory.filter(vehicle => vehicle.vehicleClass === requestedVehicleClass).map(vehicle => vehicle.vehicleId);
           return {
             answer: requestedVehicleClass === "suv" ? "Absolutely—SUVs are a great choice for extra room and a higher driving position. Here are a few to start with." : "Absolutely—we have several comfortable sedans that are easy to live with day to day. Here are a few to start with.",
@@ -562,7 +563,20 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
-        if (rentalPathActive && !input.context?.selectedVehicleId) {
+        const isAcknowledgment = /^(?:ok(?:ay)?|yes|sure|sounds good|great|thanks|thank you)[.!?]*$/i.test(input.question.trim());
+        if (rentalPathActive && !input.context?.selectedVehicleId && vehicleRequest.vehicleClass && isAcknowledgment) {
+          return {
+            answer: `Take a look at these ${vehicleRequest.vehicleClass === "suv" ? "SUVs" : "sedans"}. You can choose one or ask me to show you more options.`,
+            intent: "rental" as const,
+            vehicleClass: vehicleRequest.vehicleClass,
+            nextPrompt: "Which one catches your eye?",
+            recommendedVehicleIds: inventory.filter(vehicle => vehicle.vehicleClass === vehicleRequest.vehicleClass).map(vehicle => vehicle.vehicleId),
+            source: "confirmed_inventory" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        if (rentalPathActive && !input.context?.selectedVehicleId && !vehicleRequest.vehicleClass && (asksForRental || isAcknowledgment)) {
           return {
             answer: "Of course—I can help you find a rental. Are you leaning toward an SUV or a sedan?",
             intent: "rental" as const,
@@ -676,11 +690,13 @@ export const appRouter = router({
           };
         }
         const fallback = {
-          answer: "I can help you find the right car. What are you looking for?",
-          intent: "explore" as const,
-          vehicleClass: null,
-          nextPrompt: "Would you like to compare sedans or SUVs?",
-          recommendedVehicleIds: vehicleIds,
+          answer: rentalPathActive && vehicleRequest.vehicleClass
+            ? `I'm keeping your ${vehicleRequest.vehicleClass === "suv" ? "SUV" : "sedan"} rental preference. I couldn't answer that question just now; you can still browse the options below or contact our team.`
+            : "I couldn't answer that question just now. You can browse our vehicles below or contact our team for help.",
+          intent: rentalPathActive ? "rental" as const : "explore" as const,
+          vehicleClass: vehicleRequest.vehicleClass,
+          nextPrompt: "Would you like to browse more options or speak with our team?",
+          recommendedVehicleIds: vehicleRequest.vehicleClass ? inventory.filter(vehicle => vehicle.vehicleClass === vehicleRequest.vehicleClass).map(vehicle => vehicle.vehicleId) : vehicleIds,
           source: "fallback" as const,
           marketEstimate: null,
           waitlistVehicleId: null,
@@ -721,13 +737,14 @@ export const appRouter = router({
             let parsed: Record<string, unknown>;
             try { parsed = JSON.parse(content) as Record<string, unknown>; } catch { continue; }
             const answer = typeof parsed.answer === "string" ? parsed.answer.trim().slice(0, 220) : "";
-            const intent = ["rental", "purchase", "membership", "explore"].includes(String(parsed.intent)) ? parsed.intent as "rental" | "purchase" | "membership" | "explore" : "explore";
-            const vehicleClass = parsed.vehicleClass === "sedan" || parsed.vehicleClass === "suv" ? parsed.vehicleClass : null;
+            const intent = ["rental", "purchase", "membership", "explore"].includes(String(parsed.intent)) ? parsed.intent as "rental" | "purchase" | "membership" | "explore" : fallback.intent;
+            const vehicleClass = vehicleRequest.vehicleClass ?? (parsed.vehicleClass === "sedan" || parsed.vehicleClass === "suv" ? parsed.vehicleClass : null);
             const nextPrompt = typeof parsed.nextPrompt === "string" ? parsed.nextPrompt.trim().slice(0, 200) : fallback.nextPrompt;
-            const recommendedVehicleIds = Array.isArray(parsed.recommendedVehicleIds) ? parsed.recommendedVehicleIds.filter((vehicleId): vehicleId is string => typeof vehicleId === "string" && vehicleIds.includes(vehicleId)).slice(0, 4) : [];
+            const matchingVehicleIds = vehicleClass ? inventory.filter(vehicle => vehicle.vehicleClass === vehicleClass).map(vehicle => vehicle.vehicleId) : vehicleIds;
+            const recommendedVehicleIds = Array.isArray(parsed.recommendedVehicleIds) ? parsed.recommendedVehicleIds.filter((vehicleId): vehicleId is string => typeof vehicleId === "string" && matchingVehicleIds.includes(vehicleId)).slice(0, 4) : [];
             const unsupportedClaim = /\$\s*\d|(?:price|pricing|rate|quote)\s+(?:is|of|at)\b|(?:approved|eligible|guaranteed|released)\s+(?:for|to)\b|(?:available|availability)\s+(?:today|now|this\s+week)\b/i.test(`${answer} ${nextPrompt}`);
             if (!answer || unsupportedClaim) continue;
-            return { answer, intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : vehicleIds, source: "live_guidance" as const, marketEstimate: null, waitlistVehicleId: null };
+            return { answer, intent: intent === "explore" && rentalPathActive ? "rental" as const : intent, vehicleClass, nextPrompt, recommendedVehicleIds: recommendedVehicleIds.length ? recommendedVehicleIds : matchingVehicleIds, source: "live_guidance" as const, marketEstimate: null, waitlistVehicleId: null };
           }
           return fallback;
         } catch {

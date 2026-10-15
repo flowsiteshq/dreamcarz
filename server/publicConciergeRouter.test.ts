@@ -194,6 +194,64 @@ describe("public DreamCarz concierge", () => {
     expect(result.answer).toContain("all of our SUV rental options");
   });
 
+  it.each(["Do you hav anymore?", "Do you have any more?", "More", "Show me more", "Anything else?", "What else do you have?", "Show me all"]) ("remembers SUV rental intent and lists all SUVs for: %s", async question => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question,
+      conversation: [
+        { role: "member", text: "I need to rent a suv" },
+        { role: "concierge", text: "Here are a few to start with." },
+      ],
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: "suv", customerStatus: "member", authenticationStatus: "authenticated", onboardingStage: "dates", reservationStatus: "in_progress" },
+    });
+    expect(result).toMatchObject({ intent: "rental", vehicleClass: "suv", source: "confirmed_inventory" });
+    expect(result.answer).toContain("all of our SUV rental options");
+    expect(result.recommendedVehicleIds).toHaveLength(10);
+    expect(result.recommendedVehicleIds).not.toContain("2024-chevrolet-malibu-gray");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("recovers the class from previous customer messages, not a stale sedan-or-SUV assistant prompt", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Do you hav anymore?",
+      conversation: [
+        { role: "member", text: "I need to rent a suv" },
+        { role: "concierge", text: "Would you like a sedan or SUV?" },
+      ],
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: null, customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+    expect(result.vehicleClass).toBe("suv");
+    expect(result.recommendedVehicleIds).toHaveLength(10);
+  });
+
+  it("keeps the known SUV choice after okay instead of restarting rental intake", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Okay",
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: "suv", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+    expect(result).toMatchObject({ intent: "rental", vehicleClass: "suv", source: "confirmed_inventory" });
+    expect(result.answer).not.toContain("SUV or a sedan");
+  });
+
+  it("does not swallow membership questions merely because the previous intent was rental", async () => {
+    vi.mocked(getActiveMasterProgramConfiguration).mockResolvedValue(null);
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "How does membership work?",
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: "suv", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+    expect(result.source).toBe("membership_configuration_unavailable");
+  });
+
+  it("keeps rental and SUV preferences when the model is unavailable rather than restarting", async () => {
+    vi.mocked(listLLMModels).mockRejectedValue(new Error("Provider unavailable"));
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "Can you help with my trip?",
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: "suv", customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+    expect(result).toMatchObject({ intent: "rental", vehicleClass: "suv", source: "fallback" });
+    expect(result.answer).toContain("keeping your SUV rental preference");
+    expect(result.recommendedVehicleIds).toHaveLength(10);
+  });
+
   it.each(["I need a vehicle", "I’m looking for an SUV", "Help me find a car"])("starts guided purchase discovery for a conversational request: %s", async question => {
     const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question });
 
