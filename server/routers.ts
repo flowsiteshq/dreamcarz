@@ -410,7 +410,7 @@ export const appRouter = router({
         conversation: z.array(z.object({
           role: z.enum(["member", "concierge"]),
           text: z.string().trim().min(1).max(420),
-        })).max(6).optional(),
+        })).max(20).optional(),
         context: z.object({
           customerIntent: z.enum(["rental", "purchase", "membership", "explore"]),
           selectedVehicleId: z.string().trim().min(2).max(96).nullable(),
@@ -447,6 +447,20 @@ export const appRouter = router({
           reservationStatus: input.context.reservationStatus,
         }) : "No structured journey context.";
         const vehicleIds = inventory.map(vehicle => vehicle.vehicleId);
+        // Give a useful, policy-safe response to common qualification questions even
+        // when the external LLM is unavailable. Do not claim that checks are waived.
+        if (/\b(?:credit\s*(?:check|checks|score|history)|run\s+(?:my\s+|a\s+)?credit|check\s+(?:my\s+|a\s+)?credit|pull\s+(?:my\s+)?credit)\b/i.test(input.question)) {
+          return {
+            answer: "Credit requirements can depend on the vehicle and program. I don't want to give you incorrect information. Our team can confirm whether a credit check applies to your chosen option.",
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "explore" as const,
+            vehicleClass: input.context?.vehicleType ?? null,
+            nextPrompt: "Are you interested in renting, buying, or a membership?",
+            recommendedVehicleIds: vehicleIds,
+            source: "credit_policy_referral" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
