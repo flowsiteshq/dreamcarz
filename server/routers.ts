@@ -513,10 +513,10 @@ export const appRouter = router({
             waitlistVehicleId: plannedVehicle.id,
           };
         }
-        const asksAboutInventory = /\b(?:what\s+(?:do|vehicles?)\s+you\s+have|which\s+vehicles?|inventory|show\s+me\s+(?:your\s+)?(?:cars|vehicles?)|what\s+cars\s+do\s+you\s+(?:have|offer))\b/i.test(input.question);
+        const asksAboutInventory = /\b(?:what\s+(?:do|type\s+of)\s+(?:cars|vehicles?)\s+do\s+you\s+have|what\s+vehicles?\s+do\s+you\s+have|which\s+vehicles?|inventory|show\s+me\s+(?:your\s+)?(?:cars|vehicles?)|what\s+cars\s+do\s+you\s+(?:have|offer))\b/i.test(input.question);
         if (asksAboutInventory) {
           return {
-            answer: "We currently have confirmed sedans and SUVs, including Malibu, Fusion, Taurus, LaCrosse, Impala, Traverse, Equinox, Rogue, Acadia, Enclave, and Tahoe. I can show you the best matches next.",
+            answer: "We have sedans and SUVs, including Malibu, Fusion, Taurus, LaCrosse, Impala, Traverse, Equinox, Rogue, Acadia, Enclave, and Tahoe. I can show you the best matches next.",
             intent: "explore" as const,
             vehicleClass: null,
             nextPrompt: "Would you like to see sedans or SUVs first?",
@@ -629,7 +629,7 @@ export const appRouter = router({
           };
         }
         const fallback = {
-          answer: "I can help you find a confirmed vehicle. What are you looking for?",
+          answer: "I can help you find the right car. What are you looking for?",
           intent: "explore" as const,
           vehicleClass: null,
           nextPrompt: "Would you like to compare sedans or SUVs?",

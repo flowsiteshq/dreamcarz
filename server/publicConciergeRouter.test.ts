@@ -49,10 +49,18 @@ describe("public DreamCarz concierge", () => {
     const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "What do you have in your inventory?" });
 
     expect(result.source).toBe("confirmed_inventory");
-    expect(result.answer).toContain("confirmed sedans and SUVs");
+    expect(result.answer).toContain("We have sedans and SUVs");
     expect(result.answer).toContain("Rogue");
     expect(result.recommendedVehicleIds.length).toBe(17);
     expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("understands natural vehicle-type inventory questions", async () => {
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "What type of vehicles do you have?" });
+
+    expect(result.source).toBe("confirmed_inventory");
+    expect(result.answer).not.toContain("confirmed vehicle");
+    expect(result.answer).not.toContain("What are you looking for?");
   });
 
   it("passes a bounded temporary conversation context to continue guidance without storing it", async () => {
