@@ -461,6 +461,27 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
+        // Resolve short answers to the previous discovery question without requiring
+        // the external language model. Preserve the original credit inquiry context.
+        const selectedClass = /^(?:an?\s+)?(?:suv|sport utility(?: vehicle)?|sedan|car)$/i.exec(input.question.trim())?.[0].toLowerCase();
+        if (selectedClass) {
+          const kind = selectedClass.includes("suv") || selectedClass.includes("sport utility") ? "suv" as const : "sedan" as const;
+          const matches = inventory.filter(vehicle => vehicle.vehicleClass === kind);
+          const creditDiscussed = (input.conversation ?? []).some(entry => /\bcredit\b/i.test(entry.text));
+          const names = matches.slice(0, 2).map(vehicle => vehicle.vehicleName).join(" and ");
+          return {
+            answer: creditDiscussed
+              ? `Absolutely. We have ${kind.toUpperCase()} options including ${names}. Credit requirements depend on the program, so our team can confirm eligibility. Are you looking to rent or buy?`
+              : `Great choice! We have ${kind.toUpperCase()} options including ${names}. Are you looking to rent or buy?`,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : input.context?.customerIntent === "rental" ? "rental" as const : "explore" as const,
+            vehicleClass: kind,
+            nextPrompt: "Would you like to rent or buy?",
+            recommendedVehicleIds: matches.map(vehicle => vehicle.vehicleId).slice(0, 4),
+            source: "vehicle_class_followup" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
