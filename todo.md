@@ -509,3 +509,11 @@
 - [x] Restore a secure authenticated GitHub release path for flowsiteshq/dreamcarz so the validated Meta Lead Ads release can trigger Railway production deployment without exposing credentials.
 - [x] Add a server-only, idempotent staff-alert outbox for opted-in leads and provider-verified Associate enrollment activation, with no customer contact data in alert text.
 - [ ] Configure the Zapier email hook to deliver internal alerts to `www.dreamcarz.io@gmail.com`, add the server-only Railway hook variables, and perform one controlled email and duplicate-suppression check.
+
+## Fleet lineup hero video — October 15, 2026
+- [x] Generate a silent eight-second fleet-lineup video using the current DreamCarz sedan and SUV likeness references, with no uploaded plate photos or VINs in public media.
+- [x] Encode optimized desktop and mobile H.264 loops and host the media separately from the application build.
+- [x] Replace the homepage single-car background with the fleet video, retaining headline, rental/purchase actions, and Concierge prompt.
+- [x] Add poster fallback, inline muted autoplay, pause/resume, reduced-motion/data-saver behavior, and offscreen/background-tab pause handling.
+- [x] Verify playback and controls at desktop and iPhone-width viewports; verify reduced-motion, data-saver, and failed-video fallback; pass typecheck, 33 focused tests, production build, and diff checks.
+- [ ] Deploy the new hero to dreamcarz.io after live-publication approval and verify production playback.
