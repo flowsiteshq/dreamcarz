@@ -165,6 +165,23 @@ describe("public DreamCarz concierge", () => {
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 
+  it("keeps a rental conversation on the rental path when the visitor chooses an SUV", async () => {
+    const rentalStart = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question: "I would like to rent a vehicle" });
+    const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({
+      question: "I’m looking for a SUV",
+      conversation: [
+        { role: "member", text: "I would like to rent a vehicle" },
+        { role: "concierge", text: rentalStart.answer },
+      ],
+      context: { customerIntent: "rental", selectedVehicleId: null, vehicleType: null, customerStatus: "guest", authenticationStatus: "guest", onboardingStage: null, reservationStatus: "none" },
+    });
+
+    expect(rentalStart).toMatchObject({ intent: "rental", source: "rental_discovery" });
+    expect(result).toMatchObject({ intent: "rental", vehicleClass: "suv", source: "confirmed_inventory" });
+    expect(result.recommendedVehicleIds).not.toContain("2024-chevrolet-malibu-gray");
+    expect(result.answer).toContain("Here are a few to start with");
+  });
+
   it.each(["I need a vehicle", "I’m looking for an SUV", "Help me find a car"])("starts guided purchase discovery for a conversational request: %s", async question => {
     const result = await appRouter.createCaller(guestContext as never).concierge.publicGuide({ question });
 

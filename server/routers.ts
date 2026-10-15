@@ -527,12 +527,15 @@ export const appRouter = router({
           };
         }
         const isSimpleVehicleClassRequest = /^(?:show\s+me\s+)?(?:an?\s+)?(?:suv|sedan)s?[?.!]*$/i.test(input.question.trim());
+        const asksForRental = /\b(rent|rental|lease|reservation)\b/i.test(input.question);
+        const conversationHasRentalIntent = /\b(rent|rental|lease|reservation)\b/i.test(conversationText);
+        const rentalPathActive = asksForRental || conversationHasRentalIntent || input.context?.customerIntent === "rental";
         const requestedVehicleClass = /\bsuvs?\b/i.test(input.question) ? "suv" as const : /\bsedans?\b/i.test(input.question) ? "sedan" as const : null;
-        if (isSimpleVehicleClassRequest && requestedVehicleClass && !input.context?.selectedVehicleId) {
+        if ((isSimpleVehicleClassRequest || rentalPathActive) && requestedVehicleClass && !input.context?.selectedVehicleId) {
           const classVehicleIds = inventory.filter(vehicle => vehicle.vehicleClass === requestedVehicleClass).map(vehicle => vehicle.vehicleId);
           return {
-            answer: requestedVehicleClass === "suv" ? "SUVs are a great choice for extra room and a higher driving position. I can show you a few options—what matters most to you?" : "We have several sedans that are easy to live with day to day. I can show you a few options—what matters most to you?",
-            intent: "explore" as const,
+            answer: requestedVehicleClass === "suv" ? "Absolutely—SUVs are a great choice for extra room and a higher driving position. Here are a few to start with." : "Absolutely—we have several comfortable sedans that are easy to live with day to day. Here are a few to start with.",
+            intent: rentalPathActive ? "rental" as const : "explore" as const,
             vehicleClass: requestedVehicleClass,
             nextPrompt: "Would you like to choose one, or tell me what you need it for?",
             recommendedVehicleIds: classVehicleIds,
@@ -541,10 +544,21 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
-        const asksForRental = /\b(rent|rental|lease|reservation)\b/i.test(input.question);
+        if (rentalPathActive && !input.context?.selectedVehicleId) {
+          return {
+            answer: "Of course—I can help you find a rental. Are you leaning toward an SUV or a sedan?",
+            intent: "rental" as const,
+            vehicleClass: null,
+            nextPrompt: "Are you leaning toward an SUV or a sedan?",
+            recommendedVehicleIds: [],
+            source: "rental_discovery" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const hasRentalTiming = /\b(today|tomorrow|this\s+week|weekend|for\s+\d{1,2}\s+days?)\b/i.test(input.question);
         const asksForVehicleDiscovery = /\b(?:need|find|looking\s+for|help(?:\s+me)?\s+find)\s+(?:an?\s+)?(?:vehicle|car|suv|sedan|truck|crossover|hybrid|ev)\b/i.test(input.question);
-        const asksToPurchase = input.context?.customerIntent === "purchase" || (!asksForRental && !hasRentalTiming && (/\b(buy|buying|purchase|own|ownership|finance|financing)\b/i.test(input.question) || asksForVehicleDiscovery));
+        const asksToPurchase = input.context?.customerIntent === "purchase" || (!rentalPathActive && !hasRentalTiming && (/\b(buy|buying|purchase|own|ownership|finance|financing)\b/i.test(input.question) || asksForVehicleDiscovery));
         if (asksToPurchase && !input.context?.selectedVehicleId) {
           return {
             answer: "Of course. Tell me what you need most — extra room, an easy daily driver, work capability, something sporty, or better fuel savings?",
