@@ -25,14 +25,14 @@ export type ComingSoonVehicle = {
 };
 
 const categoryVisuals: Record<ComingSoonVehicleCategory, string> = {
-  Sedan: "/manus-storage/coming-soon-sedan_aa0918ac.png",
-  SUV: "/manus-storage/coming-soon-suv_3021dbbf.png",
-  EV: "/manus-storage/coming-soon-electric_d97d27a2.png",
-  Truck: "/manus-storage/coming-soon-pickup_b074d08c.png",
-  Luxury: "/manus-storage/coming-soon-luxury_d1efed55.png",
-  Performance: "/manus-storage/coming-soon-performance_c2140c59.png",
-  Family: "/manus-storage/coming-soon-family_2e2a432e.png",
-  Utility: "/manus-storage/coming-soon-utility_86f85824.png",
+  Sedan: "/manus-storage/car-card-1_8dfc0a4a.png",
+  SUV: "/manus-storage/car-card-2_d8411d99.png",
+  EV: "/manus-storage/car-card-3_23f3c0ab.png",
+  Truck: "/manus-storage/car-card-4_6af95632.png",
+  Luxury: "/manus-storage/car-card-5_bd8a563d.png",
+  Performance: "/manus-storage/car-card-6_4972fbf1.png",
+  Family: "/manus-storage/car-budget-7_1b4d2b9c.png",
+  Utility: "/manus-storage/car-budget-8_9abf3a26.png",
 };
 
 function plannedVehicle(
