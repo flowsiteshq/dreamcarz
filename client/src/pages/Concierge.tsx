@@ -556,7 +556,7 @@ export default function Concierge() {
             <section aria-label="Current Concierge question" className="flex gap-3 pt-2">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black text-[#d5b35b]"><Sparkles size={16} /></span>
               <div className="min-w-0 flex-1 rounded-2xl border border-[#e4cb84] bg-[#fffdf8] px-5 py-4 shadow-[0_8px_30px_rgba(168,131,45,0.08)]">
-                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#a8832d]">DreamCarz is asking</p>
+                
                 <p className="mt-2 break-words text-[19px] font-semibold leading-7 text-[#1c1c1c] sm:text-[21px]">{activeQuestion}</p>
               </div>
             </section>
