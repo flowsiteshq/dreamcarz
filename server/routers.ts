@@ -482,6 +482,30 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
+        // Follow-up inventory questions must respect the selected class and earlier rental intent.
+        // Handle these locally so an unavailable LLM cannot reset the conversation.
+        if (/\b(more|other|another|additional|else|all)\b/i.test(input.question)
+          && /\b(vehicle|vehicles|cars?|options?|models?|choices?|sedans?|suvs?)\b/i.test(input.question)) {
+          const earlierMessages = input.conversation ?? [];
+          const priorClass = [...earlierMessages].reverse().find(entry => entry.role === "member" && /^(?:an?\s+)?(?:sedan|suv)$/i.test(entry.text.trim()))?.text.trim().toLowerCase();
+          const kind = input.context?.vehicleType ?? (priorClass === "sedan" || priorClass === "suv" ? priorClass : null);
+          const matches = inventory.filter(vehicle => !kind || vehicle.vehicleClass === kind);
+          const names = matches.map(vehicle => vehicle.vehicleName);
+          const label = kind === "sedan" ? "sedans" : kind === "suv" ? "SUVs" : "vehicles";
+          const answer = names.length
+            ? `Here are the ${label} currently listed with DreamCarz: ${names.join(", ")}. Want to take a closer look at one of them?`
+            : `I don't see any ${label} listed right now. Would you like to check another vehicle type?`;
+          return {
+            answer,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "rental" as const,
+            vehicleClass: kind,
+            nextPrompt: "Would you like to see details on one of these vehicles?",
+            recommendedVehicleIds: matches.map(vehicle => vehicle.vehicleId).slice(0, 4),
+            source: "inventory_followup" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         // Common customer questions: respond usefully without requiring an LLM.
         // These are safe next-step explanations, not unverified business policies.
         const customerQuestion = input.question.toLowerCase();
@@ -666,9 +690,9 @@ export const appRouter = router({
           };
         }
         const fallback = {
-          answer: "Absolutely! Are you looking for a sedan, an SUV, or something else?",
-          intent: "explore" as const,
-          vehicleClass: null,
+          answer: input.context?.vehicleType === "sedan" || input.context?.vehicleType === "suv" ? "I can help you compare the vehicles we have listed. Would you like to see the options?" : "Absolutely! Are you looking for a sedan, an SUV, or something else?",
+          intent: input.context?.customerIntent ?? "explore" as const,
+          vehicleClass: input.context?.vehicleType ?? null,
           nextPrompt: "Are you looking for a sedan, an SUV, or something else?",
           recommendedVehicleIds: vehicleIds,
           source: "fallback" as const,
