@@ -482,6 +482,27 @@ export const appRouter = router({
             waitlistVehicleId: null,
           };
         }
+        // Resolve a named model from verified inventory before attempting generic LLM guidance.
+        // A visitor saying "Ford Taurus" has selected a vehicle, not requested a new discovery question.
+        const normalizedVehicleQuery = input.question.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const modelMatches = inventory.filter(vehicle => {
+          const words = vehicle.vehicleName.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
+          const modelWords = words.filter(word => !/^\d{4}$/.test(word) && !["gray", "black", "white", "silver", "blue", "red"].includes(word));
+          return modelWords.length >= 2 && normalizedVehicleQuery.includes(modelWords.join(" "));
+        });
+        if (modelMatches.length === 1) {
+          const vehicle = modelMatches[0];
+          return {
+            answer: `The ${vehicle.vehicleName} is listed in our fleet. Would you like to review its details or check rental availability?`,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "rental" as const,
+            vehicleClass: vehicle.vehicleClass,
+            nextPrompt: "Would you like details or an availability check?",
+            recommendedVehicleIds: [vehicle.vehicleId],
+            source: "vehicle_model_selection" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         // Follow-up inventory questions must respect the selected class and earlier rental intent.
         // Handle these locally so an unavailable LLM cannot reset the conversation.
         if (/\b(more|other|another|additional|else|all)\b/i.test(input.question)
