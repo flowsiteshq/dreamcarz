@@ -25,7 +25,7 @@ const mobileLinks = [
   { href: "/opportunity#fleet-partner", label: "Fleet Partners" },
 ] as const;
 
-const menuTriggerBase = "inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13.5px] font-medium transition-colors duration-150";
+const menuTriggerBase = "inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[13px] font-medium tracking-[-0.01em] transition-colors duration-150";
 
 export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
@@ -52,18 +52,18 @@ export default function Navigation() {
   const toggleMegaMenu = (key: MegaMenuKey) => setActiveMegaMenu(current => current === key ? null : key);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isConciergeWorkspace ? "border-b border-white/10 bg-black text-white" : scrolled || activeMegaMenu ? "bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05)]" : "bg-transparent"}`}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="flex items-center justify-between h-[68px]">
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isConciergeWorkspace ? "border-b border-white/10 bg-[#161513]/95 text-white backdrop-blur-xl" : scrolled || activeMegaMenu ? "border-b border-[#e9e2d7] bg-[#fbfaf7]/92 backdrop-blur-xl shadow-[0_8px_24px_rgba(52,40,25,0.05)]" : "bg-[#fbfaf7]/72 backdrop-blur-md"}`}>
+      <div className="mx-auto max-w-7xl px-5 lg:px-10">
+        <div className="flex h-[76px] items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src={isConciergeWorkspace ? "/manus-storage/logo-light-mark-crop_649262e4.png" : "/manus-storage/logo-dark-mark-crop_f052e278.png"} alt="DC" className="h-8 w-auto object-contain" />
+            <img src={isConciergeWorkspace ? "/manus-storage/logo-light-mark-crop_649262e4.png" : "/manus-storage/logo-dark-mark-crop_f052e278.png"} alt="DC" className="h-9 w-auto object-contain" />
             <img src={isConciergeWorkspace ? "/manus-storage/logo-light-wordmark-crop_9e0a8d00.png" : "/manus-storage/logo-dark-wordmark-crop_bb978492.png"} alt="DREAMCARZ" className="h-[13px] w-auto object-contain hidden sm:block" />
           </Link>
 
           {/* Desktop mega navigation */}
           <nav className="hidden lg:flex items-center gap-1" aria-label="Primary navigation" onMouseLeave={() => setActiveMegaMenu(null)} onBlur={closeWhenFocusLeaves}>
-            <Link href="/concierge" className={`${menuTriggerBase} ${location === "/concierge" ? "font-semibold text-[#a8832d]" : isConciergeWorkspace ? "text-gray-300 hover:text-white" : "text-gray-600 hover:text-black"}`}>Concierge</Link>
+            <Link href="/concierge" className={`${menuTriggerBase} ${location === "/concierge" ? "bg-[#f0e7d3] font-semibold text-[#7c5e20]" : isConciergeWorkspace ? "text-gray-300 hover:bg-white/10 hover:text-white" : "text-gray-600 hover:bg-white hover:text-black"}`}>Concierge</Link>
             <button type="button" aria-expanded={activeMegaMenu === "fleet"} aria-controls="dreamcarz-fleet-menu" onMouseEnter={() => setActiveMegaMenu("fleet")} onFocus={() => setActiveMegaMenu("fleet")} onClick={() => toggleMegaMenu("fleet")} onKeyDown={event => { if (event.key === "Escape") setActiveMegaMenu(null); }} className={triggerClassName("fleet")}>Fleet <ChevronDown size={14} className={`transition-transform ${activeMegaMenu === "fleet" ? "rotate-180" : ""}`} /></button>
             <button type="button" aria-expanded={activeMegaMenu === "members"} aria-controls="dreamcarz-members-menu" onMouseEnter={() => setActiveMegaMenu("members")} onFocus={() => setActiveMegaMenu("members")} onClick={() => toggleMegaMenu("members")} onKeyDown={event => { if (event.key === "Escape") setActiveMegaMenu(null); }} className={triggerClassName("members")}>Members <ChevronDown size={14} className={`transition-transform ${activeMegaMenu === "members" ? "rotate-180" : ""}`} /></button>
             <Link href="/pricing" aria-expanded={activeMegaMenu === "pricing"} aria-controls="dreamcarz-pricing-menu" onMouseEnter={() => setActiveMegaMenu("pricing")} onFocus={() => setActiveMegaMenu("pricing")} onKeyDown={event => { if (event.key === "Escape") setActiveMegaMenu(null); }} className={triggerClassName("pricing")}>Pricing <ChevronDown size={14} className={`transition-transform ${activeMegaMenu === "pricing" ? "rotate-180" : ""}`} /></Link>
@@ -76,20 +76,20 @@ export default function Navigation() {
               <div className="w-24 h-9 rounded-full bg-gray-200 animate-pulse" />
             ) : isAuthenticated ? (
               <div className="flex items-center gap-2">
-                <Link href="/dashboard" className={`flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-full transition-colors ${isConciergeWorkspace ? "border border-white/20 bg-white/5 text-white hover:bg-white/10" : "bg-black text-white hover:bg-gray-900"}`} style={{ fontFamily: "var(--font-sans)" }}>
+                <Link href="/dashboard" className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-colors ${isConciergeWorkspace ? "border border-white/20 bg-white/5 text-white hover:bg-white/10" : "bg-[#1f1e1b] text-white shadow-[0_7px_16px_rgba(31,30,27,0.14)] hover:bg-[#302e29]"}`} style={{ fontFamily: "var(--font-sans)" }}>
                   <User size={14} /> My Account
                 </Link>
                 <button onClick={() => logout()} className={`px-4 py-2 text-[13px] transition-colors font-medium ${isConciergeWorkspace ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-black"}`} style={{ fontFamily: "var(--font-sans)" }}>Sign Out</button>
               </div>
             ) : (
-              <Link href="/login" className={`flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-full transition-colors active:scale-[0.97] ${isConciergeWorkspace ? "border border-white/20 bg-white/5 text-white hover:bg-white/10" : "bg-black text-white hover:bg-gray-900"}`} style={{ fontFamily: "var(--font-sans)" }}>
+              <Link href="/login" className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.97] ${isConciergeWorkspace ? "border border-white/20 bg-white/5 text-white hover:bg-white/10" : "bg-[#1f1e1b] text-white shadow-[0_7px_16px_rgba(31,30,27,0.14)] hover:bg-[#302e29]"}`} style={{ fontFamily: "var(--font-sans)" }}>
                 <User size={14} /> Sign In
               </Link>
             )}
           </div>
 
           {/* Mobile toggle */}
-          <button onClick={() => setMobileOpen(!mobileOpen)} className={`lg:hidden p-2 ${isConciergeWorkspace ? "text-white" : "text-black"}`} aria-label="Toggle menu">
+          <button onClick={() => setMobileOpen(!mobileOpen)} className={`rounded-lg p-2.5 transition-colors lg:hidden ${isConciergeWorkspace ? "text-white hover:bg-white/10" : "text-black hover:bg-white"}`} aria-label="Toggle menu">
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
