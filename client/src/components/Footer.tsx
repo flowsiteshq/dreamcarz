@@ -6,8 +6,8 @@ import { Instagram, Twitter, Facebook, ArrowRight, MapPin, Phone, Clock } from "
 
 export default function Footer() {
   return (
-    <footer className="bg-black text-white">
-      <div className="container py-16">
+    <footer className="border-t border-[#302d27] bg-[#1f1e1b] text-white">
+      <div className="container py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="lg:col-span-1">
@@ -23,12 +23,12 @@ export default function Footer() {
                 className="h-4 w-auto object-contain"
               />
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6" style={{ fontFamily: "var(--font-sans)" }}>
+            <p className="max-w-xs text-sm leading-7 text-[#c4c0b8]" style={{ fontFamily: "var(--font-sans)" }}>
               Freedom. Drive. Earn. Dream Carz is a complete automotive ecosystem that helps members save, earn, and build freedom through vehicles, rewards, and relationships.
             </p>
             <div className="flex items-center gap-3">
               {[<Facebook size={16} />, <Twitter size={16} />, <Instagram size={16} />].map((icon, i) => (
-                <a key={i} href="#" className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/50 transition-colors">
+                <a key={i} href="#" aria-label={["Facebook", "Twitter", "Instagram"][i]} className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 text-[#aaa59b] transition-colors hover:border-[#d5b464] hover:text-[#f0d58b]">
                   {icon}
                 </a>
               ))}
@@ -37,7 +37,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Quick Links</h4>
+            <h4 className="eyebrow mb-5 text-[#d5b464]">Explore</h4>
             <ul className="space-y-3">
               {[
                 { href: "/", label: "Home" },
@@ -52,7 +52,7 @@ export default function Footer() {
               { href: "/contact", label: "Contact Us" },
             ].map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                  <Link href={item.href} className="text-sm text-[#aaa59b] transition-colors hover:text-white" style={{ fontFamily: "var(--font-sans)" }}>
                     {item.label}
                   </Link>
                 </li>
@@ -62,23 +62,23 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Contact</h4>
+            <h4 className="eyebrow mb-5 text-[#d5b464]">Contact</h4>
             <ul className="space-y-3">
               <li className="flex items-start gap-2.5">
                 <MapPin size={14} className="text-gray-500 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-400 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+                  <span className="text-sm leading-relaxed text-[#aaa59b]" style={{ fontFamily: "var(--font-sans)" }}>
                   10001 Derekwood Ln, Suite 204<br />Lanham, MD 20706
                 </span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone size={14} className="text-gray-500 flex-shrink-0" />
-                <a href="tel:+13017722500" className="text-sm text-gray-400 hover:text-white transition-colors" style={{ fontFamily: "var(--font-sans)" }}>
+                  <a href="tel:+13017722500" className="text-sm text-[#aaa59b] transition-colors hover:text-white" style={{ fontFamily: "var(--font-sans)" }}>
                   (301) 772-2500
                 </a>
               </li>
               <li className="flex items-start gap-2.5">
                 <Clock size={14} className="text-gray-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-gray-400 leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+                <div className="text-sm leading-relaxed text-[#aaa59b]" style={{ fontFamily: "var(--font-sans)" }}>
                   Mon – Fri: 9:00 am – 6:00 pm<br />
                   Saturday: 9:00 am – 3:00 pm<br />
                   Sunday: Closed
@@ -89,24 +89,25 @@ export default function Footer() {
 
           {/* Newsletter */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider" style={{ fontFamily: "var(--font-sans)" }}>Enter Your Email Address</h4>
+            <h4 className="eyebrow mb-5 text-[#d5b464]">Stay in the loop</h4>
             <div className="flex items-center gap-2">
               <input
                 type="email"
                 placeholder="Email address"
-                className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-white/50 transition-colors"
+                aria-label="Email address"
+                className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#77736b] focus:border-[#d5b464]"
                 style={{ fontFamily: "var(--font-sans)" }}
               />
-              <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black hover:bg-gray-100 transition-colors flex-shrink-0">
+              <button aria-label="Subscribe" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#d5b464] text-[#1f1e1b] transition-colors hover:bg-[#e7c978]">
                 <ArrowRight size={16} />
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-3" style={{ fontFamily: "var(--font-sans)" }}>Subscribe to our newsletter for updates.</p>
+            <p className="mt-3 text-xs leading-5 text-[#77736b]" style={{ fontFamily: "var(--font-sans)" }}>Occasional updates on vehicles, membership, and the DreamCarz network.</p>
           </div>
         </div>
 
-        <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-gray-500" style={{ fontFamily: "var(--font-sans)" }}>
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 md:flex-row">
+          <p className="text-xs text-[#77736b]" style={{ fontFamily: "var(--font-sans)" }}>
             © {new Date().getFullYear()} DreamCarz Network. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
@@ -114,7 +115,7 @@ export default function Footer() {
               <a
                 key={item}
                 href={item === "Privacy Policy" ? "/privacy-policy" : item === "Terms & Conditions" ? "/terms" : item === "FAQ" ? "/faq" : "/cookie-policy"}
-                className="text-xs text-gray-500 hover:text-white transition-colors"
+                className="text-xs text-[#77736b] transition-colors hover:text-white"
                 style={{ fontFamily: "var(--font-sans)" }}
               >{item}</a>
             ))}
