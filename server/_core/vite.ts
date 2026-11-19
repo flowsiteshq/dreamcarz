@@ -80,6 +80,17 @@ export function serveStatic(app: Express) {
     })
   );
 
+  // Never return the HTML shell for a missing CSS, JavaScript, image, or font
+  // request. A cached mobile HTML shell can reference an older hashed asset;
+  // returning index.html with 200 makes Safari reject it as a stylesheet and
+  // leaves the otherwise-working React page completely unstyled.
+  app.use("*", (req, res, next) => {
+    const pathname = req.path || "";
+    const looksLikeAsset = pathname.startsWith("/assets/") || /\.(?:css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|mp4|webm)$/i.test(pathname);
+    if (!looksLikeAsset) return next();
+    res.status(404).set("Cache-Control", "no-store").end();
+  });
+
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
     res

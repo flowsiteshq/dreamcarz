@@ -94,6 +94,19 @@
         var bootTimer;
         var bootFailureShown = false;
 
+        // Recover once from a stale mobile HTML shell whose hashed stylesheet
+        // was replaced during deployment. Without this, Safari can render the
+        // React DOM with browser-default styles after a CSS 404.
+        window.setTimeout(function () {
+          var stylesheet = document.querySelector('link[rel="stylesheet"][href*="/assets/"]');
+          if (!stylesheet || stylesheet.sheet) return;
+          var recoveryKey = "dreamcarz-css-recovery";
+          if (window.sessionStorage.getItem(recoveryKey)) return;
+          window.sessionStorage.setItem(recoveryKey, "1");
+          var separator = window.location.search ? "&" : "?";
+          window.location.replace(window.location.href + separator + "css-refresh=" + Date.now());
+        }, 1800);
+
         function showBootFailure(message) {
           if (bootFailureShown || window.__dreamcarzBootReady) return;
           bootFailureShown = true;
