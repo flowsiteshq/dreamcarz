@@ -110,7 +110,7 @@ export default function Footer() {
           <p className="text-xs text-[#77736b]" style={{ fontFamily: "var(--font-sans)" }}>
             © {new Date().getFullYear()} DreamCarz Network. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 md:justify-end">
             {["Privacy Policy", "Terms & Conditions", "Cookie Policy", "FAQ"].map((item) => (
               <a
                 key={item}
@@ -119,6 +119,7 @@ export default function Footer() {
                 style={{ fontFamily: "var(--font-sans)" }}
               >{item}</a>
             ))}
+            <Link href="/admin" className="text-[10px] text-[#5f5b54] transition-colors hover:text-[#aaa59b]" aria-label="Administrator login">Admin</Link>
           </div>
         </div>
       </div>

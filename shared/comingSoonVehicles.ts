@@ -62,6 +62,42 @@ const eliteVehicleVisuals: Record<string, string> = {
   "coming-soon-2025-mercedes-benz-sprinter": "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/sJlJvrmTEnSZZVDN.jpg",
 };
 
+const modelVehicleVisuals: Record<string, string> = {
+  "coming-soon-2021-nissan-altima": "/manus-storage/2021-nissan-altima_b3b2b777.jpg",
+  "coming-soon-2022-toyota-camry-xse": "/manus-storage/2022-toyota-camry-xse_a7e49121.jpg",
+  "coming-soon-2025-honda-accord": "/manus-storage/2025-honda-accord_7fe6d4f6.jpg",
+  "coming-soon-2025-hyundai-sonata": "/manus-storage/2025-hyundai-sonata_01204ff2.jpg",
+  "coming-soon-2025-kia-k5": "/manus-storage/2025-kia-k5_0c5a4ca1.jpg",
+  "coming-soon-2025-toyota-rav4": "/manus-storage/2025-toyota-rav4_a85d9b43.jpg",
+  "coming-soon-2025-honda-cr-v": "/manus-storage/2025-honda-cr-v_fdc930dc.jpg",
+  "coming-soon-2025-hyundai-tucson": "/manus-storage/2025-hyundai-tucson_80a930e3.jpg",
+  "coming-soon-2025-kia-sportage": "/manus-storage/2025-kia-sportage_84d33b4a.jpg",
+  "coming-soon-2025-mazda-cx-5": "/manus-storage/2025-mazda-cx-5_bc6f7a1b.jpg",
+  "coming-soon-2025-ford-explorer": "/manus-storage/2025-ford-explorer_fd19d992.jpg",
+  "coming-soon-2025-jeep-grand-cherokee": "/manus-storage/2025-jeep-grand-cherokee_557ae2f0.jpg",
+  "coming-soon-2025-toyota-highlander": "/manus-storage/2025-toyota-highlander_c157c028.jpg",
+  "coming-soon-2025-honda-pilot": "/manus-storage/2025-honda-pilot_00793b59.jpg",
+  "coming-soon-2025-tesla-model-y": "/manus-storage/2025-tesla-model-y_f6326d2e.jpg",
+  "coming-soon-2025-ford-mustang-mach-e": "/manus-storage/2025-ford-mustang-mach-e_db5d78b7.jpg",
+  "coming-soon-2025-hyundai-ioniq-5": "/manus-storage/2025-hyundai-ioniq-5_449c28c1.jpg",
+  "coming-soon-2025-kia-ev6": "/manus-storage/2025-kia-ev6_0c74cc35.jpg",
+  "coming-soon-2025-chevrolet-blazer-ev": "/manus-storage/2025-chevrolet-blazer-ev_09409007.jpg",
+  "coming-soon-2025-nissan-ariya": "/manus-storage/2025-nissan-ariya_284269fd.jpg",
+  "coming-soon-2025-ford-f150": "/manus-storage/2025-ford-f150_9088c56f.jpg",
+  "coming-soon-2025-chevrolet-silverado-1500": "/manus-storage/2025-chevrolet-silverado-1500_75cb3efb.jpg",
+  "coming-soon-2025-ram-1500": "/manus-storage/2025-ram-1500_eb74f4d3.jpg",
+  "coming-soon-2025-toyota-tacoma": "/manus-storage/2025-toyota-tacoma_d385e478.jpg",
+  "coming-soon-2025-ford-maverick": "/manus-storage/2025-ford-maverick_75d3fdf4.jpg",
+  "coming-soon-2025-ford-mustang": "/manus-storage/2025-ford-mustang_86adc37b.jpg",
+  "coming-soon-2025-toyota-sienna": "/manus-storage/2025-toyota-sienna_f114e452.jpg",
+  "coming-soon-2025-honda-odyssey": "/manus-storage/2025-honda-odyssey_93749f54.jpg",
+  "coming-soon-2025-kia-carnival": "/manus-storage/2025-kia-carnival_696f39d0.jpg",
+  "coming-soon-2025-chrysler-pacifica": "/manus-storage/2025-chrysler-pacifica_6ec38acf.jpg",
+  "coming-soon-2025-ford-transit": "/manus-storage/2025-ford-transit_e2f1abf8.jpg",
+  "coming-soon-2025-ram-promaster": "/manus-storage/2025-ram-promaster_da55dc04.jpg",
+  "coming-soon-2025-chevrolet-express": "/manus-storage/2025-chevrolet-express_469aa235.jpg",
+};
+
 function plannedVehicle(
   year: number,
   make: string,
@@ -83,7 +119,7 @@ function plannedVehicle(
     type,
     access,
     availability: "coming-soon",
-    image: access === "elite" ? eliteVehicleVisuals[id] ?? categoryVisuals[type] : categoryVisuals[type],
+    image: modelVehicleVisuals[id] ?? (access === "elite" ? eliteVehicleVisuals[id] ?? categoryVisuals[type] : categoryVisuals[type]),
   };
 }
 
