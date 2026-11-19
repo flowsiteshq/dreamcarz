@@ -271,7 +271,7 @@ export default function Concierge() {
       return;
     }
     const memberEntry: Entry = { id: `${Date.now()}-member`, role: "member", text: value };
-    const conversation = [...history.slice(-5), memberEntry].map(entry => ({ role: entry.role === "member" ? "member" as const : "concierge" as const, text: entry.text.slice(0, 420) }));
+    const conversation = [...history.slice(-19), memberEntry].map(entry => ({ role: entry.role === "member" ? "member" as const : "concierge" as const, text: entry.text.slice(0, 420) }));
     setQuestion("");
     setNotice("");
     append(memberEntry);

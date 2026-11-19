@@ -428,7 +428,7 @@ export const appRouter = router({
         conversation: z.array(z.object({
           role: z.enum(["member", "concierge"]),
           text: z.string().trim().min(1).max(420),
-        })).max(6).optional(),
+        })).max(20).optional(),
         context: z.object({
           customerIntent: z.enum(["rental", "purchase", "membership", "explore"]),
           selectedVehicleId: z.string().trim().min(2).max(96).nullable(),
@@ -465,6 +465,119 @@ export const appRouter = router({
           reservationStatus: input.context.reservationStatus,
         }) : "No structured journey context.";
         const vehicleIds = inventory.map(vehicle => vehicle.vehicleId);
+        // Give a useful, policy-safe response to common qualification questions even
+        // when the external LLM is unavailable. Do not claim that checks are waived.
+        if (/\b(?:credit\s*(?:check|checks|score|history)|run\s+(?:my\s+|a\s+)?credit|check\s+(?:my\s+|a\s+)?credit|pull\s+(?:my\s+)?credit)\b/i.test(input.question)) {
+          return {
+            answer: "Credit requirements can depend on the vehicle and program. I don't want to give you incorrect information. Our team can confirm whether a credit check applies to your chosen option.",
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "explore" as const,
+            vehicleClass: input.context?.vehicleType ?? null,
+            nextPrompt: "Are you interested in renting, buying, or a membership?",
+            recommendedVehicleIds: vehicleIds,
+            source: "credit_policy_referral" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        // Resolve short answers to the previous discovery question without requiring
+        // the external language model. Preserve the original credit inquiry context.
+        const selectedClass = /^(?:an?\s+)?(?:suv|sport utility(?: vehicle)?|sedan|car)$/i.exec(input.question.trim())?.[0].toLowerCase();
+        if (selectedClass) {
+          const kind = selectedClass.includes("suv") || selectedClass.includes("sport utility") ? "suv" as const : "sedan" as const;
+          const matches = inventory.filter(vehicle => vehicle.vehicleClass === kind);
+          const creditDiscussed = (input.conversation ?? []).some(entry => /\bcredit\b/i.test(entry.text));
+          const names = matches.slice(0, 2).map(vehicle => vehicle.vehicleName).join(" and ");
+          return {
+            answer: creditDiscussed
+              ? `Absolutely. We have ${kind.toUpperCase()} options including ${names}. Credit requirements depend on the program, so our team can confirm eligibility. Are you looking to rent or buy?`
+              : `Great choice! We have ${kind.toUpperCase()} options including ${names}. Are you looking to rent or buy?`,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : input.context?.customerIntent === "rental" ? "rental" as const : "explore" as const,
+            vehicleClass: kind,
+            nextPrompt: "Would you like to rent or buy?",
+            recommendedVehicleIds: matches.map(vehicle => vehicle.vehicleId),
+            source: "confirmed_inventory" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        // Resolve a named model from verified inventory before attempting generic LLM guidance.
+        // A visitor saying "Ford Taurus" has selected a vehicle, not requested a new discovery question.
+        const normalizedVehicleQuery = input.question.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const modelMatches = inventory.filter(vehicle => {
+          const words = vehicle.vehicleName.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/);
+          const modelWords = words.filter(word => !/^\d{4}$/.test(word) && !["gray", "black", "white", "silver", "blue", "red"].includes(word));
+          return modelWords.length >= 2 && normalizedVehicleQuery.includes(modelWords.join(" "));
+        });
+        if (modelMatches.length === 1) {
+          const vehicle = modelMatches[0];
+          return {
+            answer: `The ${vehicle.vehicleName} is listed in our fleet. Would you like to review its details or check rental availability?`,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "rental" as const,
+            vehicleClass: vehicle.vehicleClass,
+            nextPrompt: "Would you like details or an availability check?",
+            recommendedVehicleIds: [vehicle.vehicleId],
+            source: "vehicle_model_selection" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        // Follow-up inventory questions must respect the selected class and earlier rental intent.
+        // Handle these locally so an unavailable LLM cannot reset the conversation.
+        if (/\b(more|other|another|additional|else|all)\b/i.test(input.question)
+          && !/\ball\b/i.test(input.question)
+          && /\b(vehicle|vehicles|cars?|options?|models?|choices?|sedans?|suvs?)\b/i.test(input.question)) {
+          const earlierMessages = input.conversation ?? [];
+          const priorClass = [...earlierMessages].reverse().find(entry => entry.role === "member" && /^(?:an?\s+)?(?:sedan|suv)$/i.test(entry.text.trim()))?.text.trim().toLowerCase();
+          const kind = input.context?.vehicleType ?? (priorClass === "sedan" || priorClass === "suv" ? priorClass : null);
+          const matches = inventory.filter(vehicle => !kind || vehicle.vehicleClass === kind);
+          const names = matches.map(vehicle => vehicle.vehicleName);
+          const label = kind === "sedan" ? "sedans" : kind === "suv" ? "SUVs" : "vehicles";
+          const answer = names.length
+            ? `Here are the ${label} currently listed with DreamCarz: ${names.join(", ")}. Want to take a closer look at one of them?`
+            : `I don't see any ${label} listed right now. Would you like to check another vehicle type?`;
+          return {
+            answer,
+            intent: input.context?.customerIntent === "purchase" ? "purchase" as const : "rental" as const,
+            vehicleClass: kind,
+            nextPrompt: "Would you like to see details on one of these vehicles?",
+            recommendedVehicleIds: matches.map(vehicle => vehicle.vehicleId).slice(0, 4),
+            source: "inventory_followup" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
+        // Common customer questions: respond usefully without requiring an LLM.
+        // These are safe next-step explanations, not unverified business policies.
+        const customerQuestion = input.question.toLowerCase();
+        const commonQuestions: Array<{ pattern: RegExp; answer: string; next: string; intent?: "rental" | "purchase" | "membership" | "explore" }> = [
+          { pattern: /\b(deposit|security deposit|hold on (?:my |the )?card)\b/i, answer: "Deposits and payment holds depend on the vehicle and approved terms. We'll show you the applicable amount before you commit.", next: "Are you looking to rent a sedan or SUV?", intent: "rental" },
+          { pattern: /\b(insurance|coverage|insured|collision|damage waiver)\b/i, answer: "Insurance and coverage requirements are reviewed for the specific vehicle and rental or purchase arrangement. Our team can confirm the required protection before checkout.", next: "Are you renting or buying?" },
+          { pattern: /\b(license|driver.?s license|international license|id required|identification)\b/i, answer: "Driver verification may be required before vehicle access. For your security, please provide documents only through DreamCarz's protected onboarding, not this chat.", next: "Are you ready to explore available vehicles?", intent: "rental" },
+          { pattern: /\b(age|how old|under 25|young driver|minimum age)\b/i, answer: "Driver age requirements can vary by program and vehicle. Our team can confirm the applicable minimum age and any restrictions before you apply.", next: "Are you interested in a rental or a purchase?" },
+          { pattern: /\b(cancel|cancellation|refund|money back)\b/i, answer: "Cancellation and refund terms depend on the agreement and its current status. Please review your reservation details or contact DreamCarz support before making changes.", next: "Do you already have a reservation?" },
+          { pattern: /\b(extend|extension|extra day|keep (?:the |my )?car longer)\b/i, answer: "You can request an extension through your DreamCarz account. Extensions require review and confirmation; please don't assume the original return time has changed.", next: "Do you have an active rental?", intent: "rental" },
+          { pattern: /\b(pick.?up|delivery|drop.?off|return location|where.*collect)\b/i, answer: "Pickup, delivery, and return arrangements depend on the confirmed reservation and location. Your approved instructions will appear in your reservation details.", next: "Which area are you hoping to pick up in?", intent: "rental" },
+          { pattern: /\b(mileage|miles|unlimited miles|overage)\b/i, answer: "Mileage allowances and any extra-mile charges depend on the specific vehicle agreement. We'll help you review the terms before booking.", next: "About how far do you expect to drive?", intent: "rental" },
+          { pattern: /\b(gas|fuel|electric charging|charge the car|full tank)\b/i, answer: "Fuel and charging responsibilities depend on the vehicle and agreement. Please check your confirmed rental terms for the return requirements.", next: "Are you considering a gas vehicle or an EV?", intent: "rental" },
+          { pattern: /\b(breakdown|accident|flat tire|stranded|vehicle issue|car won.?t start|emergency)\b/i, answer: "If anyone is in immediate danger, call emergency services first. For vehicle trouble, contact DreamCarz support and report the issue through the Safety & Incident Center.", next: "Are you currently safe?", intent: "rental" },
+          { pattern: /\b(payment methods?|pay with|debit card|credit card|cash|apple pay|financ(?:e|ing))\b/i, answer: "Available payment and financing options depend on the program and checkout configuration. Our team can confirm which methods apply to your transaction.", next: "Are you looking to rent or purchase?" },
+          { pattern: /\b(book|reserve|reservation|availability|available today|available tomorrow)\b/i, answer: "I can help you explore confirmed DreamCarz vehicle listings. Actual availability and reservation approval must be confirmed before pickup.", next: "Would you prefer a sedan or an SUV?", intent: "rental" },
+          { pattern: /\b(office|address|location|hours|open today|phone number|contact|speak to (?:a |someone|staff)|human|representative)\b/i, answer: "You can reach DreamCarz at (301) 772-2500. The published office is 10001 Derekwood Ln, Suite 204, Lanham, MD 20706. Please confirm hours with the team before visiting.", next: "Would you like help choosing a vehicle first?" },
+          { pattern: /\b(trade.?in|down payment)\b/i, answer: "I can help you explore DreamCarz purchase options. Trade-in values, financing, and final purchase terms require staff review.", next: "What type of vehicle would you like to buy?", intent: "purchase" },
+        ];
+        const commonAnswer = commonQuestions.find(item => item.pattern.test(customerQuestion));
+        if (commonAnswer) {
+          return {
+            answer: commonAnswer.answer,
+            intent: commonAnswer.intent ?? input.context?.customerIntent ?? "explore" as const,
+            vehicleClass: input.context?.vehicleType ?? null,
+            nextPrompt: commonAnswer.next,
+            recommendedVehicleIds: vehicleIds,
+            source: "verified_topic_guidance" as const,
+            marketEstimate: null,
+            waitlistVehicleId: null,
+          };
+        }
         const requestedDaysMatch = input.question.match(/\b(?:for\s+)?(\d{1,2})\s*(?:day|days)\b/i);
         const requestedDays = requestedDaysMatch ? Number(requestedDaysMatch[1]) : null;
         const asksForCost = /\b(?:how much|cost|price|pricing|rate|total|estimate|quote)\b/i.test(input.question);
