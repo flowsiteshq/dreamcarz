@@ -1,59 +1,63 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
 import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-import Membership from "./pages/Membership";
-import Pricing from "./pages/Pricing";
-import Fleet from "./pages/Fleet";
-import Calculator from "./pages/Calculator";
-import Dashboard from "./pages/Dashboard";
-import HostProgram from "./pages/HostProgram";
-import HowItWorks from "./pages/HowItWorks";
-import Agent from "./pages/Agent";
-import Login from "./pages/Login";
-import Contact from "./pages/Contact";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsConditions from "./pages/TermsConditions";
-import CookiePolicy from "./pages/CookiePolicy";
-import MyVehicles from "./pages/dashboard/MyVehicles";
-import Reservations from "./pages/dashboard/Reservations";
-import MembershipPage from "./pages/dashboard/MembershipPage";
-import Payments from "./pages/dashboard/Payments";
-import Rewards from "./pages/dashboard/Rewards";
-import LocationsPage from "./pages/dashboard/LocationsPage";
-import Support from "./pages/dashboard/Support";
-import SettingsPage from "./pages/dashboard/SettingsPage";
-import ReportIssue from "./pages/dashboard/ReportIssue";
-import FAQ from "./pages/FAQ";
-import VehicleDetail from "./pages/VehicleDetail";
-import DreamJourney from "./pages/dashboard/DreamJourney";
-import Opportunity from "./pages/Opportunity";
-import DriveNetwork from "./pages/dashboard/DriveNetwork";
-import RentalOnboarding from "./pages/dashboard/RentalOnboarding";
-import AdminOperations from "@/pages/dashboard/AdminOperations";
-import AdminPortal from "@/pages/AdminPortal";
-import TransactionOnboarding from "./pages/dashboard/TransactionOnboarding";
-import DreamCarzId from "./pages/dashboard/DreamCarzId";
-import IncidentCenter from "./pages/dashboard/IncidentCenter";
-import FleetPartnerPortal from "./pages/dashboard/FleetPartnerPortal";
-import AssociatePortal from "./pages/dashboard/AssociatePortal";
-import Associates from "./pages/Associates";
-import CommandCenter from "./pages/dashboard/CommandCenter";
-import NotificationsCenter from "./pages/dashboard/NotificationsCenter";
-import OpportunityZoomFlyer from "./pages/OpportunityZoomFlyer";
-import GetStarted from "./pages/GetStarted";
-import AssociateEnroll from "./pages/AssociateEnroll";
-import InvestorAccess from "./pages/InvestorAccess";
-import InvestorPortal from "./pages/InvestorPortal";
 
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const Home = lazy(() => import("./pages/Home"));
 const Concierge = lazy(() => import("./pages/Concierge"));
+const Membership = lazy(() => import("./pages/Membership"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Fleet = lazy(() => import("./pages/Fleet"));
+const Calculator = lazy(() => import("./pages/Calculator"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const HostProgram = lazy(() => import("./pages/HostProgram"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const Agent = lazy(() => import("./pages/Agent"));
+const Login = lazy(() => import("./pages/Login"));
+const Contact = lazy(() => import("./pages/Contact"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsConditions = lazy(() => import("./pages/TermsConditions"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const MyVehicles = lazy(() => import("./pages/dashboard/MyVehicles"));
+const Reservations = lazy(() => import("./pages/dashboard/Reservations"));
+const MembershipPage = lazy(() => import("./pages/dashboard/MembershipPage"));
+const Payments = lazy(() => import("./pages/dashboard/Payments"));
+const Rewards = lazy(() => import("./pages/dashboard/Rewards"));
+const LocationsPage = lazy(() => import("./pages/dashboard/LocationsPage"));
+const Support = lazy(() => import("./pages/dashboard/Support"));
+const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
+const ReportIssue = lazy(() => import("./pages/dashboard/ReportIssue"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const VehicleDetail = lazy(() => import("./pages/VehicleDetail"));
+const DreamJourney = lazy(() => import("./pages/dashboard/DreamJourney"));
+const Opportunity = lazy(() => import("./pages/Opportunity"));
+const DriveNetwork = lazy(() => import("./pages/dashboard/DriveNetwork"));
+const RentalOnboarding = lazy(() => import("./pages/dashboard/RentalOnboarding"));
+const AdminOperations = lazy(() => import("@/pages/dashboard/AdminOperations"));
+const AdminPortal = lazy(() => import("@/pages/AdminPortal"));
+const TransactionOnboarding = lazy(() => import("./pages/dashboard/TransactionOnboarding"));
+const DreamCarzId = lazy(() => import("./pages/dashboard/DreamCarzId"));
+const IncidentCenter = lazy(() => import("./pages/dashboard/IncidentCenter"));
+const FleetPartnerPortal = lazy(() => import("./pages/dashboard/FleetPartnerPortal"));
+const AssociatePortal = lazy(() => import("./pages/dashboard/AssociatePortal"));
+const Associates = lazy(() => import("./pages/Associates"));
+const CommandCenter = lazy(() => import("./pages/dashboard/CommandCenter"));
+const NotificationsCenter = lazy(() => import("./pages/dashboard/NotificationsCenter"));
+const OpportunityZoomFlyer = lazy(() => import("./pages/OpportunityZoomFlyer"));
+const GetStarted = lazy(() => import("./pages/GetStarted"));
+const AssociateEnroll = lazy(() => import("./pages/AssociateEnroll"));
+const InvestorAccess = lazy(() => import("./pages/InvestorAccess"));
+const InvestorPortal = lazy(() => import("./pages/InvestorPortal"));
 
-function ConciergeRoute() {
-  return <Suspense fallback={<div className="min-h-screen bg-white" aria-hidden="true" />}><Concierge /></Suspense>;
+function PageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f7f1e9] px-6 text-center text-[#5d584f]">
+      <p className="text-sm">Loading DreamCarz…</p>
+    </div>
+  );
 }
 
 function ScrollToTop() {
@@ -67,11 +71,10 @@ function ScrollToTop() {
 }
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/concierge" component={ConciergeRoute} />
+      <Route path="/concierge" component={Concierge} />
       <Route path="/membership" component={Membership} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/fleet" component={Fleet} />
@@ -132,7 +135,9 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
-          <Router />
+          <Suspense fallback={<PageLoading />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
