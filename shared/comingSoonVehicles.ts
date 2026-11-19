@@ -35,6 +35,33 @@ const categoryVisuals: Record<ComingSoonVehicleCategory, string> = {
   Utility: "/manus-storage/car-budget-8_9abf3a26.png",
 };
 
+const eliteVehicleVisuals: Record<string, string> = {
+  "coming-soon-2024-tesla-model-3": "/manus-storage/2024-tesla-model-3_eec914c5.jpg",
+  "coming-soon-2023-mercedes-benz-e-class": "/manus-storage/2023-mercedes-benz-e-class_a11c0a7a.jpg",
+  "coming-soon-2025-bmw-3-series": "/manus-storage/2025-bmw-3-series_ec7e585c.jpg",
+  "coming-soon-2025-lexus-es": "/manus-storage/2025-lexus-es_df101831.jpg",
+  "coming-soon-2025-chevrolet-tahoe": "/manus-storage/2025-chevrolet-tahoe_28f28e7b.jpg",
+  "coming-soon-2025-ford-expedition": "/manus-storage/2025-ford-expedition_f0d5b320.jpg",
+  "coming-soon-2025-bmw-x5": "/manus-storage/2025-bmw-x5_7582b51e.jpg",
+  "coming-soon-2025-mercedes-benz-gle": "/manus-storage/2025-mercedes-benz-gle_ac637289.jpg",
+  "coming-soon-2025-cadillac-escalade": "/manus-storage/2025-cadillac-escalade_f68935a2.jpg",
+  "coming-soon-2025-volvo-ex30": "/manus-storage/2025-volvo-ex30_af9d0dbe.jpg",
+  "coming-soon-2025-rivian-r1s": "/manus-storage/2025-rivian-r1s_81d81e72.jpg",
+  "coming-soon-2025-gmc-sierra-1500": "/manus-storage/2025-gmc-sierra-1500_5ae23c5e.jpg",
+  "coming-soon-2025-rivian-r1t": "/manus-storage/2025-rivian-r1t_6048cdba.jpg",
+  "coming-soon-2025-mercedes-benz-s-class": "/manus-storage/2025-mercedes-benz-s-class_4e13cc40.jpg",
+  "coming-soon-2025-bmw-7-series": "/manus-storage/2025-bmw-7-series_2118183e.jpg",
+  "coming-soon-2025-audi-a8": "/manus-storage/2025-audi-a8_1e95aa0c.jpg",
+  "coming-soon-2025-lexus-ls": "/manus-storage/2025-lexus-ls_31209d9d.jpg",
+  "coming-soon-2025-genesis-g90": "/manus-storage/2025-genesis-g90_378182dc.jpg",
+  "coming-soon-2025-cadillac-ct5": "/manus-storage/2025-cadillac-ct5_f99cd70b.jpg",
+  "coming-soon-2025-chevrolet-corvette": "/manus-storage/2025-chevrolet-corvette_96e2e078.jpg",
+  "coming-soon-2025-bmw-m4": "/manus-storage/2025-bmw-m4_3e33b493.jpg",
+  "coming-soon-2025-mercedes-benz-amg-gt": "/manus-storage/2025-mercedes-benz-amg-gt_b4e3c154.jpg",
+  "coming-soon-2025-porsche-911": "/manus-storage/2025-porsche-911_2b037d05.jpg",
+  "coming-soon-2025-mercedes-benz-sprinter": "/manus-storage/2025-mercedes-benz-sprinter_2e8cc1ba.jpg",
+};
+
 function plannedVehicle(
   year: number,
   make: string,
@@ -56,7 +83,7 @@ function plannedVehicle(
     type,
     access,
     availability: "coming-soon",
-    image: categoryVisuals[type],
+    image: access === "elite" ? eliteVehicleVisuals[id] ?? categoryVisuals[type] : categoryVisuals[type],
   };
 }
 
