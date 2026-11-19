@@ -85,7 +85,20 @@ export function serveStatic(app: Express) {
   // returning index.html with 200 makes Safari reject it as a stylesheet and
   // leaves the otherwise-working React page completely unstyled.
   app.use("*", (req, res, next) => {
-    const pathname = req.path || "";
+    const pathname = (req.originalUrl || req.url || req.path || "").split("?", 1)[0];
+    const staleShellAsset = /^\/assets\/index-[^/]+\.(css|js)$/i.exec(pathname);
+    if (staleShellAsset) {
+      const extension = staleShellAsset[1].toLowerCase();
+      const assetsPath = path.join(distPath, "assets");
+      const currentAsset = fs
+        .readdirSync(assetsPath)
+        .find((name) => new RegExp(`^index-[^/]+\\.${extension}$`, "i").test(name));
+      if (currentAsset) {
+        return res
+          .set("Cache-Control", "no-store, max-age=0, must-revalidate")
+          .sendFile(path.join(assetsPath, currentAsset));
+      }
+    }
     const looksLikeAsset = pathname.startsWith("/assets/") || /\.(?:css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|mp4|webm)$/i.test(pathname);
     if (!looksLikeAsset) return next();
     res.status(404).set("Cache-Control", "no-store").end();
