@@ -1,114 +1,62 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import Footer from "@/components/Footer";
 import Navigation from "@/components/Navigation";
-import FleetHeroBackground from "@/components/FleetHeroBackground";
-import { FLEET_HERO_MEDIA } from "@/lib/fleetHeroMedia";
-import { saveHomepageConciergePrompt } from "@/lib/conciergePromptHandoff";
-import { ArrowRight, BadgeCheck, Car, CircleDollarSign, Gift, Headphones, MapPin, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { ArrowRight, CalendarDays, CarFront, Check, ChevronDown, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { FormEvent, useState } from "react";
 import { Link, useLocation } from "wouter";
 
-const currentInventory = [
-  { id: "2024-chevrolet-malibu-gray", year: "2024", make: "Chevrolet", model: "Malibu", color: "Gray", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/ogLykrxMFWpmsTbU.png" },
-  { id: "2022-chevrolet-traverse-white", year: "2022", make: "Chevrolet", model: "Traverse", color: "White", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/uLwJSHBxRyWslZQQ.png" },
-  { id: "2024-ford-fusion-gray", year: "2024", make: "Ford", model: "Fusion", color: "Gray", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/qRKjtXjkrFUfxMqh.png" },
-  { id: "2020-chevrolet-traverse-gray", year: "2020", make: "Chevrolet", model: "Traverse", color: "Gray", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/mFFrLJBzyJWqricP.png" },
-  { id: "2019-chevrolet-malibu-black", year: "2019", make: "Chevrolet", model: "Malibu", color: "Black", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/njSpzrWxcQZbiWBb.png" },
-  { id: "2015-ford-taurus-gray", year: "2015", make: "Ford", model: "Taurus", color: "Gray", category: "Sedan", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/BDcxxQLQxENUVvqj.png" },
-  { id: "2020-chevrolet-equinox-gray", year: "2020", make: "Chevrolet", model: "Equinox", color: "Gray", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/QuCANehFYgQjJKfm.png" },
-  { id: "2020-chevrolet-equinox-black", year: "2020", make: "Chevrolet", model: "Equinox", color: "Black", category: "SUV", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+export const marketplaceInventory = [
+  { id: "2024-chevrolet-malibu-gray", year: 2024, make: "Chevrolet", model: "Malibu", color: "Gray", type: "Sedan", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/ogLykrxMFWpmsTbU.png" },
+  { id: "2022-chevrolet-traverse-white", year: 2022, make: "Chevrolet", model: "Traverse", color: "White", type: "SUV", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/uLwJSHBxRyWslZQQ.png" },
+  { id: "2020-chevrolet-traverse-gray", year: 2020, make: "Chevrolet", model: "Traverse", color: "Gray", type: "SUV", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/mFFrLJBzyJWqricP.png" },
+  { id: "2024-ford-fusion-gray", year: 2024, make: "Ford", model: "Fusion", color: "Gray", type: "Sedan", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/qRKjtXjkrFUfxMqh.png" },
+  { id: "2020-chevrolet-equinox-black", year: 2020, make: "Chevrolet", model: "Equinox", color: "Black", type: "SUV", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/TAiKEadRDaSWeYcf.png" },
+  { id: "2017-ford-fusion-silver", year: 2017, make: "Ford", model: "Fusion", color: "Silver", type: "Sedan", pickup: "Houston, TX", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/MJscoVpsHBOwqjYM.png" },
 ] as const;
 
-const choices = [
-  { icon: Car, eyebrow: "Rent", title: "Rent a vehicle", description: "Start with a personal concierge path, then choose the confirmed vehicle that fits your schedule.", cta: "Start rental path", href: "/concierge?intent=rental", image: currentInventory[1].image },
-  { icon: CircleDollarSign, eyebrow: "Buy", title: "Buy a vehicle", description: "Start a concierge purchase path, then choose the confirmed vehicle that interests you.", cta: "Start purchase path", href: "/concierge?intent=purchase", image: currentInventory[4].image },
-  { icon: Star, eyebrow: "DreamCarz membership", title: "Unlock your path", description: "Compare membership enrollment and monthly costs separately from vehicle access.", cta: "Explore pricing", href: "/pricing", image: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663031545745/gyIfJAbATfYnyeYI.png" },
-] as const;
-const benefits = [
-  { icon: BadgeCheck, title: "Confirmed inventory", detail: "Current vehicles shown clearly." },
-  { icon: CircleDollarSign, title: "Rent or Buy", detail: "Flexible paths for every reason to drive." },
-  { icon: Sparkles, title: "Member benefits", detail: "Clear programs. Clear next steps." },
-  { icon: Gift, title: "Clear next steps", detail: "From your first click onward." },
-] as const;
-const support = [
-  { icon: Car, title: "Request a vehicle", detail: "Open a vehicle request and we will find the right next step for you.", href: "/fleet" },
-  { icon: ShieldCheck, title: "Protection & support", detail: "Clear next steps and documented review.", href: "/dashboard/report-issue" },
-  { icon: MapPin, title: "Locations & partners", detail: "Find DreamCarz locations and reference services.", href: "/dashboard/locations" },
-  { icon: Headphones, title: "Transparent & simple", detail: "No hidden assumptions. Clear reviews.", href: "/contact" },
-] as const;
-const experienceSteps = [
-  ["01", "Ask", "Tell DreamCarz what you need today."],
-  ["02", "Direct", "Choose a rental, purchase, or membership path."],
-  ["03", "Compare", "See confirmed vehicles and membership context together."],
-  ["04", "Understand", "Learn how DCP may apply under program rules."],
-  ["05", "Act", "Save your path and continue when you are ready."],
-] as const;
-const dcpSteps = [
-  ["01", "Qualify", "Transportation activity may be considered under the applicable program rules."],
-  ["02", "Verify", "DreamCarz reviews eligible activity before it is recorded."],
-  ["03", "Build DCP", "Your account can track eligible DCP under the program rules."],
-  ["04", "Use when eligible", "Redemption limits, verification, and eligibility requirements apply."],
-] as const;
+type SearchMode = "rent" | "buy" | "rent-to-own";
 
-export default function Home() {
+function SearchPanel() {
   const [, navigate] = useLocation();
-  const [heroPrompt, setHeroPrompt] = useState("");
-  const [isPromptTransitioning, setIsPromptTransitioning] = useState(false);
-  const handoffTimerRef = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (handoffTimerRef.current !== null) window.clearTimeout(handoffTimerRef.current);
-  }, []);
-  const submitHeroPrompt = (event: FormEvent<HTMLFormElement>) => {
+  const [mode, setMode] = useState<SearchMode>("rent");
+  const [location, setLocation] = useState("Houston, TX");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (isPromptTransitioning || !saveHomepageConciergePrompt(heroPrompt)) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      navigate("/concierge");
-      return;
-    }
-    setIsPromptTransitioning(true);
-    handoffTimerRef.current = window.setTimeout(() => navigate("/concierge"), 340);
+    const params = new URLSearchParams({ mode, location });
+    if (start) params.set("start", start);
+    if (end) params.set("end", end);
+    navigate(`/fleet?${params.toString()}`);
   };
 
-  return <div className="min-h-screen bg-[#fbfaf7] text-[#24221f]">
-    <Navigation />
-    <main>
-      <section className="border-b border-[#e9e2d7] bg-[#f8f4ed]">
-        <div className="relative isolate min-h-[650px] overflow-hidden sm:min-h-[690px] lg:min-h-[735px]">
-          <FleetHeroBackground {...FLEET_HERO_MEDIA} />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(248,243,234,0.96)_0%,rgba(248,243,234,0.9)_40%,transparent_70%)] lg:bg-[linear-gradient(90deg,rgba(255,252,247,0.96)_0%,rgba(255,252,247,0.86)_25%,rgba(255,252,247,0.45)_44%,transparent_65%)]" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(0deg,rgba(252,247,239,0.88),transparent)]" />
-          <div role="status" aria-live="polite" className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-[#111111]/78 px-5 text-center text-white backdrop-blur-md transition-opacity duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${isPromptTransitioning ? "opacity-100" : "opacity-0"}`}>
-            <div className={`w-full max-w-md transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${isPromptTransitioning ? "translate-y-0 scale-100" : "translate-y-2 scale-[0.98]"}`}>
-              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full border border-[#d9b756]/60 bg-black text-[#e8c661]"><Sparkles size={19} /></span>
-              <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.22em] text-[#e8c661]">DreamCarz Concierge</p>
-              <p className="mt-3 text-lg font-semibold">Opening your conversation…</p>
-              <p className="mx-auto mt-3 max-w-sm truncate rounded-full border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/80">{heroPrompt.trim()}</p>
-            </div>
-          </div>
-          <div className="pointer-events-none relative z-10 mx-auto flex min-h-[650px] max-w-7xl flex-col justify-start px-5 pb-32 pt-14 sm:min-h-[690px] sm:px-8 sm:pb-36 lg:min-h-[735px] lg:justify-center lg:px-10 lg:pb-44 lg:pt-10">
-            <div className="max-w-[650px]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.34em] text-[#9d7622] sm:text-[11px]">Luxury · Freedom · On your terms.</p>
-              <h1 className="mt-6 font-display text-[54px] font-medium leading-[0.83] tracking-[-0.075em] text-[#111] sm:text-7xl lg:text-[92px]">Drive what<br /><span className="text-[#a98331]">moves you.</span></h1>
-              <p className="mt-7 max-w-md text-[15px] leading-relaxed text-[#4d4a45] sm:text-lg">Rent it. Buy it. Explore membership. A clearer way to find the right vehicle and take your next step.</p>
-              <div className="pointer-events-auto mt-7 flex flex-wrap gap-3 text-sm font-semibold"><Link href="/concierge?intent=rental" className="inline-flex h-11 items-center gap-2 rounded-[0.8rem] bg-[#1f1e1b] px-5 text-white shadow-[0_8px_20px_rgba(31,30,27,0.15)] transition-transform hover:-translate-y-0.5 active:scale-[0.98]">Explore rentals <ArrowRight size={15} /></Link><Link href="/concierge?intent=purchase" className="inline-flex h-11 items-center gap-2 rounded-[0.8rem] border border-[#6e665b] bg-white/65 px-5 text-[#24221f] transition-colors hover:bg-white active:scale-[0.98]">Explore purchases <ArrowRight size={15} /></Link></div>
-            </div>
-            <form onSubmit={submitHeroPrompt} className={`pointer-events-auto group absolute inset-x-5 bottom-7 mx-auto flex h-[68px] max-w-3xl items-center rounded-full border border-white/70 bg-white/90 px-5 shadow-[0_20px_48px_rgba(65,48,22,0.18)] backdrop-blur-md transition-[transform,opacity] duration-200 hover:-translate-y-0.5 focus-within:-translate-y-0.5 sm:inset-x-8 sm:bottom-9 sm:h-[76px] sm:px-7 lg:bottom-11 ${isPromptTransitioning ? "scale-[0.98] opacity-0" : "opacity-100"}`}>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#a98331]"><Sparkles size={20} /></span>
-              <label className="sr-only" htmlFor="dreamcarz-home-concierge-prompt">Ask DreamCarz anything</label>
-              <input id="dreamcarz-home-concierge-prompt" value={heroPrompt} onChange={event => setHeroPrompt(event.target.value)} maxLength={1000} disabled={isPromptTransitioning} autoComplete="off" placeholder="Ask DreamCarz anything..." className="ml-3 min-w-0 flex-1 bg-transparent text-left text-sm text-[#272521] outline-none placeholder:text-[#77736b] disabled:cursor-wait sm:text-base" />
-              <button type="submit" aria-label="Send message to DreamCarz Concierge" disabled={!heroPrompt.trim() || isPromptTransitioning} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white transition-transform duration-200 hover:translate-x-0.5 disabled:cursor-not-allowed disabled:opacity-45 active:scale-[0.97]"><ArrowRight size={18} /></button>
-            </form>
-          </div>
-        </div>
-        <div className="mx-auto max-w-7xl px-5 pb-7 sm:px-8 lg:px-10"><div className="grid overflow-hidden rounded-[1.1rem] border border-[#e7e1d7] bg-white/90 shadow-[0_8px_24px_rgba(70,55,35,0.05)] md:grid-cols-4">{benefits.map((benefit, index) => { const Icon = benefit.icon; return <div key={benefit.title} className={`flex gap-3 p-5 ${index < benefits.length - 1 ? "border-b border-[#e7e1d7] md:border-b-0 md:border-r" : ""}`}><Icon className="mt-0.5 shrink-0 text-[#b08b35]" size={18} /><div><p className="text-xs font-bold">{benefit.title}</p><p className="mt-1 text-[11px] leading-relaxed text-gray-500">{benefit.detail}</p></div></div>; })}</div></div>
-      </section>
-      <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28"><div className="text-center"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">What do you need today?</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Choose a clear next move.</h2><p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-500">Ask naturally. DreamCarz guides your path, shows confirmed vehicles, and keeps qualifications and final terms clear.</p></div><div className="mt-12 grid gap-6 md:grid-cols-3">{choices.map((choice) => { const Icon = choice.icon; return <article key={choice.title} className="luxury-panel group overflow-hidden transition-transform duration-300 hover:-translate-y-1"><div className="h-48 overflow-hidden bg-[#f2eee6]"><img src={choice.image} alt="" className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" /></div><div className="relative p-7"><span className="absolute -top-5 grid h-10 w-10 place-items-center rounded-full bg-black text-white"><Icon size={17} /></span><p className="pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b08b35]">{choice.eyebrow}</p><h3 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em]">{choice.title}</h3><p className="mt-3 min-h-[66px] text-sm leading-relaxed text-gray-500">{choice.description}</p><Link href={choice.href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">{choice.cta} <ArrowRight size={14} /></Link></div></article>; })}</div></section>
-      <section className="border-y border-[#ece7de] bg-[#fbfaf7] px-5 py-12 sm:px-8 lg:px-10"><div className="mx-auto max-w-7xl"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">A focused way forward</p><h2 className="mt-3 font-display text-3xl font-bold tracking-[-0.05em] sm:text-4xl">From question to next step.</h2></div><Link href="/concierge" className="inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Ask DreamCarz <ArrowRight size={14} /></Link></div><div className="mt-8 grid divide-y divide-[#e5ded2] border-y border-[#e5ded2] sm:grid-cols-5 sm:divide-x sm:divide-y-0">{experienceSteps.map(([number, title, copy]) => <div key={number} className="min-h-[138px] p-5"><p className="text-[10px] font-bold tracking-[0.16em] text-[#b08b35]">{number}</p><h3 className="mt-5 text-sm font-bold">{title}</h3><p className="mt-2 text-xs leading-relaxed text-gray-500">{copy}</p></div>)}</div></div></section>
-      <section className="border-y border-[#ece7de] bg-[#fbfaf7] px-5 py-16 sm:px-8 lg:px-10"><div className="mx-auto max-w-7xl"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">Available now</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em] sm:text-5xl">Featured vehicles.</h2></div><p className="max-w-sm text-sm leading-relaxed text-gray-500">Your confirmed DreamCarz inventory. Open any vehicle to view it full-screen, then rent or buy.</p></div><div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{currentInventory.slice(0, 4).map((vehicle) => <Link key={vehicle.id} href={`/vehicle?id=${vehicle.id}`} className="vehicle-card group"><div className="relative flex h-48 items-center justify-center overflow-hidden bg-[#f4f1eb]"><span className="absolute left-3 top-3 z-10 rounded-full bg-white px-2 py-1 text-[9px] font-bold uppercase tracking-[0.13em] text-black">Confirmed</span><img src={vehicle.image} alt={`${vehicle.year} ${vehicle.make} ${vehicle.model} in ${vehicle.color}`} className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105" /></div><div className="p-4"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#b08b35]">{vehicle.category}</p><h3 className="mt-2 font-display text-xl font-bold tracking-[-0.04em]">{vehicle.year} {vehicle.make}<br />{vehicle.model}</h3><div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-semibold"><span>Rent or buy</span><span className="grid h-6 w-6 place-items-center rounded-full border border-gray-300"><ArrowRight size={13} /></span></div></div></Link>)}</div><div className="mt-10 text-center"><Link href="/fleet" className="btn-primary">View all inventory <ArrowRight size={15} /></Link></div></div></section>
-      <section className="bg-black px-5 py-12 text-white sm:px-8 lg:px-10 lg:py-14"><div className="mx-auto grid max-w-7xl gap-9 lg:grid-cols-[0.88fr_0.72fr_1.4fr] lg:items-center"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#cfac52]">Membership value in context</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em] sm:text-5xl">See more than the vehicle.</h2><p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-300">Membership helps make vehicle access, program value, and next steps visible before you submit a request. Vehicle-specific amounts are reviewed separately.</p><Link href="/pricing" className="btn-primary mt-7 bg-[#d1ad54] text-[#1f1e1b] hover:bg-[#e0bf6b]">Compare membership paths <ArrowRight size={15} /></Link></div><div className="hidden h-56 overflow-hidden lg:block"><img src={currentInventory[7].image} alt="Black Chevrolet Equinox" className="h-full w-full object-contain" /></div><div className="grid gap-5 sm:grid-cols-2"><div><CircleDollarSign className="text-[#d1ad54]" size={20} /><h3 className="mt-3 text-sm font-bold">Clear comparison</h3><p className="mt-2 text-xs leading-relaxed text-gray-400">Keep membership context and vehicle terms visible as separate decisions.</p></div><div><Users className="text-[#d1ad54]" size={20} /><h3 className="mt-3 text-sm font-bold">Program guidance</h3><p className="mt-2 text-xs leading-relaxed text-gray-400">See which program path fits your current transportation need.</p></div><div><Sparkles className="text-[#d1ad54]" size={20} /><h3 className="mt-3 text-sm font-bold">DCP context</h3><p className="mt-2 text-xs leading-relaxed text-gray-400">Understand eligible DCP under verification and redemption rules.</p></div><div><ShieldCheck className="text-[#d1ad54]" size={20} /><h3 className="mt-3 text-sm font-bold">Reviewed terms</h3><p className="mt-2 text-xs leading-relaxed text-gray-400">Availability, eligibility, and final terms are confirmed before moving forward.</p></div></div></div></section>
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10"><div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">DCP program value</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em]">Build toward tomorrow with clear rules today.</h2><p className="mt-4 max-w-md text-sm leading-relaxed text-gray-500">DCP is not cash. It is a program record that may be earned and used only when the applicable eligibility, verification, and redemption rules are met.</p><Link href="/membership" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Learn about membership value <ArrowRight size={14} /></Link></div><div className="grid border-y border-[#e7e1d7] sm:grid-cols-2">{dcpSteps.map(([number, title, copy]) => <div key={number} className="min-h-[152px] border-b border-[#e7e1d7] p-5 even:sm:border-l sm:nth-[n+3]:border-b-0"><p className="text-[10px] font-bold tracking-[0.16em] text-[#b08b35]">{number}</p><h3 className="mt-4 text-sm font-bold">{title}</h3><p className="mt-2 text-xs leading-relaxed text-gray-500">{copy}</p></div>)}</div></div></section>
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10"><div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-center"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b08b35]">Not sure where to start?</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.05em]">We are here to help.</h2><p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-500">Start a personal conversation, compare confirmed visual vehicle cards, and choose the path that fits you.</p><div className="mt-7 flex flex-wrap gap-3"><Link href="/concierge" className="inline-flex h-11 items-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white">Ask DreamCarz <ArrowRight size={15} /></Link><Link href="/contact" className="inline-flex h-11 items-center gap-2 rounded-full border border-black px-5 text-sm font-semibold text-black">Talk to our team <ArrowRight size={15} /></Link></div></div><div className="grid gap-4 sm:grid-cols-2">{support.map((item) => { const Icon = item.icon; return <Link key={item.title} href={item.href} className="luxury-panel group p-6 transition-transform hover:-translate-y-0.5"><Icon className="text-[#b08b35]" size={20} /><h3 className="mt-5 text-sm font-bold">{item.title}</h3><p className="mt-2 text-xs leading-relaxed text-gray-500">{item.detail}</p><ArrowRight className="mt-5 transition-transform group-hover:translate-x-1" size={16} /></Link>; })}</div></div></section>
-    </main>
-    <Footer />
-  </div>;
+  return <form id="vehicle-search" onSubmit={submit} className="relative z-20 mx-auto -mt-14 max-w-6xl rounded-[1.35rem] bg-white p-3 shadow-[0_20px_55px_rgba(0,0,0,0.2)] sm:p-5">
+    <div className="flex border-b border-[#e7e1d7] px-1 sm:px-2">
+      {(["rent", "buy", "rent-to-own"] as SearchMode[]).map((item) => <button key={item} type="button" onClick={() => setMode(item)} className={`-mb-px border-b-2 px-4 py-3 text-sm font-semibold capitalize transition-colors sm:px-7 ${mode === item ? "border-[#c9a64e] text-[#161513]" : "border-transparent text-[#77736b] hover:text-black"}`}>{item.replaceAll("-", " ")}</button>)}
+    </div>
+    <div className="grid gap-3 pt-4 md:grid-cols-[1.05fr_1fr_1fr_auto] md:items-end">
+      <label className="block rounded-xl border border-[#ddd5ca] px-4 py-3"><span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#817a70]"><MapPin size={14} /> Pickup location</span><select value={location} onChange={(event) => setLocation(event.target.value)} className="mt-2 w-full bg-transparent text-sm font-semibold outline-none"><option>Houston, TX</option><option>Flexible pickup</option></select></label>
+      <label className="block rounded-xl border border-[#ddd5ca] px-4 py-3"><span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#817a70]"><CalendarDays size={14} /> {mode === "buy" ? "When are you looking?" : "Pickup date"}</span><input type={mode === "buy" ? "text" : "date"} value={start} onChange={(event) => setStart(event.target.value)} placeholder={mode === "buy" ? "As soon as possible" : "Select date"} className="mt-2 w-full bg-transparent text-sm font-semibold outline-none placeholder:text-[#817a70]" /></label>
+      <label className="block rounded-xl border border-[#ddd5ca] px-4 py-3"><span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#817a70]"><CalendarDays size={14} /> {mode === "buy" ? "Vehicle type" : "Return date"}</span>{mode === "buy" ? <select value={end} onChange={(event) => setEnd(event.target.value)} className="mt-2 w-full bg-transparent text-sm font-semibold outline-none"><option value="">Any vehicle</option><option>SUV</option><option>Sedan</option></select> : <input type="date" value={end} onChange={(event) => setEnd(event.target.value)} className="mt-2 w-full bg-transparent text-sm font-semibold outline-none" />}</label>
+      <button type="submit" className="h-[62px] rounded-xl bg-[#d7ad52] px-8 text-sm font-bold text-[#171512] transition hover:bg-[#e6c36d] active:scale-[0.98]">Search</button>
+    </div>
+  </form>;
+}
+
+export default function Home() {
+  return <div className="min-h-screen bg-[#f8f4ed] text-[#171614]"><Navigation /><main>
+    <section className="relative min-h-[670px] overflow-hidden bg-[#151515] text-white sm:min-h-[720px]">
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#111111_0%,rgba(17,17,17,0.96)_35%,rgba(17,17,17,0.25)_70%,rgba(17,17,17,0.05)_100%)]" />
+      <img src={marketplaceInventory[1].image} alt="Chevrolet Traverse available from DreamCarz" className="absolute right-[-18%] top-0 h-full w-[88%] object-cover object-center opacity-80 sm:right-[-8%] sm:w-[72%] lg:right-0 lg:w-[67%]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.22),transparent_40%,rgba(0,0,0,0.55))]" />
+      <div className="relative mx-auto flex min-h-[670px] max-w-7xl items-center px-6 pb-28 pt-28 sm:min-h-[720px] sm:px-10 lg:px-12">
+        <div className="max-w-xl"><p className="text-[11px] font-bold uppercase tracking-[0.36em] text-[#d5ae58]">Drive with confidence</p><h1 className="mt-6 font-display text-6xl font-bold leading-[0.9] tracking-[-0.065em] sm:text-8xl">Find your<br />next car.</h1><p className="mt-7 max-w-md text-base leading-relaxed text-white/75 sm:text-lg">Browse available vehicles to rent, buy, or rent to own.</p><div className="mt-8 flex flex-wrap items-center gap-5"><a href="#vehicle-search" className="inline-flex h-12 items-center gap-2 rounded-lg bg-[#d7ad52] px-6 text-sm font-bold text-[#171512] transition hover:bg-[#e6c36d]">Browse vehicles <ArrowRight size={16} /></a><Link href="/how-it-works" className="text-sm font-semibold text-white underline underline-offset-4">How it works</Link></div></div>
+      </div>
+    </section>
+    <SearchPanel />
+    <section className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-12 lg:py-24"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#aa8129]">Available now</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.06em] sm:text-6xl">Available vehicles</h2></div><Link href="/fleet" className="inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">View all vehicles <ArrowRight size={16} /></Link></div><div className="mt-10 grid gap-5 md:grid-cols-3">{marketplaceInventory.slice(0, 3).map((vehicle) => <Link key={vehicle.id} href={`/vehicle?id=${vehicle.id}`} className="group overflow-hidden rounded-xl border border-[#ded6ca] bg-white transition hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(45,33,18,0.12)]"><div className="flex h-60 items-center justify-center overflow-hidden bg-[#f0ece5]"><img src={vehicle.image} alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /></div><div className="p-5"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#aa8129]">{vehicle.type}</p><span className="text-xs text-[#77736b]">{vehicle.pickup}</span></div><h3 className="mt-3 font-display text-2xl font-bold tracking-[-0.04em]">{vehicle.year} {vehicle.make} {vehicle.model}</h3><p className="mt-4 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">View vehicle <ArrowRight size={15} /></p></div></Link>)}</div></section>
+    <section className="border-y border-[#e3dbcf] bg-white px-6 py-20 sm:px-10 lg:px-12"><div className="mx-auto max-w-7xl"><div className="max-w-xl"><p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#aa8129]">Simple from the start</p><h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.06em] sm:text-5xl">How it works</h2></div><div className="mt-12 grid gap-8 md:grid-cols-3">{[["01", "Choose a vehicle", "Browse the vehicles available in your area and select the path that fits."], ["02", "Review your terms", "See the vehicle details, request context, and any costs that apply before moving forward."], ["03", "Request pickup", "Send your request. We will confirm availability and guide you through what happens next."]].map(([number, title, copy]) => <div key={number} className="border-t-2 border-[#d7ad52] pt-5"><p className="text-xs font-bold tracking-[0.2em] text-[#aa8129]">{number}</p><h3 className="mt-6 text-xl font-bold">{title}</h3><p className="mt-3 max-w-xs text-sm leading-relaxed text-[#6d675f]">{copy}</p></div>)}</div></div></section>
+    <section className="bg-[#151515] px-6 py-16 text-white sm:px-10 lg:px-12"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 md:flex-row md:items-center"><div><p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#d5ae58]">More than a vehicle</p><h2 className="mt-3 font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">Membership, made clear.</h2><p className="mt-4 max-w-lg text-sm leading-relaxed text-white/65">Membership benefits and vehicle costs stay separate, so you know exactly what you are reviewing at each step.</p></div><Link href="/membership" className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#d7ad52] px-6 py-3 text-sm font-bold text-[#171512]">Explore membership <ArrowRight size={16} /></Link></div><div className="mx-auto mt-12 grid max-w-7xl gap-4 border-t border-white/15 pt-8 sm:grid-cols-3"><div className="flex gap-3"><Check className="shrink-0 text-[#d7ad52]" size={18} /><p className="text-sm text-white/75">Clear program guidance</p></div><div className="flex gap-3"><ShieldCheck className="shrink-0 text-[#d7ad52]" size={18} /><p className="text-sm text-white/75">Reviewed vehicle terms</p></div><div className="flex gap-3"><Sparkles className="shrink-0 text-[#d7ad52]" size={18} /><p className="text-sm text-white/75">Ask DreamCarz anytime</p></div></div></section>
+    <section className="mx-auto max-w-7xl px-6 py-14 text-center sm:px-10"><CarFront className="mx-auto text-[#b18732]" size={22} /><h2 className="mt-4 font-display text-3xl font-bold tracking-[-0.05em]">Need help choosing?</h2><p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#6d675f]">Ask a question in plain English and DreamCarz Concierge will help you narrow it down.</p><Link href="/concierge" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Ask DreamCarz <ArrowRight size={15} /></Link></section>
+  </main><Footer /></div>;
 }
