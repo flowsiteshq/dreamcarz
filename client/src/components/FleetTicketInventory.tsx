@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Camera, Upload } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const empty = {
@@ -26,22 +34,117 @@ const formatDate = (value: Date) =>
     timeStyle: "short",
   }).format(value);
 
+function encodePhoto(source: CanvasImageSource, width: number, height: number) {
+  const scale = Math.min(1, 2400 / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Photo processing unavailable");
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.9);
+}
+
 async function preparePhoto(file: File) {
   const bitmap = await createImageBitmap(file);
   try {
-    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Photo processing unavailable");
-    context.fillStyle = "#fff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.9);
+    return encodePhoto(bitmap, bitmap.width, bitmap.height);
   } finally {
     bitmap.close();
   }
+}
+
+function TicketCamera({
+  onCapture,
+  onUpload,
+}: {
+  onCapture: (photo: string) => void;
+  onUpload: () => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let closed = false;
+    let stream: MediaStream | undefined;
+    const start = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+          },
+        });
+        if (closed) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        if (video.current) video.current.srcObject = stream;
+      } catch {
+        if (!closed)
+          setError(
+            "Camera unavailable. Allow camera access in your browser or upload a photo."
+          );
+      }
+    };
+    void start();
+    return () => {
+      closed = true;
+      stream?.getTracks().forEach(track => track.stop());
+    };
+  }, []);
+
+  return (
+    <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+      <DialogTitle>Take ticket photo</DialogTitle>
+      <DialogDescription>
+        Fit the entire ticket in the frame and make sure the text is readable.
+      </DialogDescription>
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      <video
+        ref={video}
+        autoPlay
+        playsInline
+        muted
+        onCanPlay={() => setReady(true)}
+        className={
+          error
+            ? "hidden"
+            : "max-h-[55dvh] min-h-40 w-full rounded bg-black object-contain"
+        }
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          disabled={!ready || Boolean(error)}
+          onClick={() => {
+            const frame = video.current;
+            if (!frame?.videoWidth || !frame.videoHeight) return;
+            try {
+              onCapture(
+                encodePhoto(frame, frame.videoWidth, frame.videoHeight)
+              );
+            } catch {
+              setError("Could not take the photo. Upload a photo to continue.");
+            }
+          }}
+        >
+          <Camera /> Capture photo
+        </Button>
+        <Button type="button" variant="outline" onClick={onUpload}>
+          Upload a photo instead
+        </Button>
+      </div>
+    </DialogContent>
+  );
 }
 
 export function FleetTicketInventory() {
@@ -49,6 +152,8 @@ export function FleetTicketInventory() {
   const [selectedId, setSelectedId] = useState<number>();
   const [editId, setEditId] = useState<number>();
   const [photo, setPhoto] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const uploadInput = useRef<HTMLInputElement>(null);
   const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [form, setForm] = useState(empty);
   const [rentalId, setRentalId] = useState<number>();
@@ -118,6 +223,11 @@ export function FleetTicketInventory() {
     });
   }
 
+  function acceptPhoto(preview: string) {
+    setPhoto(preview);
+    readTicket(preview);
+  }
+
   function selectTicket(id: number) {
     setSelectedId(id);
     setRentalId(undefined);
@@ -149,40 +259,65 @@ export function FleetTicketInventory() {
           {editId ? "Edit citation" : "Enter citation"}
         </h4>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="space-y-1 text-xs font-medium">
-            <span>Take or upload a citation photo</span>
-            <Input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              disabled={preparingPhoto || scan.isPending || enter.isPending}
-              onChange={async event => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (!file) return;
-                if (
-                  !["image/jpeg", "image/png", "image/webp"].includes(
-                    file.type
-                  ) ||
-                  file.size > 20_000_000
-                ) {
-                  toast.error("Choose a JPEG, PNG, or WebP image under 20 MB.");
-                  return;
-                }
-                setPreparingPhoto(true);
-                try {
-                  const preview = await preparePhoto(file);
-                  setPhoto(preview);
-                  setForm({ ...empty });
-                  readTicket(preview);
-                } catch {
-                  toast.error("Could not open the photo.");
-                } finally {
-                  setPreparingPhoto(false);
-                }
-              }}
-            />
-          </label>
+          <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                disabled={preparingPhoto || scan.isPending || enter.isPending}
+              >
+                <Camera /> {photo ? "Retake ticket photo" : "Take ticket photo"}
+              </Button>
+            </DialogTrigger>
+            {cameraOpen && (
+              <TicketCamera
+                onCapture={preview => {
+                  setCameraOpen(false);
+                  acceptPhoto(preview);
+                }}
+                onUpload={() => {
+                  setCameraOpen(false);
+                  uploadInput.current?.click();
+                }}
+              />
+            )}
+          </Dialog>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={preparingPhoto || scan.isPending || enter.isPending}
+            onClick={() => uploadInput.current?.click()}
+          >
+            <Upload /> Upload photo
+          </Button>
+          <input
+            ref={uploadInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            onChange={async event => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (!file) return;
+              if (
+                !["image/jpeg", "image/png", "image/webp"].includes(
+                  file.type
+                ) ||
+                file.size > 20_000_000
+              ) {
+                toast.error("Choose a JPEG, PNG, or WebP image under 20 MB.");
+                return;
+              }
+              setPreparingPhoto(true);
+              try {
+                const preview = await preparePhoto(file);
+                acceptPhoto(preview);
+              } catch {
+                toast.error("Could not open the photo.");
+              } finally {
+                setPreparingPhoto(false);
+              }
+            }}
+          />
           <Button
             type="button"
             variant="outline"
