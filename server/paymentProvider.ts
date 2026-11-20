@@ -92,3 +92,64 @@ export function cocardPaymentSetupBlocker() {
   if (provider.configured) return null;
   return "CoCard Collect Checkout is not configured. DreamCarz cannot collect payment data or create an authorization until the approved checkout key, server-side Query API verification key, and merchant gateway configuration are in place.";
 }
+
+type GatewayResult = {
+  response?: string;
+  transactionid?: string;
+  responsetext?: string;
+  subscription_id?: string;
+};
+
+function parseGatewayResult(payload: string): GatewayResult {
+  return Object.fromEntries(new URLSearchParams(payload).entries()) as GatewayResult;
+}
+
+export async function postGateway(params: Record<string, string>) {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), 12_000);
+  try {
+    const response = await fetch("https://secure.cocardgateway.com/api/transact.php", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(params),
+      signal: abortController.signal,
+    });
+    if (!response.ok) return null;
+    return parseGatewayResult(await response.text());
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function fleetTicketPaymentsEnabled() {
+  return process.env.FLEET_TICKET_PAYMENTS_ENABLED === "true" && Boolean(process.env.COCARD_TICKET_SECURITY_KEY);
+}
+
+export async function chargeFleetTicket(input: {
+  ticketId: number;
+  amountCents: number;
+  vaultId: string;
+  initialTransactionId: string;
+}) {
+  const key = process.env.COCARD_TICKET_SECURITY_KEY;
+  if (!key || !fleetTicketPaymentsEnabled()) return { status: "blocked" as const, outcome: "CoCard ticket charging is disabled." };
+
+  const orderId = `DC-TICKET-${input.ticketId}`;
+  const result = await postGateway({
+    security_key: key,
+    type: "sale",
+    amount: (input.amountCents / 100).toFixed(2),
+    customer_vault_id: input.vaultId,
+    initiated_by: "merchant",
+    stored_credential_indicator: "used",
+    initial_transaction_id: input.initialTransactionId,
+    orderid: orderId,
+    order_description: "DreamCarz vehicle citation",
+  });
+  const providerTransactionId = result?.transactionid?.slice(0, 160) || null;
+  if (result?.response === "1" && providerTransactionId) return { status: "paid" as const, providerTransactionId };
+  if (result?.response === "2") return { status: "declined" as const, providerTransactionId, outcome: "CoCard declined the payment." };
+  return { status: "uncertain" as const, providerTransactionId, outcome: `Reconcile order ${orderId} with CoCard before collecting payment.` };
+}

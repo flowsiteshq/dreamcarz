@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mediumtext, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1506,3 +1506,26 @@ export type FleetPartnerVehicleAssignment = typeof fleetPartnerVehicleAssignment
 export type ServiceReport = typeof serviceReports.$inferSelect;
 export type ServiceReportPhoto = typeof serviceReportPhotos.$inferSelect;
 export type ServiceReportReviewEvent = typeof serviceReportReviewEvents.$inferSelect;
+
+export const fleetTickets = mysqlTable("fleet_tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  revision: int("revision").default(1).notNull(),
+  citationNumber: varchar("citationNumber", { length: 100 }).notNull(),
+  authority: varchar("authority", { length: 160 }).notNull(),
+  duplicateKey: varchar("duplicateKey", { length: 64 }).notNull().unique(),
+  plate: varchar("plate", { length: 32 }).notNull(),
+  citedName: varchar("citedName", { length: 160 }),
+  violationAt: timestamp("violationAt").notNull(),
+  amountCents: int("amountCents").notNull(),
+  photo: mediumtext("photo").notNull(),
+  transactionId: int("transactionId"),
+  createdBy: int("createdBy").notNull(),
+  reviewedBy: int("reviewedBy"),
+  authorizationReference: varchar("authorizationReference", { length: 240 }),
+  status: mysqlEnum("status", ["review", "scheduled", "charging", "paid", "declined", "blocked", "uncertain", "void"]).default("review").notNull(),
+  dueAt: timestamp("dueAt"),
+  attemptedAt: timestamp("attemptedAt"),
+  providerTransactionId: varchar("providerTransactionId", { length: 160 }),
+  outcome: varchar("outcome", { length: 240 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("fleet_ticket_due_idx").on(table.status, table.dueAt)]);

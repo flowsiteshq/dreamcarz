@@ -1,38 +1,11 @@
+import { postGateway } from "./paymentProvider";
+
 export const ASSOCIATE_ENROLLMENT_SKU = "DREAMCARZ-ASSOCIATE-ENROLLMENT-149";
 export const ASSOCIATE_ENROLLMENT_FEE_CENTS = 14_900;
 export const ASSOCIATE_MONTHLY_FEE_CENTS = 4_900;
 
-type GatewayResult = {
-  response?: string;
-  responsetext?: string;
-  subscription_id?: string;
-};
-
 function paymentSecurityKey() {
   return process.env.COCARD_RECURRING_SECURITY_KEY || process.env.COCARD_QUERY_SECURITY_KEY || null;
-}
-
-function parseGatewayResult(payload: string): GatewayResult {
-  return Object.fromEntries(new URLSearchParams(payload).entries()) as GatewayResult;
-}
-
-async function postGateway(params: Record<string, string>) {
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), 12_000);
-  try {
-    const response = await fetch("https://secure.cocardgateway.com/api/transact.php", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(params),
-      signal: abortController.signal,
-    });
-    if (!response.ok) return null;
-    return parseGatewayResult(await response.text());
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 /** Ensures the one-time enrollment item exists before provider-hosted checkout opens. */
