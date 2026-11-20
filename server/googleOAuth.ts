@@ -57,6 +57,14 @@ function callbackFailure(res: Response, reason = "callback") {
   res.redirect(302, `/login?google=failed&reason=${encodeURIComponent(reason)}`);
 }
 
+function safeErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return "unknown";
+  const candidate = (error as { code?: unknown }).code;
+  if (typeof candidate === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(candidate)) return candidate;
+  if (typeof candidate === "number" && Number.isFinite(candidate)) return String(candidate);
+  return "unknown";
+}
+
 export function registerGoogleOAuthRoutes(app: Express) {
   app.get("/api/auth/google", (req: Request, res: Response) => {
     const config = getGoogleOAuthConfig();
@@ -140,7 +148,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
       res.redirect(302, storedState.returnTo);
     } catch (error) {
       console.error(`[Google OAuth] callback failed at ${stage}`, error);
-      callbackFailure(res, stage);
+      callbackFailure(res, `${stage}_${safeErrorCode(error)}`);
     }
   });
 }
