@@ -155,7 +155,20 @@ export async function findOrCreateGoogleAccount(input: GoogleIdentityInput): Pro
   }
 
   if (!user) throw new Error("DreamCarz could not create the Google account link");
-  await db.insert(googleOAuthIdentities).values({ userId: user.id, googleSubject: input.subject, emailAtLink: email, lastSignedIn: now });
+  const existingIdentityForUser = await db
+    .select({ id: googleOAuthIdentities.id })
+    .from(googleOAuthIdentities)
+    .where(eq(googleOAuthIdentities.userId, user.id))
+    .limit(1);
+
+  if (existingIdentityForUser[0]) {
+    await db
+      .update(googleOAuthIdentities)
+      .set({ googleSubject: input.subject, emailAtLink: email, lastSignedIn: now })
+      .where(eq(googleOAuthIdentities.id, existingIdentityForUser[0].id));
+  } else {
+    await db.insert(googleOAuthIdentities).values({ userId: user.id, googleSubject: input.subject, emailAtLink: email, lastSignedIn: now });
+  }
   return user;
 }
 
