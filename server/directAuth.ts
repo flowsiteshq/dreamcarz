@@ -137,6 +137,7 @@ export async function findOrCreateGoogleAccount(input: GoogleIdentityInput): Pro
 
   const email = normalizeEmail(input.email);
   const matchingAccount = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const matchedExistingAccount = Boolean(matchingAccount[0]);
   let user = matchingAccount[0];
 
   if (!user) {
@@ -155,19 +156,24 @@ export async function findOrCreateGoogleAccount(input: GoogleIdentityInput): Pro
   }
 
   if (!user) throw new Error("DreamCarz could not create the Google account link");
-  const existingIdentityForUser = await db
-    .select({ id: googleOAuthIdentities.id })
-    .from(googleOAuthIdentities)
-    .where(eq(googleOAuthIdentities.userId, user.id))
-    .limit(1);
+  try {
+    const existingIdentityForUser = await db
+      .select({ id: googleOAuthIdentities.id })
+      .from(googleOAuthIdentities)
+      .where(eq(googleOAuthIdentities.userId, user.id))
+      .limit(1);
 
-  if (existingIdentityForUser[0]) {
-    await db
-      .update(googleOAuthIdentities)
-      .set({ googleSubject: input.subject, emailAtLink: email, lastSignedIn: now })
-      .where(eq(googleOAuthIdentities.id, existingIdentityForUser[0].id));
-  } else {
-    await db.insert(googleOAuthIdentities).values({ userId: user.id, googleSubject: input.subject, emailAtLink: email, lastSignedIn: now });
+    if (existingIdentityForUser[0]) {
+      await db
+        .update(googleOAuthIdentities)
+        .set({ googleSubject: input.subject, emailAtLink: email, lastSignedIn: now })
+        .where(eq(googleOAuthIdentities.id, existingIdentityForUser[0].id));
+    } else {
+      await db.insert(googleOAuthIdentities).values({ userId: user.id, googleSubject: input.subject, emailAtLink: email, lastSignedIn: now });
+    }
+  } catch (error) {
+    console.error("[Google OAuth] identity link failed after verified email match", error);
+    if (!matchedExistingAccount) throw error;
   }
   return user;
 }
