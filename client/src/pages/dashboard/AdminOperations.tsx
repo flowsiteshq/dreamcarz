@@ -1,3 +1,4 @@
+import { FleetTicketInventory } from "@/components/FleetTicketInventory";
 import DashboardShell from "@/components/DashboardShell";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -50,6 +51,7 @@ function AdminCommandCenter({ applicationsAwaitingReview, reservationRequestsAwa
   const navigateTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const modules: CommandCenterModule[] = [
     { id: "admin-fleet", label: "Fleet", summary: "Vehicles, service, returns", detail: "Vehicle passports, service records, incidents, handoff, and return readiness.", icon: Car },
+    { id: "admin-tickets", label: "Tickets", summary: "Citations and charge status", detail: "Capture tickets, match rentals, and review collection.", icon: FileText },
     { id: "admin-customers", label: "Customers", summary: "Records & transactions", detail: "Account-owned journeys, controlled documents, agreements, and transaction review.", count: transactionCount, icon: Users },
     { id: "admin-dcp", label: "DCP & pricing", summary: "Program governance", detail: "Approved plan and pricing-rule management. DCP monetary conversion and redemption stay unconfigured until program rules are approved.", icon: BadgeDollarSign },
     { id: "admin-reviews", label: "Review queue", summary: "Manual decisions", detail: "Identity, eligibility, reservation, and support exceptions remain human-reviewed.", count: applicationsAwaitingReview + reservationRequestsAwaitingReview + transactionExceptions, icon: ClipboardCheck },
@@ -181,6 +183,7 @@ export function AdminOperationsContent() {
         <section id="admin-fleet" className="scroll-mt-6 space-y-6"><FleetReadinessBoard /><VehiclePassportManager /></section>
 
         <FleetIncidentQueue />
+        <FleetTicketInventory />
 
         <section id="admin-maintenance" className="scroll-mt-6 space-y-6 border border-[#ded8cf] bg-[#faf9f6] p-5 sm:p-6">
           <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B]">Preventive maintenance</p><h3 className="mt-1 text-lg font-bold text-black">Plan, inspect, and close vehicle service.</h3><p className="mt-1 max-w-3xl text-[12px] leading-5 text-gray-500">Record target service dates, operational inspections, and maintenance completion. These internal controls never dispatch work, change customer charges, or release a vehicle automatically.</p></div>

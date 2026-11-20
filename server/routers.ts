@@ -1,3 +1,4 @@
+import { fleetTicketsRouter } from "./fleetTickets";
 import { COOKIE_NAME, DIRECT_SESSION_COOKIE, DIRECT_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -317,6 +318,7 @@ async function hasReviewedRentalAdditionalDrivers(
 }
 
 export const appRouter = router({
+  fleetTickets: fleetTicketsRouter,
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

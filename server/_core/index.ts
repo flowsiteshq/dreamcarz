@@ -1,3 +1,4 @@
+import { startFleetTicketWorker } from "../fleetTickets";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
@@ -20,6 +21,7 @@ function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
     server.listen(port, () => {
+    startFleetTicketWorker();
       server.close(() => resolve(true));
     });
     server.on("error", () => resolve(false));
@@ -78,6 +80,7 @@ async function startServer() {
   }
 
   server.listen(port, () => {
+    startFleetTicketWorker();
     console.log(`Server running on http://localhost:${port}/`);
   });
 }
