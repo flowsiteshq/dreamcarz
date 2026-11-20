@@ -53,8 +53,8 @@ function statesMatch(left: string, right: string) {
   return timingSafeEqual(leftDigest, rightDigest);
 }
 
-function callbackFailure(res: Response) {
-  res.redirect(302, "/login?google=failed");
+function callbackFailure(res: Response, reason = "callback") {
+  res.redirect(302, `/login?google=failed&reason=${encodeURIComponent(reason)}`);
 }
 
 export function registerGoogleOAuthRoutes(app: Express) {
@@ -89,11 +89,20 @@ export function registerGoogleOAuthRoutes(app: Express) {
     const storedState = decodeStateCookie(parseCookieHeader(req.headers.cookie ?? "")[GOOGLE_STATE_COOKIE]);
     res.clearCookie(GOOGLE_STATE_COOKIE, { ...getSessionCookieOptions(req), maxAge: -1 });
 
-    if (!config || !code || !state || !storedState || !statesMatch(state, storedState.state)) {
-      callbackFailure(res);
+    if (!config) {
+      callbackFailure(res, "configuration");
+      return;
+    }
+    if (!code || !state) {
+      callbackFailure(res, "missing_code");
+      return;
+    }
+    if (!storedState || !statesMatch(state, storedState.state)) {
+      callbackFailure(res, "state");
       return;
     }
 
+    let stage = "token_exchange";
     try {
       const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
         method: "POST",
@@ -108,6 +117,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
       });
       if (!tokenResponse.ok) throw new Error("Google token exchange failed");
       const tokenPayload = tokenPayloadSchema.parse(await tokenResponse.json());
+      stage = "verify_token";
       const ticket = await new OAuth2Client(config.clientId).verifyIdToken({
         idToken: tokenPayload.id_token,
         audience: config.clientId,
@@ -115,11 +125,13 @@ export function registerGoogleOAuthRoutes(app: Express) {
       const payload = ticket.getPayload();
       if (!payload?.sub || !payload.email || payload.email_verified !== true) throw new Error("Google account email is not verified");
 
+      stage = "link_account";
       const user = await findOrCreateGoogleAccount({
         subject: payload.sub,
         email: payload.email,
         name: payload.name ?? null,
       });
+      stage = "create_session";
       const session = await createDirectSession(user.id);
       res.cookie(DIRECT_SESSION_COOKIE, session.token, {
         ...getSessionCookieOptions(req),
@@ -127,8 +139,8 @@ export function registerGoogleOAuthRoutes(app: Express) {
       });
       res.redirect(302, storedState.returnTo);
     } catch (error) {
-      console.error("[Google OAuth] callback failed", error);
-      callbackFailure(res);
+      console.error(`[Google OAuth] callback failed at ${stage}`, error);
+      callbackFailure(res, stage);
     }
   });
 }
