@@ -43,6 +43,30 @@ export const authSessions = mysqlTable("auth_sessions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Single-use password recovery tokens; only a hash is stored. */
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/** Requests for staff/admin access, reviewed by the super administrator. */
+export const adminAccessRequests = mysqlTable("admin_access_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  reason: text("reason"),
+  status: mysqlEnum("status", ["pending", "approved", "denied", "restricted"]).default("pending").notNull(),
+  reviewedByUserId: int("reviewedByUserId"),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewNote: text("reviewNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("admin_access_requests_email_status_idx").on(table.email, table.status)]);
+
 /** Provider identity references only; Google access and refresh tokens are never stored. */
 export const googleOAuthIdentities = mysqlTable("google_oauth_identities", {
   id: int("id").autoincrement().primaryKey(),

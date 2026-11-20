@@ -1,8 +1,8 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { and, eq, gt, lte } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte } from "drizzle-orm";
+import { adminAccessRequests, authSessions, googleOAuthIdentities, passwordResetTokens, userCredentials, users, type User } from "../drizzle/schema";
 import { nanoid } from "nanoid";
-import { authSessions, googleOAuthIdentities, userCredentials, users, type User } from "../drizzle/schema";
 import { DIRECT_SESSION_MAX_AGE_MS } from "../shared/const";
 import { getDb } from "./db";
 
@@ -90,6 +90,9 @@ export async function loginDirectAccount(emailInput: string, password: string): 
 
   const match = account[0];
   if (!match || !(await verifyPassword(password, match.passwordHash))) return null;
+
+  const accessDecision = (await db.select({ status: adminAccessRequests.status }).from(adminAccessRequests).where(eq(adminAccessRequests.email, email)).orderBy(desc(adminAccessRequests.createdAt)).limit(1))[0];
+  if (accessDecision?.status === "restricted" || accessDecision?.status === "denied") return null;
 
   await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, match.user.id));
   return { ...match.user, lastSignedIn: new Date() };
@@ -197,7 +200,11 @@ export async function getDirectSessionUser(token: string | undefined): Promise<U
     .innerJoin(users, eq(authSessions.userId, users.id))
     .where(and(eq(authSessions.tokenHash, tokenHash(token)), gt(authSessions.expiresAt, new Date())))
     .limit(1);
-  return result[0]?.user ?? null;
+  const sessionUser = result[0]?.user;
+  if (!sessionUser) return null;
+  const accessDecision = (await db.select({ status: adminAccessRequests.status }).from(adminAccessRequests).where(eq(adminAccessRequests.email, sessionUser.email ?? "")).orderBy(desc(adminAccessRequests.createdAt)).limit(1))[0];
+  if (accessDecision?.status === "restricted" || accessDecision?.status === "denied") return null;
+  return sessionUser;
 }
 
 export async function revokeDirectSession(token: string | undefined) {
@@ -205,4 +212,24 @@ export async function revokeDirectSession(token: string | undefined) {
   const db = await getDb();
   if (!db) return;
   await db.delete(authSessions).where(eq(authSessions.tokenHash, tokenHash(token)));
+}
+
+export async function createPasswordResetToken(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DreamCarz accounts are temporarily unavailable");
+  const token = randomBytes(32).toString("base64url");
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+  await db.insert(passwordResetTokens).values({ userId, tokenHash: tokenHash(token), expiresAt: new Date(Date.now() + 30 * 60_000) });
+  return token;
+}
+
+export async function resetPasswordWithToken(token: string, password: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DreamCarz accounts are temporarily unavailable");
+  const record = (await db.select().from(passwordResetTokens).where(and(eq(passwordResetTokens.tokenHash, tokenHash(token)), isNull(passwordResetTokens.usedAt), gt(passwordResetTokens.expiresAt, new Date()))).limit(1))[0];
+  if (!record) return false;
+  await setDirectPasswordForUser(record.userId, password);
+  await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, record.id));
+  await db.delete(authSessions).where(eq(authSessions.userId, record.userId));
+  return true;
 }

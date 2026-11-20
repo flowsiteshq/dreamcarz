@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { createDirectSession, hasDirectAccountForEmail, loginDirectAccount, registerDirectAccount, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
+import { createDirectSession, createPasswordResetToken, hasDirectAccountForEmail, loginDirectAccount, registerDirectAccount, resetPasswordWithToken, revokeDirectSession, setDirectPasswordForUser } from "./directAuth";
 import {
   referralProfiles,
   referrals,
@@ -77,6 +77,9 @@ import {
   investmentOpportunities,
   investmentInterestIndications,
   investmentOpportunityReports,
+  adminAccessRequests,
+  authSessions,
+  passwordResetTokens,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -122,6 +125,7 @@ import { ASSOCIATE_ENROLLMENT_FEE_CENTS, ASSOCIATE_ENROLLMENT_SKU, ASSOCIATE_MON
 import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus, listMarketingLeads, processConfiguredDueMetaLeadEvents, refreshMetaLeadConnectionStatus, requestMetaLeadTest, retryMetaLeadEvent, subscribeMetaLeadPageLeadgen } from "./metaLeadAds";
 import { formatStaffLeadContactAlert, queueStaffOperationalAlert } from "./staffSms";
 import { calculateInvestorProjection, INVESTOR_TARGET_RAISE_CENTS } from "./investorPortal";
+import { ENV } from "./_core/env";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -369,6 +373,36 @@ export const appRouter = router({
           maxAge: DIRECT_SESSION_MAX_AGE_MS,
         });
         return user;
+      }),
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().trim().email().max(320) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (db) {
+          const account = (await db.select({ id: users.id }).from(users).where(eq(users.email, input.email.toLowerCase())).limit(1))[0];
+          if (account) {
+            const token = await createPasswordResetToken(account.id);
+            console.info(`[DreamCarz] Password reset token created for ${input.email}: ${token}`);
+          }
+        }
+        return { success: true } as const;
+      }),
+    resetPassword: publicProcedure
+      .input(z.object({ token: z.string().min(32).max(128), password: z.string().min(10).max(128) }))
+      .mutation(async ({ input }) => {
+        const reset = await resetPasswordWithToken(input.token, input.password);
+        if (!reset) throw new TRPCError({ code: "BAD_REQUEST", message: "That password-reset link is invalid or expired." });
+        return { success: true } as const;
+      }),
+    requestAdminAccess: publicProcedure
+      .input(z.object({ name: z.string().trim().min(2).max(160), email: z.string().trim().email().max(320), reason: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Access requests are temporarily unavailable." });
+        const email = input.email.toLowerCase();
+        const openRequest = await db.select({ id: adminAccessRequests.id }).from(adminAccessRequests).where(and(eq(adminAccessRequests.email, email), eq(adminAccessRequests.status, "pending"))).limit(1);
+        if (!openRequest[0]) await db.insert(adminAccessRequests).values({ name: input.name, email, reason: input.reason || null });
+        return { success: true } as const;
       }),
     setDirectPassword: protectedProcedure
       .input(z.object({ password: z.string().min(10).max(128) }))
@@ -1214,6 +1248,41 @@ export const appRouter = router({
       const assignments = await db.select({ role: userRoleAssignments.role }).from(userRoleAssignments).where(and(eq(userRoleAssignments.userId, ctx.user.id), isNull(userRoleAssignments.revokedAt)));
       return { roles: effectiveDreamCarzRoles(ctx.user.role, assignments.map(assignment => assignment.role)) };
     }),
+    accessRequests: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.openId !== ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "Super administrator access is required." });
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(adminAccessRequests).orderBy(desc(adminAccessRequests.createdAt)).limit(100);
+    }),
+    reviewAccessRequest: protectedProcedure
+      .input(z.object({ requestId: z.number().int().positive(), status: z.enum(["approved", "denied", "restricted"]), reviewNote: z.string().trim().max(2_000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.openId !== ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "Super administrator access is required." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Access review is temporarily unavailable." });
+        const request = (await db.select().from(adminAccessRequests).where(eq(adminAccessRequests.id, input.requestId)).limit(1))[0];
+        if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Access request not found." });
+        await db.update(adminAccessRequests).set({ status: input.status, reviewedByUserId: ctx.user.id, reviewedAt: new Date(), reviewNote: input.reviewNote || null }).where(eq(adminAccessRequests.id, input.requestId));
+        const target = request.email ? (await db.select({ id: users.id }).from(users).where(eq(users.email, request.email)).limit(1))[0] : undefined;
+        if (target && input.status === "approved") await db.update(users).set({ role: "admin" }).where(eq(users.id, target.id));
+        if (target && (input.status === "denied" || input.status === "restricted")) await db.delete(authSessions).where(eq(authSessions.userId, target.id));
+        return { success: true } as const;
+      }),
+    restrictUser: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), restricted: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.openId !== ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "Super administrator access is required." });
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You cannot restrict your own account." });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Account controls are temporarily unavailable." });
+        const target = (await db.select({ email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
+        if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Account not found." });
+        const existingRequest = target.email ? (await db.select({ id: adminAccessRequests.id }).from(adminAccessRequests).where(eq(adminAccessRequests.email, target.email)).orderBy(desc(adminAccessRequests.createdAt)).limit(1))[0] : undefined;
+        if (existingRequest) await db.update(adminAccessRequests).set({ status: input.restricted ? "restricted" : "approved", reviewedByUserId: ctx.user.id, reviewedAt: new Date() }).where(eq(adminAccessRequests.id, existingRequest.id));
+        else if (target.email) await db.insert(adminAccessRequests).values({ name: target.email, email: target.email, status: input.restricted ? "restricted" : "approved", reviewedByUserId: ctx.user.id, reviewedAt: new Date() });
+        if (input.restricted) await db.delete(authSessions).where(eq(authSessions.userId, input.userId));
+        return { success: true } as const;
+      }),
     directory: protectedProcedure
       .input(z.object({ query: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(10).max(50).default(20) }).optional())
       .query(async ({ ctx, input }) => {
