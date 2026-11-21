@@ -1,4 +1,6 @@
 import DashboardShell from "@/components/DashboardShell";
+import { AwsFaceLivenessCheck } from "@/components/AwsFaceLivenessCheck";
+import type { AwsCredentials } from "@aws-amplify/ui-react-liveness";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
@@ -88,8 +90,8 @@ const documentLabels: Record<RentalDocumentType, { label: string; helper: string
     icon: BadgeCheck,
   },
   live_selfie: {
-    label: "Live selfie",
-    helper: "Take a clear, well-lit photo of your face.",
+    label: "Amazon Face Liveness camera check",
+    helper: "Complete the guided Amazon Face Liveness camera check.",
     icon: ScanFace,
   },
 };
@@ -121,7 +123,9 @@ export default function RentalOnboarding() {
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(blankForm);
-  const [consents, setConsents] = useState({ identity: false, rentalTerms: false });
+  const [consents, setConsents] = useState({ identity: false, liveness: false, rentalTerms: false });
+  const [livenessCompleted, setLivenessCompleted] = useState(false);
+  const [livenessCredentials, setLivenessCredentials] = useState<{ sessionId: string; region: string; credentials: AwsCredentials } | null>(null);
   const [uploadedDocuments, setUploadedDocuments] = useState<Set<RentalDocumentType>>(new Set());
   const [documentPreviews, setDocumentPreviews] = useState<Partial<Record<RentalDocumentType, string>>>({});
   const [pageError, setPageError] = useState("");
@@ -161,6 +165,7 @@ export default function RentalOnboarding() {
       requestedEndDate: application.requestedEndDate || "",
     });
     setUploadedDocuments(new Set(documents.map(document => document.documentType)));
+    setLivenessCompleted(application.verificationProvider === "aws_face_liveness" && application.identityVerificationStatus === "manual_review");
   }, [application, documents]);
 
   const progress = useMemo(() => Math.round((step / RENTAL_ONBOARDING_STEPS.length) * 100), [step]);
@@ -194,8 +199,8 @@ export default function RentalOnboarding() {
     }
     if (step === 3) {
       return fieldError(
-        uploadedDocuments.has("license_front") && uploadedDocuments.has("live_selfie"),
-        "Upload your driver's license front and a live selfie to continue.",
+        uploadedDocuments.has("license_front") && livenessCompleted,
+        "Upload your driver's license front and complete the Face Liveness check to continue.",
       );
     }
     if (step === 4) {
@@ -273,6 +278,44 @@ export default function RentalOnboarding() {
       await utils.rentalOnboarding.getApplication.invalidate();
     } catch {
       setDocumentError("We could not securely upload that document. Please try again with a clear image.");
+    }
+  };
+
+  const startAwsFaceLiveness = trpc.rentalOnboarding.startAwsFaceLiveness.useMutation();
+  const requestAwsFaceLivenessBrowserCredentials = trpc.rentalOnboarding.requestAwsFaceLivenessBrowserCredentials.useMutation();
+  const checkAwsFaceLiveness = trpc.rentalOnboarding.checkAwsFaceLiveness.useMutation();
+
+  const startLivenessCheck = async () => {
+    if (!consents.liveness) {
+      setDocumentError("Confirm the identity and biometric consent before starting the live camera check.");
+      return;
+    }
+    try {
+      setDocumentError("");
+      const started = await startAwsFaceLiveness.mutateAsync({ identityDocumentConsent: true, biometricConsent: true });
+      if (!started.started) throw new Error("The live camera check is temporarily unavailable. Please contact DreamCarz for manual review.");
+      const access = await requestAwsFaceLivenessBrowserCredentials.mutateAsync();
+      if (!access.granted) throw new Error("The live camera check is temporarily unavailable. Please contact DreamCarz for manual review.");
+      setLivenessCredentials({ sessionId: access.sessionId, region: access.provider.region, credentials: access.credentials });
+    } catch (error) {
+      setDocumentError(error instanceof Error ? error.message : "The live camera check could not be started.");
+    }
+  };
+
+  const finishLivenessCheck = async () => {
+    try {
+      const result = await checkAwsFaceLiveness.mutateAsync();
+      setLivenessCredentials(null);
+      if (!result.completed) {
+        setDocumentError("The live camera check is still processing. Please try again shortly.");
+        return;
+      }
+      setLivenessCompleted(true);
+      setDocumentError("");
+      await utils.rentalOnboarding.getApplication.invalidate();
+    } catch (error) {
+      setLivenessCredentials(null);
+      setDocumentError(error instanceof Error ? error.message : "The live camera result could not be confirmed.");
     }
   };
 
@@ -482,33 +525,40 @@ export default function RentalOnboarding() {
                   <div className="space-y-6">
                     <div className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4">
                       <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center border border-gray-100 shrink-0"><Fingerprint size={17} /></div>
-                      <div><p className="text-sm font-semibold text-black">Secure identity verification.</p><p className="mt-1 text-[12px] text-gray-500 leading-5">We compare your identity documents during a protected review. Until automated facial matching is configured, submissions are queued for manual verification.</p></div>
+                      <div><p className="text-sm font-semibold text-black">Identity verification is active.</p><p className="mt-1 text-[12px] text-gray-500 leading-5">Complete the Amazon Face Liveness camera challenge and provide your driver’s-license image. Both records are routed to protected DreamCarz review.</p></div>
                     </div>
-                    <div className="grid sm:grid-cols-3 gap-3">
-                      {(["license_front", "license_back", "live_selfie"] as RentalDocumentType[]).map(documentType => {
+
+                    <section className="rounded-2xl border-2 border-[#d9c48a] bg-[#fffbef] p-5 sm:p-6" aria-labelledby="rental-face-liveness-title">
+                      <div className="flex items-start gap-3">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-[#e4c46f]"><ScanFace size={20} /></div>
+                        <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#a7770c]">Primary identity check</p><p id="rental-face-liveness-title" className="mt-1 text-lg font-bold text-black">Amazon Face Liveness</p><p className="mt-1 text-xs leading-5 text-gray-600">Use the guided camera challenge to prove you are physically present. DreamCarz does not store a facial template or liveness video, and a successful result still goes to separate manual identity review.</p></div>
+                      </div>
+                      <label className="mt-5 flex items-start gap-3 rounded-xl border border-[#ead9a6] bg-white p-4 text-sm leading-6 text-gray-700"><input checked={consents.liveness} onChange={event => setConsents(current => ({ ...current, liveness: event.target.checked }))} type="checkbox" className="mt-1 h-4 w-4 accent-black" /><span>I consent to the Amazon Face Liveness camera check for identity verification. If the camera check cannot be completed, my application may require authorized manual review.</span></label>
+                      {livenessCredentials ? <div className="mt-4"><AwsFaceLivenessCheck region={livenessCredentials.region} sessionId={livenessCredentials.sessionId} credentials={livenessCredentials.credentials} onAnalysisComplete={finishLivenessCheck} onError={message => { setLivenessCredentials(null); setDocumentError(message); }} onCancel={() => setLivenessCredentials(null)} /></div> : <button type="button" onClick={() => void startLivenessCheck()} disabled={startAwsFaceLiveness.isPending || requestAwsFaceLivenessBrowserCredentials.isPending || livenessCompleted || !consents.liveness} className="mt-4 inline-flex h-12 items-center gap-2 rounded-full bg-black px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{startAwsFaceLiveness.isPending || requestAwsFaceLivenessBrowserCredentials.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : livenessCompleted ? <CheckCircle2 size={16} /> : <ScanFace size={16} />} {livenessCompleted ? "Face Liveness completed" : "Begin Face Liveness camera check"}</button>}
+                    </section>
+
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {(["license_front", "license_back"] as RentalDocumentType[]).map(documentType => {
                         const details = documentLabels[documentType];
                         const Icon = details.icon;
                         const isUploaded = uploadedDocuments.has(documentType);
                         const isUploading = uploadDocument.isPending && uploadDocument.variables?.documentType === documentType;
-                        const ref = documentType === "license_front" ? frontLicenseRef : documentType === "license_back" ? backLicenseRef : selfieRef;
+                        const ref = documentType === "license_front" ? frontLicenseRef : backLicenseRef;
                         return (
                           <div key={documentType} className={`relative rounded-2xl border p-4 transition-colors ${isUploaded ? "border-green-200 bg-green-50/40" : "border-gray-200 bg-white"}`}>
-                            <input ref={ref} className="hidden" type="file" accept="image/jpeg,image/png,image/webp" capture={documentType === "live_selfie" ? "user" : "environment"} onChange={event => handleDocumentUpload(documentType, event.target.files?.[0])} />
+                            <input ref={ref} className="hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => handleDocumentUpload(documentType, event.target.files?.[0])} />
                             {documentPreviews[documentType] ? <img src={documentPreviews[documentType]} alt="Document preview" className="mb-3 aspect-[4/3] w-full rounded-xl object-cover" /> : <div className={`mb-3 aspect-[4/3] rounded-xl flex items-center justify-center ${isUploaded ? "bg-green-100" : "bg-gray-50"}`}><Icon size={24} className={isUploaded ? "text-green-600" : "text-gray-300"} /></div>}
                             <p className="text-[13px] font-semibold text-black">{details.label}</p>
                             <p className="mt-1 min-h-10 text-[11px] leading-4 text-gray-400">{details.helper}</p>
                             <button type="button" onClick={() => ref.current?.click()} disabled={isUploading} className={`mt-3 w-full rounded-xl py-2.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${isUploaded ? "bg-white border border-green-200 text-green-700 hover:bg-green-50" : "bg-black text-white hover:bg-gray-800"}`}>
                               {isUploading ? <Loader2 size={13} className="animate-spin" /> : isUploaded ? <Check size={14} /> : <Upload size={13} />}
-                              {isUploading ? "Uploading" : isUploaded ? "Replace image" : documentType === "live_selfie" ? "Open camera" : "Upload image"}
+                              {isUploading ? "Uploading" : isUploaded ? "Replace image" : "Upload image"}
                             </button>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="rounded-2xl border border-gray-100 bg-white p-4 flex gap-3">
-                      <LockKeyhole size={17} className="text-gray-400 shrink-0 mt-0.5" />
-                      <p className="text-[11px] leading-5 text-gray-400">Accepted formats: JPG, PNG, or WEBP, up to 6 MB each. Identity images are stored privately for rental eligibility review and are not displayed in your member profile.</p>
-                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-white p-4 flex gap-3"><LockKeyhole size={17} className="text-gray-400 shrink-0 mt-0.5" /><p className="text-[11px] leading-5 text-gray-400">License images are stored privately for eligibility review. The Amazon Face Liveness stream is used for the provider check; DreamCarz stores only the provider status and opaque session reference.</p></div>
                     {documentError && <p className="rounded-xl bg-red-50 px-4 py-3 text-[12px] text-red-600">{documentError}</p>}
                   </div>
                 )}
@@ -552,7 +602,7 @@ export default function RentalOnboarding() {
                       </div>
                     </div>
                     <div className="rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
-                      <div className="p-4 flex items-start gap-3"><CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" /><div><p className="text-[13px] font-semibold text-black">Identity documents ready</p><p className="mt-1 text-[11px] text-gray-400">License front and live selfie are securely attached for review.</p></div></div>
+                      <div className="p-4 flex items-start gap-3"><CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" /><div><p className="text-[13px] font-semibold text-black">Identity documents ready</p><p className="mt-1 text-[11px] text-gray-400">License front is attached and Amazon Face Liveness is complete for review.</p></div></div>
                       <label className="p-4 flex gap-3 cursor-pointer hover:bg-gray-50 transition-colors"><input type="checkbox" checked={consents.identity} onChange={event => setConsents(current => ({ ...current, identity: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-black" /><span className="text-[12px] leading-5 text-gray-600">{RENTAL_CONSENT_COPY.identity}</span></label>
                       <label className="p-4 flex gap-3 cursor-pointer hover:bg-gray-50 transition-colors"><input type="checkbox" checked={consents.rentalTerms} onChange={event => setConsents(current => ({ ...current, rentalTerms: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-black" /><span className="text-[12px] leading-5 text-gray-600">{RENTAL_CONSENT_COPY.rentalTerms} <Link href="/terms" className="font-semibold text-black underline underline-offset-2">Read terms</Link>.</span></label>
                     </div>

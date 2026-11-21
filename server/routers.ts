@@ -1,4 +1,3 @@
-import { fleetTicketsRouter } from "./fleetTickets";
 import { COOKIE_NAME, DIRECT_SESSION_COOKIE, DIRECT_SESSION_MAX_AGE_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -89,6 +88,14 @@ import { orderServiceReportTimeline } from "../shared/serviceReportTimeline";
 import { z } from "zod";
 import { storageGetSignedUrl, storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+
+function throwSecureDocumentStorageError(scope: string, error: unknown): never {
+  console.error(`[Storage] ${scope} identity upload failed`, error instanceof Error ? error.name : "unknown");
+  throw new TRPCError({
+    code: "SERVICE_UNAVAILABLE",
+    message: "Secure document storage is temporarily unavailable. Please try again or contact DreamCarz support.",
+  });
+}
 import { parse } from "cookie";
 import { createHash } from "node:crypto";
 import { DREAMCARZ_LEDGER_REFERENCE_PREFIX, DREAMCARZ_MEMBERSHIP_BENEFIT_TYPES, DREAMCARZ_WALLET_ENTRY_TYPES, summarizeWalletLedger } from "../shared/dreamcarzOs";
@@ -127,6 +134,7 @@ import { MetaLeadProcessingError, getMarketingLeadDetail, getMetaLeadAdminStatus
 import { formatStaffLeadContactAlert, queueStaffOperationalAlert } from "./staffSms";
 import { calculateInvestorProjection, INVESTOR_TARGET_RAISE_CENTS } from "./investorPortal";
 import { ENV } from "./_core/env";
+import { sendPasswordResetEmail } from "./passwordResetEmail";
 
 function escapeAgreementHtml(value: string) {
   return value.replace(/[&<>\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character);
@@ -318,7 +326,6 @@ async function hasReviewedRentalAdditionalDrivers(
 }
 
 export const appRouter = router({
-  fleetTickets: fleetTicketsRouter,
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -384,7 +391,11 @@ export const appRouter = router({
           const account = (await db.select({ id: users.id }).from(users).where(eq(users.email, input.email.toLowerCase())).limit(1))[0];
           if (account) {
             const token = await createPasswordResetToken(account.id);
-            console.info(`[DreamCarz] Password reset token created for ${input.email}: ${token}`);
+            try {
+              await sendPasswordResetEmail({ to: input.email.toLowerCase(), token });
+            } catch (error) {
+              console.error("[DreamCarz] Password reset email delivery failed", error instanceof Error ? error.message : "unknown_error");
+            }
           }
         }
         return { success: true } as const;
@@ -1660,11 +1671,16 @@ export const appRouter = router({
         }
         const applicationId = application[0].id;
         const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
-        const { key } = await storagePut(
-          `rental-applications/${ctx.user.id}/${input.documentType}_${Date.now()}.${extension}`,
-          rawBytes,
-          input.contentType,
-        );
+        let key: string;
+        try {
+          ({ key } = await storagePut(
+            `rental-applications/${ctx.user.id}/${input.documentType}_${Date.now()}.${extension}`,
+            rawBytes,
+            input.contentType,
+          ));
+        } catch (error) {
+          throwSecureDocumentStorageError("rental application", error);
+        }
 
         await db
           .delete(rentalApplicationDocuments)
@@ -1692,6 +1708,54 @@ export const appRouter = router({
           .where(eq(rentalApplications.id, applicationId));
 
         return { success: true, documentType: input.documentType };
+      }),
+
+    startAwsFaceLiveness: protectedProcedure
+      .input(z.object({ identityDocumentConsent: z.literal(true), biometricConsent: z.literal(true) }))
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const application = (await db.select().from(rentalApplications).where(eq(rentalApplications.userId, ctx.user.id)).limit(1))[0];
+        if (!application) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete your rental profile before starting identity verification." });
+        const provider = getAwsFaceLivenessStatus();
+        if (!provider.configured) return { started: false as const, provider };
+        const session = await createAwsFaceLivenessSession({ clientRequestToken: nanoid(32) });
+        if (!session.configured) return { started: false as const, provider: session.provider };
+        await db.update(rentalApplications).set({
+          identityVerificationStatus: "documents_uploaded",
+          verificationProvider: "aws_face_liveness",
+          identityProviderSessionId: session.sessionId,
+          identityConsentAt: new Date(),
+        }).where(eq(rentalApplications.id, application.id));
+        return { started: true as const, provider: session.provider, sessionId: session.sessionId };
+      }),
+
+    requestAwsFaceLivenessBrowserCredentials: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const application = (await db.select().from(rentalApplications).where(eq(rentalApplications.userId, ctx.user.id)).limit(1))[0];
+        if (!application || application.verificationProvider !== "aws_face_liveness" || !application.identityProviderSessionId) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Start a new Face Liveness session before requesting camera access." });
+        }
+        const credentials = await createAwsFaceLivenessBrowserCredentials();
+        if (!credentials.configured) return { granted: false as const, provider: credentials.provider };
+        return { granted: true as const, provider: credentials.provider, sessionId: application.identityProviderSessionId, credentials: credentials.credentials };
+      }),
+
+    checkAwsFaceLiveness: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Identity verification is temporarily unavailable." });
+        const application = (await db.select().from(rentalApplications).where(eq(rentalApplications.userId, ctx.user.id)).limit(1))[0];
+        if (!application || application.verificationProvider !== "aws_face_liveness" || !application.identityProviderSessionId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "A Face Liveness session is not available for this application." });
+        }
+        const result = await getAwsFaceLivenessResult(application.identityProviderSessionId);
+        if (!result.configured) return { configured: false as const, provider: result.provider, completed: false };
+        const completed = result.status === "SUCCEEDED";
+        if (completed) await db.update(rentalApplications).set({ identityVerificationStatus: "manual_review" }).where(eq(rentalApplications.id, application.id));
+        return { configured: true as const, provider: result.provider, completed };
       }),
 
     submitApplication: protectedProcedure
@@ -1732,8 +1796,9 @@ export const appRouter = router({
           .from(rentalApplicationDocuments)
           .where(eq(rentalApplicationDocuments.applicationId, application.id));
         const documentTypes = new Set(documents.map(document => document.documentType));
-        if (!documentTypes.has("license_front") || !documentTypes.has("live_selfie")) {
-          throw new Error("Upload your driver's license and live selfie before submitting");
+        const hasLivenessReview = application.verificationProvider === "aws_face_liveness" && application.identityVerificationStatus === "manual_review";
+        if (!documentTypes.has("license_front") || (!documentTypes.has("live_selfie") && !hasLivenessReview)) {
+          throw new Error("Complete the driver's license and Face Liveness steps before submitting");
         }
 
         await db
@@ -2837,18 +2902,23 @@ export const appRouter = router({
         }
         const isSelfie = input.documentType === "live_selfie";
         if (isSelfie ? input.biometricConsent !== true : input.identityDocumentConsent !== true) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: isSelfie ? "Explicit identity and biometric consent is required before a live selfie can be processed." : "Explicit identity-document consent is required before a driver-license image can be processed." });
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: isSelfie ? "Explicit identity and biometric consent is required before the Amazon Face Liveness camera check can be started." : "Explicit identity-document consent is required before a driver-license image can be processed." });
         }
         const rawBytes = Buffer.from(input.base64, "base64");
         if (rawBytes.length > 6 * 1024 * 1024) {
           throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Each identity document must be 6 MB or smaller." });
         }
         const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
-        const { key } = await storagePut(
-          `transaction-documents/${ctx.user.id}/${transaction.id}/${input.documentType}_${Date.now()}.${extension}`,
-          rawBytes,
-          input.contentType,
-        );
+        let key: string;
+        try {
+          ({ key } = await storagePut(
+            `transaction-documents/${ctx.user.id}/${transaction.id}/${input.documentType}_${Date.now()}.${extension}`,
+            rawBytes,
+            input.contentType,
+          ));
+        } catch (error) {
+          throwSecureDocumentStorageError("vehicle transaction", error);
+        }
         const inserted = await db.insert(transactionDocuments).values({
           transactionId: transaction.id,
           userId: ctx.user.id,
@@ -4254,10 +4324,10 @@ export const appRouter = router({
           label: "Identity and liveness verification",
           state: "blocker",
           detail: awsFaceLiveness.configured
-            ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS Face Liveness supports consented liveness only; a compliant driver's-license and live-selfie matching provider still requires configuration and manual review.`
+            ? `${pendingIdentity} transaction${pendingIdentity === 1 ? " is" : "s are"} in an identity review state. AWS Face Liveness supports consented liveness only; a compliant driver's-license and identity-matching provider still requires configuration and manual review.`
             : awsFaceLiveness.browserCredentialBrokerConfigured
-              ? "AWS temporary browser credentials are prepared, but liveness is not full driver's-license verification. A compliant license-and-live-selfie matching provider, customer consent, and manual review are still required."
-              : "A compliant driver's-license and live-selfie matching provider is not customer-active. The private document and manual-review path remains available.",
+              ? "AWS temporary browser credentials are prepared, but liveness is not full driver's-license verification. A compliant license-and-identity matching provider, customer consent, and manual review are still required."
+              : "A compliant driver's-license and identity-matching provider is not customer-active. The private document and manual-review path remains available.",
         },
         {
           key: "agreement",

@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.15.7",
     "@aws-amplify/ui-react-liveness": "^3.6.9",
     "@aws-sdk/client-rekognition": "^3.1121.0",
     "@aws-sdk/client-s3": "^3.693.0",

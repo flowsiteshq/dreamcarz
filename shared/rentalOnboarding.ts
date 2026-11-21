@@ -15,7 +15,7 @@ export const RENTAL_ONBOARDING_STEPS = [
     id: "identity",
     number: 3,
     title: "Identity verification",
-    description: "Capture your driver's license and a live selfie for secure verification.",
+    description: "Capture your driver's license and complete the Amazon Face Liveness camera check for secure verification.",
   },
   {
     id: "preferences",
@@ -91,7 +91,7 @@ export const RENTAL_ONBOARDING_REQUIREMENTS = {
 
 export const RENTAL_CONSENT_COPY = {
   identity:
-    "I authorize DreamCarz to securely process my driver's license image and live selfie solely to verify my identity and rental eligibility. I understand that identity verification may require manual review.",
+    "I authorize DreamCarz to securely process my driver's license image and Amazon Face Liveness result solely to verify my identity and rental eligibility. I understand that identity verification may require manual review.",
   rentalTerms:
     "I confirm that the information in this rental application is accurate and agree to the DreamCarz rental terms, vehicle-use rules, and privacy policy.",
 } as const;
